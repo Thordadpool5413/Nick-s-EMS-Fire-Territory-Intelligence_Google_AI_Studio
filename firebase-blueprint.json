@@ -1,0 +1,325 @@
+{
+  "entities": {
+    "County": {
+      "title": "County Record",
+      "description": "Authoritative demographics, cardiac registry, and emergency transport statistics for a US county across all 3,143 nationwide counties.",
+      "type": "object",
+      "properties": {
+        "countyFips": {
+          "type": "string",
+          "description": "5-digit Federal Information Processing Standard code."
+        },
+        "countyName": {
+          "type": "string",
+          "description": "Full name of the county, parish, or borough."
+        },
+        "stateCode": {
+          "type": "string",
+          "description": "Two-letter US state abbreviation."
+        },
+        "countySeat": {
+          "type": "string",
+          "description": "Primary county seat municipality."
+        },
+        "population": {
+          "type": "number",
+          "description": "Total census population."
+        },
+        "seniorPopPct": {
+          "type": "number",
+          "description": "Percentage of population age 65 and older."
+        },
+        "medianIncome": {
+          "type": "number",
+          "description": "Median household income."
+        },
+        "povertyRatePct": {
+          "type": "number",
+          "description": "Poverty rate percentage."
+        },
+        "annualEmergencyTransports": {
+          "type": "number",
+          "description": "Annual 911 emergency medical transports."
+        },
+        "annualCardiacArrestIncidents": {
+          "type": "number",
+          "description": "Annual out-of-hospital cardiac arrest incidents."
+        },
+        "averageTransportMinutes": {
+          "type": "number",
+          "description": "Average EMS drive time to emergency department."
+        },
+        "primaryCathLabDistanceMiles": {
+          "type": "number",
+          "description": "Distance in miles to nearest STEMI PCI Cardiac Catheterization Lab."
+        },
+        "activeEmsAgencies": {
+          "type": "number",
+          "description": "Number of licensed EMS and Fire agencies."
+        }
+      },
+      "required": ["countyFips", "countyName", "stateCode", "population"]
+    },
+    "Agency": {
+      "title": "EMS & Fire Agency",
+      "description": "Comprehensive operational, clinical NEMSIS, CMS billing, apparatus fleet, and federal grant intelligence for Fire and EMS providers across all 3,143 counties.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the agency."
+        },
+        "name": {
+          "type": "string",
+          "description": "Official department or EMS agency name."
+        },
+        "fdid": {
+          "type": "string",
+          "description": "State Fire Department Identification or EMS licensing number."
+        },
+        "agencyType": {
+          "type": "string",
+          "description": "Provider operational classification (Career Fire Department, Combination, Third Service EMS, Private Hospital-Based)."
+        },
+        "jurisdictionLevel": {
+          "type": "string",
+          "description": "Administrative jurisdiction level (Local, County, Regional, State)."
+        },
+        "state": {
+          "type": "string",
+          "description": "Full US state name."
+        },
+        "stateCode": {
+          "type": "string",
+          "description": "Two-letter US state postal abbreviation."
+        },
+        "county": {
+          "type": "string",
+          "description": "County or parish jurisdiction."
+        },
+        "city": {
+          "type": "string",
+          "description": "Municipality or service city."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "5-digit postal code."
+        },
+        "providerCategory": {
+          "type": "string",
+          "enum": ["EMS", "FIRE"],
+          "description": "Primary service branch (EMS Provider or Fire Department)."
+        },
+        "populationServed": {
+          "type": "number",
+          "description": "Total resident population within first-due response jurisdiction."
+        },
+        "totalAmbulances": {
+          "type": "number",
+          "description": "Number of active Type I, Type II, and Type III ALS/BLS transport units."
+        },
+        "totalFireEngines": {
+          "type": "number",
+          "description": "Number of Class A rescue pumpers, quints, and aerial apparatus."
+        },
+        "stationsCount": {
+          "type": "number",
+          "description": "Total active fire stations and EMS deployment bases."
+        },
+        "annual911Transports": {
+          "type": "number",
+          "description": "Total annual patient transports to receiving emergency departments."
+        },
+        "annualCardiacArrestCalls": {
+          "type": "number",
+          "description": "Annual out-of-hospital cardiac arrest (OHCA) resuscitations attempted (NEMSIS)."
+        },
+        "bystanderCPRRate": {
+          "type": "number",
+          "description": "NEMSIS registry benchmark for citizen bystander CPR before EMS arrival."
+        },
+        "utsteinSurvivalRate": {
+          "type": "number",
+          "description": "CARES/NEMSIS Utstein cardiac arrest survival to hospital discharge rate percentage."
+        },
+        "cmsData": {
+          "type": "object",
+          "description": "CMS open ambulance reimbursement and Medicare/Medicaid billing intelligence.",
+          "properties": {
+            "claimDenialRate": {
+              "type": "number",
+              "description": "Percentage of Medicare claims rejected or denied."
+            },
+            "medicareBilledAnnual": {
+              "type": "number",
+              "description": "Annual dollar amount billed to CMS Medicare Part B."
+            },
+            "medicareAllowedAnnual": {
+              "type": "number",
+              "description": "Annual dollar amount allowed by CMS Medicare Part B fee schedule."
+            },
+            "estimatedRecoverableRevenue": {
+              "type": "number",
+              "description": "Projected annual revenue recoverable through clinical documentation and ePCR denial defense."
+            },
+            "medicarePayerPct": {
+              "type": "number",
+              "description": "Medicare payer mix percentage."
+            },
+            "medicaidPayerPct": {
+              "type": "number",
+              "description": "Medicaid payer mix percentage."
+            },
+            "commercialPayerMixPct": {
+              "type": "number",
+              "description": "Commercial private health insurance payer mix percentage."
+            },
+            "gadcsReportingStatus": {
+              "type": "string",
+              "description": "CMS Ground Ambulance Data Collection System (GADCS) compliance audit status."
+            }
+          }
+        },
+        "installedFleet": {
+          "type": "object",
+          "description": "Installed cardiac monitor/defibrillator fleet, CAD vendor, and ePCR infrastructure.",
+          "properties": {
+            "defibBrand": {
+              "type": "string",
+              "description": "Incumbent monitor/defibrillator vendor (e.g. Stryker LIFEPAK 15, ZOLL X Series, Philips MRx)."
+            },
+            "defibUnitsCount": {
+              "type": "number",
+              "description": "Total active front-line monitor/defibrillator units."
+            },
+            "defibAgeYears": {
+              "type": "number",
+              "description": "Average age in years of the active defib fleet."
+            },
+            "defibWarrantyStatus": {
+              "type": "string",
+              "description": "Manufacturer warranty status (Active, Expired, Third-Party ISO)."
+            },
+            "dispatchCadVendor": {
+              "type": "string",
+              "description": "911 Computer-Aided Dispatch software vendor (CentralSquare, Tyler New World, Hexagon, Motorola)."
+            },
+            "epcrCadSoftware": {
+              "type": "string",
+              "description": "Electronic patient care reporting software (ZOLL emsCharts, ImageTrend Elite, ESO)."
+            }
+          }
+        },
+        "grantStatus": {
+          "type": "object",
+          "description": "FEMA Assistance to Firefighters Grants (AFG) and federal funding status.",
+          "properties": {
+            "afgAwarded": {
+              "type": "boolean",
+              "description": "Indicates whether the agency has an active or recent FEMA AFG grant."
+            },
+            "afgAwardAmount": {
+              "type": "number",
+              "description": "Total federal grant dollar funding awarded."
+            },
+            "afgFiscalYear": {
+              "type": "number",
+              "description": "Grant federal fiscal award year (e.g. 2025 or 2026)."
+            },
+            "afgPurpose": {
+              "type": "string",
+              "description": "FEMA approved procurement category (Operations & Safety, Vehicle Acquisition, Equipment)."
+            }
+          }
+        },
+        "zollOpportunity": {
+          "type": "object",
+          "description": "Predictive PulseIQ scoring and sales pipeline opportunity.",
+          "properties": {
+            "pulseIqScore": {
+              "type": "number",
+              "description": "Algorithmic score from 0 to 100 predicting sales readiness."
+            },
+            "salesStage": {
+              "type": "string",
+              "description": "CRM pipeline stage (Target Lead, Discovery, Clinical Evaluation, RFP Issued, Proposal Delivered, Closed Won)."
+            },
+            "projectedPipelineValue": {
+              "type": "number",
+              "description": "Total addressable opportunity value in US dollars."
+            },
+            "probabilityPct": {
+              "type": "number",
+              "description": "Win probability percentage."
+            }
+          }
+        },
+        "isBookmarked": {
+          "type": "boolean",
+          "description": "Watchlist indicator for territory tracking."
+        },
+        "inDayRoute": {
+          "type": "boolean",
+          "description": "Field itinerary routing inclusion flag."
+        }
+      },
+      "required": ["id", "name", "stateCode", "county", "city", "providerCategory"]
+    },
+    "FieldNote": {
+      "title": "Field Note",
+      "description": "Logged field visit, station meeting, or territory interaction note.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique field note ID."
+        },
+        "agencyId": {
+          "type": "string",
+          "description": "Associated agency ID."
+        },
+        "date": {
+          "type": "string",
+          "description": "ISO date string."
+        },
+        "repName": {
+          "type": "string",
+          "description": "Territory Manager or representative name."
+        },
+        "meetingType": {
+          "type": "string",
+          "description": "Type of interaction or visit."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Detailed notes from the field call."
+        },
+        "nextAction": {
+          "type": "string",
+          "description": "Follow-up action item."
+        }
+      },
+      "required": ["id", "agencyId", "date", "repName", "notes"]
+    }
+  },
+  "firestore": {
+    "/counties/{countyFips}": {
+      "schema": {
+        "$ref": "#/entities/County"
+      },
+      "description": "National directory of 3,143 US counties, demographics, and emergency transport statistics."
+    },
+    "/agencies/{agencyId}": {
+      "schema": {
+        "$ref": "#/entities/Agency"
+      },
+      "description": "Active CRM directory of EMS and Fire Department accounts across all counties with CMS, NEMSIS, and grant analytics."
+    },
+    "/field_notes/{noteId}": {
+      "schema": {
+        "$ref": "#/entities/FieldNote"
+      },
+      "description": "Field logs and station visit interaction records."
+    }
+  }
+}
