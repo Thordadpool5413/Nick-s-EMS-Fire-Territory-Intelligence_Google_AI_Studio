@@ -413,6 +413,10 @@ export default function App() {
     setIsDataLineageOpen(false);
     setIsChatbotOpen(false);
     setIsNotificationsOpen(false);
+    setGlobalState('all');
+    setGlobalCounty('all');
+    setGlobalCity('all');
+    setGlobalCategory('all');
     setActiveTab('tm_dashboard');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -420,6 +424,11 @@ export default function App() {
   const handleNavigateTab = useCallback((tab: string) => {
     setSelectedAgency(null);
     setActiveAccount(null);
+    if (tab === 'states_directory' || tab === 'tm_dashboard') {
+      setGlobalState('all');
+      setGlobalCounty('all');
+      setGlobalCity('all');
+    }
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -902,6 +911,14 @@ export default function App() {
             setActiveAccount(null);
           }}
           onGoHome={handleGoHome}
+          onNavigateGeography={(state, county, city) => {
+            setSelectedAgency(null);
+            setActiveAccount(null);
+            if (state) setGlobalState(state);
+            if (county) setGlobalCounty(county);
+            if (city) setGlobalCity(city);
+            setActiveTab('states_directory');
+          }}
           onUpdateStage={handleUpdateStage}
           onToggleRoute={handleToggleRoute}
           onToggleBookmark={handleToggleBookmark}

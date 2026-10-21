@@ -152,6 +152,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
 
   // Available counties based on selected state from nationwide territory engine (100% full coverage)
   const availableCounties = useMemo(() => {
+    if (selectedState === 'all') return [];
     const counties = territoryEngine.getCountiesForState(selectedState);
     const list = new Set<string>();
     for (let i = 0; i < counties.length; i++) {
@@ -162,6 +163,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
 
   // Available cities based on selected state & county from nationwide territory engine (100% full coverage)
   const availableCities = useMemo(() => {
+    if (selectedState === 'all') return [];
     return territoryEngine.getCitiesForState(selectedState, selectedCounty !== 'all' ? selectedCounty : undefined);
   }, [selectedState, selectedCounty]);
 

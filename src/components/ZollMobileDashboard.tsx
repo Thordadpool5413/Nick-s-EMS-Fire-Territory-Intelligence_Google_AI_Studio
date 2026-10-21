@@ -89,6 +89,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
   const [activeGeoTab, setActiveGeoTab] = useState<'cluster' | 'market_share' | 'transit'>('cluster');
   const [criticalAlertDismissed, setCriticalAlertDismissed] = useState<boolean>(false);
   const [mobileClarityDrawer, setMobileClarityDrawer] = useState<Record<string, 'deal_story' | 'battlecard' | 'score_explainer' | null>>({});
+  const [visibleCardCount, setVisibleCardCount] = useState<number>(24);
 
   // Active Territory Stats & Metrics
   const territoryStats = useMemo(() => {
@@ -747,7 +748,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               </button>
             </div>
           ) : (
-            filteredAgencies.map((agency, index) => {
+            filteredAgencies.slice(0, visibleCardCount).map((agency, index) => {
               const chiefContact = agency.keyContacts.find(c => c.role.toLowerCase().includes('chief')) || agency.keyContacts[0];
               const isUrgent = agency.competitorContract.renewalWindowDays <= 90;
               const isExpandedLog = expandedLogId === agency.id;
@@ -1107,6 +1108,18 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
             })
           )}
         </div>
+
+        {/* Load More Pagination Button when accounts exceed visibleCardCount */}
+        {filteredAgencies.length > visibleCardCount && (
+          <div className="pt-2 pb-4 text-center">
+            <button
+              onClick={() => setVisibleCardCount(prev => prev + 24)}
+              className="px-5 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-[#F1EFEA] dark:hover:bg-slate-700 border border-[#E5E4DF] dark:border-slate-700 text-xs font-bold text-[#111827] dark:text-slate-100 shadow-2xs transition-all cursor-pointer"
+            >
+              Show More Accounts ({filteredAgencies.length - visibleCardCount} remaining) &darr;
+            </button>
+          </div>
+        )}
 
       </div>
 

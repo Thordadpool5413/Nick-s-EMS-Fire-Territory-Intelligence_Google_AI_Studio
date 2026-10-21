@@ -52,6 +52,7 @@ interface FocusedProviderProfileProps {
   agency: Agency;
   onBack: () => void;
   onGoHome?: () => void;
+  onNavigateGeography?: (state?: string, county?: string, city?: string) => void;
   onUpdateStage: (agencyId: string, newStage: LeadStage) => void;
   onToggleRoute: (agencyId: string) => void;
   onToggleBookmark: (agencyId: string) => void;
@@ -386,6 +387,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   agency: rawAgency,
   onBack,
   onGoHome,
+  onNavigateGeography,
   onUpdateStage,
   onToggleRoute,
   onToggleBookmark,
@@ -501,16 +503,32 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
     triggerLiveVerification();
   }, [rawAgency.id]);
 
-  // Support Escape key to quickly close slide-over panel
+  // Support browser Back button (popstate) & Escape key to close modal cleanly
   useEffect(() => {
+    try {
+      window.history.pushState({ modal: 'profile', agencyId: rawAgency.id }, '');
+    } catch {
+      // Ignore history state errors in restricted iframes
+    }
+
+    const handlePopState = () => {
+      onBack();
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onBack();
       }
     };
+
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onBack]);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onBack, rawAgency.id]);
 
   const stages: LeadStage[] = [
     'Target Lead',
@@ -600,11 +618,37 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     <span aria-hidden="true" className="text-slate-400">›</span>
                   </>
                 )}
-                <span>{agency.state} ({agency.stateCode})</span>
-                <span aria-hidden="true" className="text-slate-400">›</span>
-                <span>{agency.county}</span>
-                <span aria-hidden="true" className="text-slate-400">›</span>
-                <span className="font-bold text-[#111827]">{agency.city}</span>
+                {onNavigateGeography ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateGeography(agency.stateCode, 'all', 'all')}
+                      className="text-[#1E3A8A] hover:underline cursor-pointer font-medium"
+                      title={`Back to ${agency.state} Counties`}
+                    >
+                      {agency.state} ({agency.stateCode})
+                    </button>
+                    <span aria-hidden="true" className="text-slate-400">›</span>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateGeography(agency.stateCode, agency.county, 'all')}
+                      className="text-[#1E3A8A] hover:underline cursor-pointer font-medium"
+                      title={`Back to ${agency.county} Providers`}
+                    >
+                      {agency.county}
+                    </button>
+                    <span aria-hidden="true" className="text-slate-400">›</span>
+                    <span className="font-bold text-[#111827]">{agency.city}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{agency.state} ({agency.stateCode})</span>
+                    <span aria-hidden="true" className="text-slate-400">›</span>
+                    <span>{agency.county}</span>
+                    <span aria-hidden="true" className="text-slate-400">›</span>
+                    <span className="font-bold text-[#111827]">{agency.city}</span>
+                  </>
+                )}
               </div>
             </div>
 

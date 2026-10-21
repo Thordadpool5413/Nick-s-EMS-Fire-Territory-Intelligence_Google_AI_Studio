@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Agency, TerritoryCluster } from '../types';
 import { TERRITORY_CLUSTERS } from '../data/healthcareData';
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
-import { US_STATES_SVG_PATHS } from '../data/usStatesSvgPaths';
+import { US_STATES_SVG_PATHS, EAST_COAST_CALLOUT_STATES } from '../data/usStatesSvgPaths';
 import { territoryEngine } from '../services/territoryIntelligenceEngine';
 import { nationalProviderDb } from '../services/nationalProviderDatabase';
 import { 
@@ -90,6 +90,8 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   const [selectedCity, setSelectedCity] = useState<string>(globalCity || 'all');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'ems' | 'fire'>(globalCategory || 'all');
   const [hoveredAgency, setHoveredAgency] = useState<Agency | null>(null);
+  const [hoveredStateCode, setHoveredStateCode] = useState<string | null>(null);
+  const [mapDisplayMode, setMapDisplayMode] = useState<'choropleth' | 'hotspots' | 'pins'>('choropleth');
   const [sidebarTab, setSidebarTab] = useState<'nemsis_epicenters' | 'acuity_distribution' | 'product_matrix'>('nemsis_epicenters');
   const [showDensityHalos, setShowDensityHalos] = useState<boolean>(true);
   const [showPulseAnimations, setShowPulseAnimations] = useState<boolean>(true);
@@ -136,13 +138,12 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   }, [effectiveAgencies]);
 
   const availableCounties = useMemo(() => {
-    if (selectedState === 'all') {
-      return territoryEngine.getCountiesForState('all').map(c => c.countyName);
-    }
+    if (selectedState === 'all') return [];
     return territoryEngine.getCountiesForState(selectedState).map(c => c.countyName);
   }, [selectedState]);
 
   const availableCities = useMemo(() => {
+    if (selectedState === 'all') return [];
     return territoryEngine.getCitiesForState(
       selectedState,
       selectedCounty !== 'all' ? selectedCounty : undefined
@@ -438,6 +439,169 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       sortedCounties
     };
   }, [filteredAgencies]);
+
+  // State-level thematic intensity for choropleth mapping across all 50 states + DC
+  const stateAcuityMap = useMemo<Record<string, {
+    code: string;
+    name: string;
+    metricLabel: string;
+    metricValue: string;
+    tier: 'critical' | 'high' | 'moderate' | 'baseline';
+    fillColor: string;
+    borderColor: string;
+    agencyCount: number;
+  }>>(() => {
+    const stateStats: Record<string, { totalCardiac: number; agencyCount: number; sumSurvival: number; sumAed: number; sumTransport: number; sumDenial: number }> = {};
+    for (let i = 0; i < effectiveAgencies.length; i++) {
+      const a = effectiveAgencies[i];
+      const sc = a.stateCode;
+      if (!stateStats[sc]) {
+        stateStats[sc] = { totalCardiac: 0, agencyCount: 0, sumSurvival: 0, sumAed: 0, sumTransport: 0, sumDenial: 0 };
+      }
+      const st = stateStats[sc];
+      st.agencyCount++;
+      st.totalCardiac += (a.annualCardiacArrestCalls || Math.round((a.annual911Transports || 3000) * 0.12));
+      st.sumSurvival += (a.utsteinSurvivalRate || 10.8);
+      st.sumAed += (a.gisData?.publicAccessAedDeficitPct || 42);
+      st.sumTransport += (a.gisData?.avgTransportTimeMinutes || 20);
+      st.sumDenial += (a.cmsData?.claimDenialRate || 18);
+    }
+
+    const result: Record<string, any> = {};
+
+    Object.keys(ALL_50_STATES_SUMMARIES).forEach((sc) => {
+      const summary = ALL_50_STATES_SUMMARIES[sc];
+      const stats = stateStats[sc];
+      const count = stats?.agencyCount || summary.totalAgencies || 10;
+      const stateName = summary.state;
+
+      let metricLabel = '';
+      let metricValue = '';
+      let tier: 'critical' | 'high' | 'moderate' | 'baseline' = 'baseline';
+      let fillColor = '#e2e8f0';
+      let borderColor = '#94a3b8';
+
+      if (selectedLayer === 'nemsis_cardiac') {
+        const totalCalls = stats?.totalCardiac || (summary.totalAgencies * 450);
+        metricLabel = 'Annual Cardiac Arrests';
+        metricValue = `${totalCalls.toLocaleString()} calls`;
+        if (totalCalls >= 10000) {
+          tier = 'critical';
+          fillColor = '#fecdd3';
+          borderColor = '#e11d48';
+        } else if (totalCalls >= 5000) {
+          tier = 'high';
+          fillColor = '#fed7aa';
+          borderColor = '#ea580c';
+        } else if (totalCalls >= 2000) {
+          tier = 'moderate';
+          fillColor = '#fef08a';
+          borderColor = '#d97706';
+        } else {
+          tier = 'baseline';
+          fillColor = '#e0f2fe';
+          borderColor = '#0284c7';
+        }
+      } else if (selectedLayer === 'cardiac') {
+        const survival = stats?.agencyCount ? +(stats.sumSurvival / stats.agencyCount).toFixed(1) : summary.avgUtsteinSurvival;
+        metricLabel = 'Utstein Survival Rate';
+        metricValue = `${survival}%`;
+        if (survival < 23) {
+          tier = 'critical';
+          fillColor = '#fee2e2';
+          borderColor = '#dc2626';
+        } else if (survival < 27) {
+          tier = 'high';
+          fillColor = '#ffedd5';
+          borderColor = '#ea580c';
+        } else if (survival < 31) {
+          tier = 'moderate';
+          fillColor = '#fef9c3';
+          borderColor = '#d97706';
+        } else {
+          tier = 'baseline';
+          fillColor = '#d1fae5';
+          borderColor = '#059669';
+        }
+      } else if (selectedLayer === 'aed') {
+        const aedDeficit = stats?.agencyCount ? Math.round(stats.sumAed / stats.agencyCount) : Math.round(summary.seniorPopPct * 2.5);
+        metricLabel = 'AED Access Deficit';
+        metricValue = `${aedDeficit}% deficit`;
+        if (aedDeficit >= 52) {
+          tier = 'critical';
+          fillColor = '#fae8ff';
+          borderColor = '#c026d3';
+        } else if (aedDeficit >= 44) {
+          tier = 'high';
+          fillColor = '#e0f2fe';
+          borderColor = '#0284c7';
+        } else if (aedDeficit >= 38) {
+          tier = 'moderate';
+          fillColor = '#ccfbf1';
+          borderColor = '#0d9488';
+        } else {
+          tier = 'baseline';
+          fillColor = '#f1f5f9';
+          borderColor = '#64748b';
+        }
+      } else if (selectedLayer === 'transport') {
+        const transit = stats?.agencyCount ? +(stats.sumTransport / stats.agencyCount).toFixed(1) : summary.avgTransportMinutes;
+        metricLabel = 'Avg Transport Transit';
+        metricValue = `${transit} min`;
+        if (transit >= 27) {
+          tier = 'critical';
+          fillColor = '#ffedd5';
+          borderColor = '#c2410c';
+        } else if (transit >= 22) {
+          tier = 'high';
+          fillColor = '#fef3c7';
+          borderColor = '#d97706';
+        } else if (transit >= 18) {
+          tier = 'moderate';
+          fillColor = '#e0f2fe';
+          borderColor = '#0284c7';
+        } else {
+          tier = 'baseline';
+          fillColor = '#f0fdf4';
+          borderColor = '#16a34a';
+        }
+      } else {
+        const denial = stats?.agencyCount ? +(stats.sumDenial / stats.agencyCount).toFixed(1) : summary.avgMedicareDenialRate;
+        metricLabel = 'Medicare Denial Rate';
+        metricValue = `${denial}%`;
+        if (denial >= 20.5) {
+          tier = 'critical';
+          fillColor = '#ffe4e6';
+          borderColor = '#be123c';
+        } else if (denial >= 18) {
+          tier = 'high';
+          fillColor = '#ede9fe';
+          borderColor = '#7c3aed';
+        } else if (denial >= 15) {
+          tier = 'moderate';
+          fillColor = '#e0f2fe';
+          borderColor = '#0284c7';
+        } else {
+          tier = 'baseline';
+          fillColor = '#d1fae5';
+          borderColor = '#059669';
+        }
+      }
+
+      result[sc] = {
+        code: sc,
+        name: stateName,
+        metricLabel,
+        metricValue,
+        tier,
+        fillColor,
+        borderColor,
+        agencyCount: count
+      };
+    });
+
+    return result;
+  }, [effectiveAgencies, selectedLayer]);
 
   // Map coordinates projection aligned with 920x500 US_STATES_SVG_PATHS (with Alaska & Hawaii insets)
   const mapWidth = 920;
@@ -1317,25 +1481,69 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[11px] text-slate-300">
-                  <button
-                    onClick={() => setShowDensityHalos(prev => !prev)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                      showDensityHalos ? 'bg-sky-900/80 text-sky-200 font-bold' : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Toggle spatial GIS density halo radii"
-                  >
-                    Heat Halos: {showDensityHalos ? 'ON' : 'OFF'}
-                  </button>
-                  <button
-                    onClick={() => setShowPulseAnimations(prev => !prev)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                      showPulseAnimations ? 'bg-sky-900/80 text-sky-200 font-bold' : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Toggle pulsing rings on critical epicenters"
-                  >
-                    Pulse: {showPulseAnimations ? 'ON' : 'OFF'}
-                  </button>
+                {/* Map Display Mode: Choropleth, Hotspots, Pins */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 text-[11px]">
+                    <button
+                      onClick={() => setMapDisplayMode('choropleth')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        mapDisplayMode === 'choropleth'
+                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                      title="State-level choropleth intensity shading based on active layer"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Choropleth (States)</span>
+                    </button>
+                    <button
+                      onClick={() => setMapDisplayMode('hotspots')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        mapDisplayMode === 'hotspots'
+                          ? 'bg-rose-600 text-white font-bold shadow-xs'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                      title="GIS Heatmap with spatial density halos"
+                    >
+                      <Flame className="w-3.5 h-3.5" />
+                      <span>Hotspots & Halos</span>
+                    </button>
+                    <button
+                      onClick={() => setMapDisplayMode('pins')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        mapDisplayMode === 'pins'
+                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                      title="Clean provider location pins"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Pins & Markers</span>
+                    </button>
+                  </div>
+
+                  {mapDisplayMode === 'hotspots' && (
+                    <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[11px] text-slate-300">
+                      <button
+                        onClick={() => setShowDensityHalos(prev => !prev)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                          showDensityHalos ? 'bg-sky-900/80 text-sky-200 font-bold' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Toggle spatial GIS density halo radii"
+                      >
+                        Halos: {showDensityHalos ? 'ON' : 'OFF'}
+                      </button>
+                      <button
+                        onClick={() => setShowPulseAnimations(prev => !prev)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                          showPulseAnimations ? 'bg-sky-900/80 text-sky-200 font-bold' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Toggle pulsing rings on critical epicenters"
+                      >
+                        Pulse: {showPulseAnimations ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1671,7 +1879,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 </radialGradient>
 
                 <filter id="nemsis-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
+                  <feGaussianBlur stdDeviation="1.8" result="coloredBlur" />
                   <feMerge>
                     <feMergeNode in="coloredBlur" />
                     <feMergeNode in="SourceGraphic" />
@@ -1693,14 +1901,59 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               <g>
                 {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
                   const isActiveState = selectedState === 'all' || selectedState === sc;
+                  const isHovered = hoveredStateCode === sc;
+                  const acuity = stateAcuityMap[sc];
+
+                  // Determine fill and stroke based on display mode
+                  let fill = '#E2E8F0';
+                  let stroke = '#94A3B8';
+                  let strokeWidth = 0.9;
+                  let opacity = isActiveState ? 0.95 : 0.35;
+
+                  if (mapDisplayMode === 'choropleth') {
+                    if (selectedState === sc) {
+                      fill = '#3B82F6';
+                      stroke = '#1E3A8A';
+                      strokeWidth = 2.5;
+                      opacity = 1;
+                    } else if (isHovered) {
+                      fill = acuity?.fillColor ? acuity.fillColor : '#BFDBFE';
+                      stroke = '#0F172A';
+                      strokeWidth = 2;
+                      opacity = 1;
+                    } else {
+                      fill = acuity?.fillColor || '#E2E8F0';
+                      stroke = acuity?.borderColor || '#94A3B8';
+                      strokeWidth = selectedState === 'all' ? 1.2 : 0.8;
+                      opacity = selectedState === 'all' ? 0.95 : 0.35;
+                    }
+                  } else {
+                    if (selectedState === sc) {
+                      fill = '#DBEAFE';
+                      stroke = '#1E3A8A';
+                      strokeWidth = 2;
+                      opacity = 1;
+                    } else if (isHovered) {
+                      fill = '#E2E8F0';
+                      stroke = '#475569';
+                      strokeWidth = 1.5;
+                    } else {
+                      fill = '#F8FAFC';
+                      stroke = '#CBD5E1';
+                      strokeWidth = 0.9;
+                    }
+                  }
+
                   return (
                     <path
                       key={`gis-poly-${sc}`}
                       d={boundary.d}
-                      fill={selectedState === sc ? '#DBEAFE' : '#E2E8F0'}
-                      stroke={selectedState === sc ? '#1E3A8A' : '#94A3B8'}
-                      strokeWidth={selectedState === sc ? 1.5 : 0.9}
-                      opacity={isActiveState ? 0.95 : 0.35}
+                      fill={fill}
+                      stroke={stroke}
+                      strokeWidth={strokeWidth}
+                      opacity={opacity}
+                      onMouseEnter={() => setHoveredStateCode(sc)}
+                      onMouseLeave={() => setHoveredStateCode(null)}
                       onClick={() => {
                         const next = selectedState === sc ? 'all' : sc;
                         setSelectedState(next);
@@ -1710,16 +1963,122 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                         if (onSelectCounty) onSelectCounty('all');
                         if (onSelectCity) onSelectCity('all');
                       }}
-                      className="cursor-pointer transition-colors"
+                      className="cursor-pointer transition-colors duration-150"
                     >
-                      <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc})`}</title>
+                      <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc}) - ${acuity?.metricLabel || ''}: ${acuity?.metricValue || ''}`}</title>
                     </path>
                   );
                 })}
               </g>
 
-              {/* GIS Heat Radii based on Active Layer */}
-              {showDensityHalos && mapRenderedAgencies.map((agency) => {
+              {/* State Abbreviation Typography Labels for Interior States */}
+              <g className="pointer-events-none select-none">
+                {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                  const isCallout = EAST_COAST_CALLOUT_STATES.some(c => c.code === sc);
+                  if (isCallout) return null; // Small East Coast states rendered via badges below
+                  const isSelected = selectedState === sc;
+                  const isHovered = hoveredStateCode === sc;
+                  const isActive = selectedState === 'all' || isSelected;
+
+                  return (
+                    <text
+                      key={`lbl-${sc}`}
+                      x={boundary.labelX}
+                      y={boundary.labelY}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={sc === 'CA' || sc === 'TX' || sc === 'MT' || sc === 'AK' ? '11' : '9.5'}
+                      fontWeight="800"
+                      fill={isSelected ? '#FFFFFF' : isHovered ? '#0F172A' : '#1E293B'}
+                      opacity={isActive ? 0.95 : 0.35}
+                      className="font-mono tracking-tight"
+                    >
+                      {sc}
+                    </text>
+                  );
+                })}
+              </g>
+
+              {/* East Coast Callout Badges with Clean Leader Lines */}
+              <g className="select-none">
+                {EAST_COAST_CALLOUT_STATES.map((callout) => {
+                  const boundary = US_STATES_SVG_PATHS[callout.code];
+                  if (!boundary) return null;
+                  const isSelected = selectedState === callout.code;
+                  const isHovered = hoveredStateCode === callout.code;
+                  const acuity = stateAcuityMap[callout.code];
+
+                  return (
+                    <g
+                      key={`callout-${callout.code}`}
+                      className="cursor-pointer pointer-events-auto"
+                      onMouseEnter={() => setHoveredStateCode(callout.code)}
+                      onMouseLeave={() => setHoveredStateCode(null)}
+                      onClick={() => {
+                        const next = selectedState === callout.code ? 'all' : callout.code;
+                        setSelectedState(next);
+                        setSelectedCounty('all');
+                        setSelectedCity('all');
+                        if (onSelectState) onSelectState(next);
+                        if (onSelectCounty) onSelectCounty('all');
+                        if (onSelectCity) onSelectCity('all');
+                      }}
+                    >
+                      {/* Dashed connector line */}
+                      <line
+                        x1={boundary.labelX}
+                        y1={boundary.labelY}
+                        x2={callout.calloutX - 16}
+                        y2={callout.calloutY}
+                        stroke={isSelected ? '#1E3A8A' : isHovered ? '#0F172A' : '#94A3B8'}
+                        strokeWidth={isSelected || isHovered ? 1.5 : 1}
+                        strokeDasharray="2 2"
+                      />
+                      {/* State Badge */}
+                      <rect
+                        x={callout.calloutX - 16}
+                        y={callout.calloutY - 8}
+                        width="32"
+                        height="16"
+                        rx="4"
+                        fill={
+                          isSelected
+                            ? '#2563EB'
+                            : isHovered
+                            ? '#DBEAFE'
+                            : mapDisplayMode === 'choropleth'
+                            ? (acuity?.fillColor || '#FFFFFF')
+                            : '#FFFFFF'
+                        }
+                        stroke={
+                          isSelected
+                            ? '#1E3A8A'
+                            : isHovered
+                            ? '#0F172A'
+                            : (acuity?.borderColor || '#CBD5E1')
+                        }
+                        strokeWidth={isSelected || isHovered ? 1.5 : 1}
+                        className="transition-colors duration-150"
+                      />
+                      <text
+                        x={callout.calloutX}
+                        y={callout.calloutY}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize="8.5"
+                        fontWeight="800"
+                        fill={isSelected ? '#FFFFFF' : '#0F172A'}
+                        className="font-mono pointer-events-none"
+                      >
+                        {callout.code}
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+
+              {/* GIS Heat Radii based on Active Layer (Shown in Hotspots & Choropleth modes) */}
+              {mapDisplayMode !== 'pins' && showDensityHalos && mapRenderedAgencies.map((agency) => {
                 const { x, y } = projectCoord(agency.latitude, agency.longitude);
                 const visual = getAgencyLayerVisual(agency, selectedLayer);
 
@@ -1727,27 +2086,28 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   <g key={`heat-${agency.id}`} transform={`translate(${x}, ${y})`}>
                     {/* Gradient Ambient Heat Zone */}
                     <circle
-                      r={visual.heatRadius}
+                      r={mapDisplayMode === 'choropleth' ? visual.heatRadius * 0.6 : visual.heatRadius * 0.8}
                       fill={`url(#${visual.gradientId})`}
                       filter="url(#nemsis-glow)"
+                      opacity={mapDisplayMode === 'choropleth' ? 0.35 : 0.65}
                     />
                     {/* Isochrone / Deficit Contour Ring */}
                     <circle
-                      r={visual.heatRadius * 0.65}
+                      r={visual.heatRadius * 0.55}
                       fill="none"
                       stroke={visual.ringColor}
                       strokeWidth="1"
                       strokeDasharray={visual.isCritical ? "3 2" : "none"}
-                      opacity={visual.ringOpacity}
+                      opacity={visual.ringOpacity * 0.8}
                     />
                     {/* Animated Pulse Ring for Critical Hotspots */}
                     {visual.isCritical && showPulseAnimations && (
                       <circle
-                        r={visual.heatRadius * 0.9}
+                        r={visual.heatRadius * 0.75}
                         fill="none"
                         stroke={visual.ringColor}
-                        strokeWidth="1.5"
-                        opacity="0.65"
+                        strokeWidth="1.25"
+                        opacity="0.5"
                         className="animate-ping"
                         style={{ transformOrigin: '0 0', animationDuration: '3s' }}
                       />
@@ -1989,6 +2349,58 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   className="w-full py-1.5 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <span>Open Full Clinical Battlecard</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Interactive Floating Hover State Card (when no agency is hovered) */}
+            {hoveredStateCode && !hoveredAgency && stateAcuityMap[hoveredStateCode] && (
+              <div className="absolute bottom-4 left-4 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700/80 rounded-xl p-3 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150">
+                <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5 mb-1.5">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold block">
+                      {ALL_50_STATES_SUMMARIES[hoveredStateCode]?.region || 'US'} Region · {hoveredStateCode}
+                    </span>
+                    <h4 className="font-bold text-sm text-white leading-tight">
+                      {stateAcuityMap[hoveredStateCode].name}
+                    </h4>
+                  </div>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0 ${
+                    stateAcuityMap[hoveredStateCode].tier === 'critical'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      : stateAcuityMap[hoveredStateCode].tier === 'high'
+                      ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                      : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                  }`}>
+                    {stateAcuityMap[hoveredStateCode].tier}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-xs text-slate-300 mb-2 font-mono">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 text-[11px] font-sans">{stateAcuityMap[hoveredStateCode].metricLabel}:</span>
+                    <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].metricValue}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 text-[11px] font-sans">EMS / Fire Agencies:</span>
+                    <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].agencyCount.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    const next = selectedState === hoveredStateCode ? 'all' : hoveredStateCode;
+                    setSelectedState(next);
+                    setSelectedCounty('all');
+                    setSelectedCity('all');
+                    if (onSelectState) onSelectState(next);
+                    if (onSelectCounty) onSelectCounty('all');
+                    if (onSelectCity) onSelectCity('all');
+                  }}
+                  className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <span>{selectedState === hoveredStateCode ? 'Reset to All States' : `Filter to ${stateAcuityMap[hoveredStateCode].name}`}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>

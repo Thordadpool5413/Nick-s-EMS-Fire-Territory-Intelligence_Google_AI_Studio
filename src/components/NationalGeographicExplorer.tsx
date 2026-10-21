@@ -124,6 +124,26 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
     }
   }, [initialMode]);
 
+  // Browser History popstate integration for natural backward navigation
+  React.useEffect(() => {
+    const handlePopState = () => {
+      if (selectedCityName !== 'all') {
+        setSelectedCityName('all');
+        setMiddleTabState('cities');
+        if (onSyncGlobalGeography) onSyncGlobalGeography(selectedStateCode, selectedCountyName, 'all', agencyCategoryFilter);
+      } else if (selectedCountyName !== 'all') {
+        setSelectedCountyName('all');
+        setMiddleTabState('counties');
+        if (onSyncGlobalGeography) onSyncGlobalGeography(selectedStateCode, 'all', 'all', agencyCategoryFilter);
+      } else if (selectedStateCode !== 'all') {
+        handleResetFilters();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedCityName, selectedCountyName, selectedStateCode, agencyCategoryFilter, onSyncGlobalGeography]);
+
   // Synchronize when Global Selector Bar changes State, County, City, or Category
   React.useEffect(() => {
     if (globalState !== undefined && globalState !== selectedStateCode) {
@@ -723,34 +743,58 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             )}
           </nav>
 
-          {/* Right: Contextual Step Back Action */}
+          {/* Right: Contextual Step Back Action (Always steps back 1 level) */}
           <div className="flex items-center gap-2">
-            {activeFocusLevel === 'providers' && selectedStateCode !== 'all' && (
+            {selectedCityName !== 'all' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCityName('all');
+                  setMiddleTab('cities');
+                  setAgencyPage(1);
+                  if (onSyncGlobalGeography) {
+                    onSyncGlobalGeography(selectedStateCode, selectedCountyName, 'all', agencyCategoryFilter);
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>&larr; Back to {selectedCountyName}</span>
+              </button>
+            ) : selectedCountyName !== 'all' ? (
               <button
                 type="button"
                 onClick={() => {
                   setSelectedCountyName('all');
                   setSelectedCityName('all');
                   setMiddleTab('counties');
+                  setCountyPage(1);
+                  setAgencyPage(1);
                   if (onSyncGlobalGeography) {
                     onSyncGlobalGeography(selectedStateCode, 'all', 'all', agencyCategoryFilter);
                   }
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
               >
-                &larr; Back to {selectedStateCode} Counties
+                <span>&larr; Back to {activeStateSummary?.state || selectedStateCode} Counties</span>
               </button>
-            )}
-
-            {activeFocusLevel === 'counties' && (
+            ) : (
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
               >
-                &larr; All 50 States
+                <span>&larr; Back to All 50 States</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              title="Reset all filters back to All 50 States"
+            >
+              Reset All
+            </button>
           </div>
         </div>
       )}
