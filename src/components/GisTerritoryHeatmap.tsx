@@ -31,15 +31,51 @@ import {
   Radio,
   Eye,
   SlidersHorizontal,
-  ArrowUpRight
+  ArrowUpRight,
+  Maximize2,
+  Minimize2,
+  PanelRightClose,
+  PanelRightOpen,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Compass,
+  Crosshair,
+  Hexagon,
+  Navigation,
+  FileText,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { PulseIqRegionalBreakdownChart } from './PulseIqRegionalBreakdownChart';
 import { InteractiveSparkline } from './InteractiveSparkline';
+
+interface HexBinCell {
+  id: string;
+  cx: number;
+  cy: number;
+  points: string;
+  agencies: Agency[];
+  agencyCount: number;
+  totalCardiacCalls: number;
+  avgSurvival: number;
+  normalizedIntensity: number;
+  fillColor: string;
+  strokeColor: string;
+  topAgency: Agency;
+  metricSummary: string;
+}
 
 interface GisTerritoryHeatmapProps {
   agencies: Agency[];
   onSelectAgency: (agency: Agency) => void;
   onFilterByCluster: (clusterId: string) => void;
+  onToggleRoute?: (agencyId: string) => void;
+  onOpenRfpGenerator?: (agency: Agency) => void;
+  onOpenDataLineage?: (agency: Agency) => void;
   globalState?: string;
   globalCounty?: string;
   globalCity?: string;
@@ -55,6 +91,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   agencies,
   onSelectAgency,
   onFilterByCluster,
+  onToggleRoute,
+  onOpenRfpGenerator,
+  onOpenDataLineage,
   globalState,
   globalCounty,
   globalCity,
@@ -91,10 +130,39 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'ems' | 'fire'>(globalCategory || 'all');
   const [hoveredAgency, setHoveredAgency] = useState<Agency | null>(null);
   const [hoveredStateCode, setHoveredStateCode] = useState<string | null>(null);
-  const [mapDisplayMode, setMapDisplayMode] = useState<'choropleth' | 'hotspots' | 'pins'>('choropleth');
+  const [hoveredHexCell, setHoveredHexCell] = useState<HexBinCell | null>(null);
+  const [mapDisplayMode, setMapDisplayMode] = useState<'kde' | 'hexbin' | 'choropleth' | 'hotspots' | 'pins'>('kde');
+  const [basemapTheme, setBasemapTheme] = useState<'dark' | 'light'>('dark');
+  const [kdeBandwidth, setKdeBandwidth] = useState<number>(34);
+  const [kdeOpacity, setKdeOpacity] = useState<number>(0.88);
+  const [colorSpectrum, setColorSpectrum] = useState<'inferno' | 'plasma' | 'viridis'>('inferno');
+  const [showIsoContours, setShowIsoContours] = useState<boolean>(true);
+  const [showGraticule, setShowGraticule] = useState<boolean>(true);
+  const [showStationOverlay, setShowStationOverlay] = useState<boolean>(true);
+  const [cursorGeoCoords, setCursorGeoCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [isDraggingMap, setIsDraggingMap] = useState<boolean>(false);
+  const [dragStartPt, setDragStartPt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [sidebarTab, setSidebarTab] = useState<'nemsis_epicenters' | 'acuity_distribution' | 'product_matrix'>('nemsis_epicenters');
   const [showDensityHalos, setShowDensityHalos] = useState<boolean>(true);
   const [showPulseAnimations, setShowPulseAnimations] = useState<boolean>(true);
+  const [isExpandedView, setIsExpandedView] = useState<boolean>(false);
+  const [isTheaterModal, setIsTheaterModal] = useState<boolean>(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [showCorridors, setShowCorridors] = useState<boolean>(true);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Escape key closes Theater Mode
+  React.useEffect(() => {
+    if (!isTheaterModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsTheaterModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTheaterModal]);
 
   React.useEffect(() => {
     setLayerThresholdFilter('all');
@@ -487,20 +555,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         metricValue = `${totalCalls.toLocaleString()} calls`;
         if (totalCalls >= 10000) {
           tier = 'critical';
-          fillColor = '#fecdd3';
-          borderColor = '#e11d48';
+          fillColor = basemapTheme === 'dark' ? '#7f1d1d' : '#fecdd3';
+          borderColor = basemapTheme === 'dark' ? '#f43f5e' : '#e11d48';
         } else if (totalCalls >= 5000) {
           tier = 'high';
-          fillColor = '#fed7aa';
-          borderColor = '#ea580c';
+          fillColor = basemapTheme === 'dark' ? '#7c2d12' : '#fed7aa';
+          borderColor = basemapTheme === 'dark' ? '#f97316' : '#ea580c';
         } else if (totalCalls >= 2000) {
           tier = 'moderate';
-          fillColor = '#fef08a';
-          borderColor = '#d97706';
+          fillColor = basemapTheme === 'dark' ? '#713f12' : '#fef08a';
+          borderColor = basemapTheme === 'dark' ? '#eab308' : '#d97706';
         } else {
           tier = 'baseline';
-          fillColor = '#e0f2fe';
-          borderColor = '#0284c7';
+          fillColor = basemapTheme === 'dark' ? '#0c4a6e' : '#e0f2fe';
+          borderColor = basemapTheme === 'dark' ? '#38bdf8' : '#0284c7';
         }
       } else if (selectedLayer === 'cardiac') {
         const survival = stats?.agencyCount ? +(stats.sumSurvival / stats.agencyCount).toFixed(1) : summary.avgUtsteinSurvival;
@@ -508,20 +576,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         metricValue = `${survival}%`;
         if (survival < 23) {
           tier = 'critical';
-          fillColor = '#fee2e2';
-          borderColor = '#dc2626';
+          fillColor = basemapTheme === 'dark' ? '#7f1d1d' : '#fee2e2';
+          borderColor = basemapTheme === 'dark' ? '#ef4444' : '#dc2626';
         } else if (survival < 27) {
           tier = 'high';
-          fillColor = '#ffedd5';
-          borderColor = '#ea580c';
+          fillColor = basemapTheme === 'dark' ? '#7c2d12' : '#ffedd5';
+          borderColor = basemapTheme === 'dark' ? '#f97316' : '#ea580c';
         } else if (survival < 31) {
           tier = 'moderate';
-          fillColor = '#fef9c3';
-          borderColor = '#d97706';
+          fillColor = basemapTheme === 'dark' ? '#713f12' : '#fef9c3';
+          borderColor = basemapTheme === 'dark' ? '#eab308' : '#d97706';
         } else {
           tier = 'baseline';
-          fillColor = '#d1fae5';
-          borderColor = '#059669';
+          fillColor = basemapTheme === 'dark' ? '#064e3b' : '#d1fae5';
+          borderColor = basemapTheme === 'dark' ? '#10b981' : '#059669';
         }
       } else if (selectedLayer === 'aed') {
         const aedDeficit = stats?.agencyCount ? Math.round(stats.sumAed / stats.agencyCount) : Math.round(summary.seniorPopPct * 2.5);
@@ -529,20 +597,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         metricValue = `${aedDeficit}% deficit`;
         if (aedDeficit >= 52) {
           tier = 'critical';
-          fillColor = '#fae8ff';
-          borderColor = '#c026d3';
+          fillColor = basemapTheme === 'dark' ? '#701a75' : '#fae8ff';
+          borderColor = basemapTheme === 'dark' ? '#e879f9' : '#c026d3';
         } else if (aedDeficit >= 44) {
           tier = 'high';
-          fillColor = '#e0f2fe';
-          borderColor = '#0284c7';
+          fillColor = basemapTheme === 'dark' ? '#0c4a6e' : '#e0f2fe';
+          borderColor = basemapTheme === 'dark' ? '#38bdf8' : '#0284c7';
         } else if (aedDeficit >= 38) {
           tier = 'moderate';
-          fillColor = '#ccfbf1';
-          borderColor = '#0d9488';
+          fillColor = basemapTheme === 'dark' ? '#134e4a' : '#ccfbf1';
+          borderColor = basemapTheme === 'dark' ? '#2dd4bf' : '#0d9488';
         } else {
           tier = 'baseline';
-          fillColor = '#f1f5f9';
-          borderColor = '#64748b';
+          fillColor = basemapTheme === 'dark' ? '#1e293b' : '#f1f5f9';
+          borderColor = basemapTheme === 'dark' ? '#64748b' : '#64748b';
         }
       } else if (selectedLayer === 'transport') {
         const transit = stats?.agencyCount ? +(stats.sumTransport / stats.agencyCount).toFixed(1) : summary.avgTransportMinutes;
@@ -550,20 +618,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         metricValue = `${transit} min`;
         if (transit >= 27) {
           tier = 'critical';
-          fillColor = '#ffedd5';
-          borderColor = '#c2410c';
+          fillColor = basemapTheme === 'dark' ? '#7c2d12' : '#ffedd5';
+          borderColor = basemapTheme === 'dark' ? '#f97316' : '#c2410c';
         } else if (transit >= 22) {
           tier = 'high';
-          fillColor = '#fef3c7';
-          borderColor = '#d97706';
+          fillColor = basemapTheme === 'dark' ? '#713f12' : '#fef3c7';
+          borderColor = basemapTheme === 'dark' ? '#f59e0b' : '#d97706';
         } else if (transit >= 18) {
           tier = 'moderate';
-          fillColor = '#e0f2fe';
-          borderColor = '#0284c7';
+          fillColor = basemapTheme === 'dark' ? '#0c4a6e' : '#e0f2fe';
+          borderColor = basemapTheme === 'dark' ? '#38bdf8' : '#0284c7';
         } else {
           tier = 'baseline';
-          fillColor = '#f0fdf4';
-          borderColor = '#16a34a';
+          fillColor = basemapTheme === 'dark' ? '#064e3b' : '#f0fdf4';
+          borderColor = basemapTheme === 'dark' ? '#22c55e' : '#16a34a';
         }
       } else {
         const denial = stats?.agencyCount ? +(stats.sumDenial / stats.agencyCount).toFixed(1) : summary.avgMedicareDenialRate;
@@ -571,20 +639,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         metricValue = `${denial}%`;
         if (denial >= 20.5) {
           tier = 'critical';
-          fillColor = '#ffe4e6';
-          borderColor = '#be123c';
+          fillColor = basemapTheme === 'dark' ? '#881337' : '#ffe4e6';
+          borderColor = basemapTheme === 'dark' ? '#fb7185' : '#be123c';
         } else if (denial >= 18) {
           tier = 'high';
-          fillColor = '#ede9fe';
-          borderColor = '#7c3aed';
+          fillColor = basemapTheme === 'dark' ? '#4c1d95' : '#ede9fe';
+          borderColor = basemapTheme === 'dark' ? '#a78bfa' : '#7c3aed';
         } else if (denial >= 15) {
           tier = 'moderate';
-          fillColor = '#e0f2fe';
-          borderColor = '#0284c7';
+          fillColor = basemapTheme === 'dark' ? '#0c4a6e' : '#e0f2fe';
+          borderColor = basemapTheme === 'dark' ? '#38bdf8' : '#0284c7';
         } else {
           tier = 'baseline';
-          fillColor = '#d1fae5';
-          borderColor = '#059669';
+          fillColor = basemapTheme === 'dark' ? '#064e3b' : '#d1fae5';
+          borderColor = basemapTheme === 'dark' ? '#10b981' : '#059669';
         }
       }
 
@@ -601,7 +669,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     });
 
     return result;
-  }, [effectiveAgencies, selectedLayer]);
+  }, [effectiveAgencies, selectedLayer, basemapTheme]);
 
   // Map coordinates projection aligned with 920x500 US_STATES_SVG_PATHS (with Alaska & Hawaii insets)
   const mapWidth = 920;
@@ -622,6 +690,276 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     const y = 20 + ((49.5 - lat) / (49.5 - 24.5)) * 425;
     return { x: Math.max(20, Math.min(mapWidth - 20, x)), y: Math.max(20, Math.min(mapHeight - 20, y)) };
   };
+
+  // Inverse coordinate projection for real-time cursor geodetic telemetry HUD
+  const unprojectCoord = (svgX: number, svgY: number): { lat: number; lon: number } => {
+    if (svgX >= 14 && svgX <= 188 && svgY >= 356 && svgY <= 490) {
+      const lon = -172 + ((svgX - 25) / 145) * 42;
+      const lat = 54 + ((482 - svgY) / 108) * 17.5;
+      return { lat: +Math.max(52, Math.min(71.5, lat)).toFixed(3), lon: +Math.max(-172, Math.min(-130, lon)).toFixed(3) };
+    }
+    if (svgX >= 196 && svgX <= 320 && svgY >= 396 && svgY <= 490) {
+      const lon = -160.5 + ((svgX - 200) / 105) * 5.7;
+      const lat = 18.8 + ((480 - svgY) / 68) * 3.6;
+      return { lat: +Math.max(18.5, Math.min(22.5, lat)).toFixed(3), lon: +Math.max(-161, Math.min(-154.5, lon)).toFixed(3) };
+    }
+    const lon = -124.8 + ((svgX - 32) / 755) * (124.8 - 66.8);
+    const lat = 49.5 - ((svgY - 20) / 425) * (49.5 - 24.5);
+    return {
+      lat: +Math.max(24.0, Math.min(50.0, lat)).toFixed(3),
+      lon: +Math.max(-125.5, Math.min(-66.0, lon)).toFixed(3)
+    };
+  };
+
+  // Scientific Color Spectrum Interpolator (Inferno / Plasma / Viridis)
+  const sampleSpectrumRgb = (t: number, ramp: 'inferno' | 'plasma' | 'viridis'): [number, number, number] => {
+    const clamped = Math.max(0, Math.min(1, t));
+    const stops: Record<'inferno' | 'plasma' | 'viridis', Array<[number, [number, number, number]]>> = {
+      inferno: [
+        [0.0, [10, 7, 34]],
+        [0.22, [66, 10, 104]],
+        [0.45, [147, 38, 103]],
+        [0.68, [221, 81, 58]],
+        [0.86, [252, 165, 10]],
+        [1.0, [252, 255, 164]]
+      ],
+      plasma: [
+        [0.0, [13, 8, 135]],
+        [0.25, [106, 0, 168]],
+        [0.5, [177, 42, 144]],
+        [0.75, [225, 100, 98]],
+        [0.9, [252, 166, 54]],
+        [1.0, [240, 249, 33]]
+      ],
+      viridis: [
+        [0.0, [68, 1, 84]],
+        [0.25, [59, 82, 139]],
+        [0.5, [33, 145, 140]],
+        [0.75, [94, 201, 98]],
+        [1.0, [253, 231, 37]]
+      ]
+    };
+    const palette = stops[ramp];
+    for (let i = 0; i < palette.length - 1; i++) {
+      const [t0, c0] = palette[i];
+      const [t1, c1] = palette[i + 1];
+      if (clamped >= t0 && clamped <= t1) {
+        const u = (clamped - t0) / Math.max(0.0001, t1 - t0);
+        return [
+          Math.round(c0[0] + (c1[0] - c0[0]) * u),
+          Math.round(c0[1] + (c1[1] - c0[1]) * u),
+          Math.round(c0[2] + (c1[2] - c0[2]) * u)
+        ];
+      }
+    }
+    return palette[palette.length - 1][1];
+  };
+
+  // True 2D Gaussian Kernel Density Estimation (KDE) Thermal Canvas Surface
+  const kdeThermalDataUrl = useMemo<string>(() => {
+    if (typeof document === 'undefined' || mapRenderedAgencies.length === 0) return '';
+    const gridW = 230;
+    const gridH = 125;
+    const scaleX = gridW / mapWidth;
+    const scaleY = gridH / mapHeight;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = gridW;
+    canvas.height = gridH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    const densityField = new Float32Array(gridW * gridH);
+    const metrics = mapRenderedAgencies.map(a => getLayerMetric(a, selectedLayer));
+    let minM = Infinity;
+    let maxM = -Infinity;
+    for (let i = 0; i < metrics.length; i++) {
+      if (metrics[i] < minM) minM = metrics[i];
+      if (metrics[i] > maxM) maxM = metrics[i];
+    }
+    const metricSpan = Math.max(1e-5, maxM - minM);
+
+    const sigmaGrid = Math.max(2.2, (kdeBandwidth * scaleX) * 0.42);
+    const twoSigmaSq = 2 * sigmaGrid * sigmaGrid;
+    const cutoffRadius = Math.ceil(sigmaGrid * 3.1);
+
+    for (let i = 0; i < mapRenderedAgencies.length; i++) {
+      const a = mapRenderedAgencies[i];
+      const pt = projectCoord(a.latitude, a.longitude);
+      const gx = pt.x * scaleX;
+      const gy = pt.y * scaleY;
+      const normWeight = 0.25 + 0.75 * ((metrics[i] - minM) / metricSpan);
+
+      const x0 = Math.max(0, Math.floor(gx - cutoffRadius));
+      const x1 = Math.min(gridW - 1, Math.ceil(gx + cutoffRadius));
+      const y0 = Math.max(0, Math.floor(gy - cutoffRadius));
+      const y1 = Math.min(gridH - 1, Math.ceil(gy + cutoffRadius));
+
+      for (let py = y0; py <= y1; py++) {
+        const dy = py - gy;
+        const dySq = dy * dy;
+        const rowOffset = py * gridW;
+        for (let px = x0; px <= x1; px++) {
+          const dx = px - gx;
+          const dSq = dx * dx + dySq;
+          if (dSq <= cutoffRadius * cutoffRadius) {
+            densityField[rowOffset + px] += normWeight * Math.exp(-dSq / twoSigmaSq);
+          }
+        }
+      }
+    }
+
+    let maxDensity = 0;
+    for (let i = 0; i < densityField.length; i++) {
+      if (densityField[i] > maxDensity) maxDensity = densityField[i];
+    }
+    if (maxDensity <= 0) return '';
+
+    const imgData = ctx.createImageData(gridW, gridH);
+    const data = imgData.data;
+
+    for (let i = 0; i < densityField.length; i++) {
+      const rawNorm = densityField[i] / maxDensity;
+      if (rawNorm < 0.045) continue;
+
+      // Non-linear gamma boost for rich mid-range thermal visibility
+      const t = Math.pow(rawNorm, 0.72);
+      const [r, g, b] = sampleSpectrumRgb(t, colorSpectrum);
+
+      // Topographic Iso-Density Contour Ring Detection
+      let isContourLine = false;
+      if (showIsoContours) {
+        const bands = [0.25, 0.45, 0.65, 0.84];
+        for (let bIdx = 0; bIdx < bands.length; bIdx++) {
+          if (Math.abs(t - bands[bIdx]) < 0.014) {
+            isContourLine = true;
+            break;
+          }
+        }
+      }
+
+      const idx = i * 4;
+      if (isContourLine) {
+        data[idx] = Math.min(255, r + 65);
+        data[idx + 1] = Math.min(255, g + 65);
+        data[idx + 2] = Math.min(255, b + 65);
+        data[idx + 3] = Math.round(Math.min(255, (0.45 + t * 0.55) * 255));
+      } else {
+        const smoothAlpha = t < 0.18 ? (t / 0.18) * 0.55 : Math.min(0.96, 0.55 + (t - 0.18) * 0.5);
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = Math.round(smoothAlpha * 255);
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }, [mapRenderedAgencies, selectedLayer, kdeBandwidth, colorSpectrum, showIsoContours]);
+
+  // H3 Spatial Hexagonal Tessellation & Aggregation Engine
+  const hexBinCells = useMemo<HexBinCell[]>(() => {
+    if (mapRenderedAgencies.length === 0) return [];
+    const hexRadius = selectedState !== 'all' ? 20 : 15;
+    const dx = hexRadius * 1.5;
+    const dy = hexRadius * Math.sqrt(3);
+
+    const bins = new Map<string, { col: number; row: number; cx: number; cy: number; agencies: Agency[]; metricSum: number }>();
+
+    for (let i = 0; i < mapRenderedAgencies.length; i++) {
+      const a = mapRenderedAgencies[i];
+      const pt = projectCoord(a.latitude, a.longitude);
+      const col = Math.round((pt.x - 24) / dx);
+      const yShift = (Math.abs(col) % 2) * (dy * 0.5);
+      const row = Math.round((pt.y - 20 - yShift) / dy);
+      const cx = 24 + col * dx;
+      const cy = 20 + row * dy + yShift;
+      const key = `${col}:${row}`;
+
+      if (!bins.has(key)) {
+        bins.set(key, { col, row, cx, cy, agencies: [], metricSum: 0 });
+      }
+      const cell = bins.get(key)!;
+      cell.agencies.push(a);
+      cell.metricSum += getLayerMetric(a, selectedLayer);
+    }
+
+    let maxCellScore = 0;
+    bins.forEach((cell) => {
+      if (cell.metricSum > maxCellScore) maxCellScore = cell.metricSum;
+    });
+    const safeMax = Math.max(1, maxCellScore);
+
+    const cells: HexBinCell[] = [];
+    const rDraw = hexRadius * 0.94;
+
+    bins.forEach((cell, key) => {
+      const pts: string[] = [];
+      for (let k = 0; k < 6; k++) {
+        const angle = (Math.PI / 3) * k;
+        const px = cell.cx + rDraw * Math.cos(angle);
+        const py = cell.cy + rDraw * Math.sin(angle);
+        pts.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+      }
+
+      const norm = Math.pow(cell.metricSum / safeMax, 0.65);
+      const [r, g, b] = sampleSpectrumRgb(Math.max(0.18, norm), colorSpectrum);
+      const fillColor = `rgb(${r}, ${g}, ${b})`;
+      const strokeColor = norm > 0.7 ? '#ffffff' : `rgba(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, ${Math.min(255, b + 50)}, 0.85)`;
+
+      let totalCalls = 0;
+      let sumSurv = 0;
+      let topAgency = cell.agencies[0];
+      let topMetric = -Infinity;
+
+      for (let i = 0; i < cell.agencies.length; i++) {
+        const ag = cell.agencies[i];
+        const calls = ag.annualCardiacArrestCalls || Math.round((ag.annual911Transports || 3000) * 0.12);
+        totalCalls += calls;
+        sumSurv += (ag.utsteinSurvivalRate || 10.8);
+        const m = getLayerMetric(ag, selectedLayer);
+        if (m > topMetric) {
+          topMetric = m;
+          topAgency = ag;
+        }
+      }
+
+      const avgSurvival = +(sumSurv / cell.agencies.length).toFixed(1);
+      const metricSummary =
+        selectedLayer === 'nemsis_cardiac' ? `${totalCalls.toLocaleString()} OHCA calls` :
+        selectedLayer === 'cardiac' ? `${avgSurvival}% avg Utstein survival` :
+        selectedLayer === 'aed' ? `${Math.round(topAgency.gisData?.publicAccessAedDeficitPct || 45)}% peak AED deficit` :
+        selectedLayer === 'transport' ? `${topAgency.gisData?.avgTransportTimeMinutes || 22} min peak transit` :
+        `${topAgency.cmsData?.claimDenialRate || 19}% peak CMS denial`;
+
+      cells.push({
+        id: `hex-${key}`,
+        cx: cell.cx,
+        cy: cell.cy,
+        points: pts.join(' '),
+        agencies: cell.agencies,
+        agencyCount: cell.agencies.length,
+        totalCardiacCalls: totalCalls,
+        avgSurvival,
+        normalizedIntensity: norm,
+        fillColor,
+        strokeColor,
+        topAgency,
+        metricSummary
+      });
+    });
+
+    return cells;
+  }, [mapRenderedAgencies, selectedLayer, selectedState, colorSpectrum]);
+
+  // Active Route Corridors for agencies selected for Field Route
+  const activeRouteCorridorPoints = useMemo(() => {
+    const routeAgencies = effectiveAgencies.filter(a => a.inDayRoute);
+    return routeAgencies.map(a => ({
+      agency: a,
+      ...projectCoord(a.latitude, a.longitude)
+    }));
+  }, [effectiveAgencies]);
 
   interface AgencyLayerVisual {
     gradientId: string;
@@ -934,44 +1272,39 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     <div className="workspace-section-grid">
       
       {/* Top GIS Header */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] min-w-0">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-2xs min-w-0">
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] items-start xl:items-center justify-between gap-4 min-w-0">
           <div>
-            <div className="text-xs font-mono text-sky-700 font-semibold uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-sky-600" />
-              Geographic Information System (GIS) & Public Health Analysis
+            <div className="text-xs font-mono text-sky-700 dark:text-sky-400 font-semibold uppercase tracking-wider flex items-center gap-2">
+              <Layers className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+              Geographic Information System (GIS) &amp; Spatial Acuity Telemetry
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1 tracking-tight">
-              High-Potential Territory Clusters & Product Demand Hotspots
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-1 tracking-tight">
+              High-Potential Territory Clusters &amp; Product Demand Hotspots
             </h1>
-            <p className="text-xs text-slate-600 mt-2 max-w-3xl leading-relaxed">
-              Synthesizing emergency call locations, cardiac arrest survival rates, transport distance isochrones, and senior population density across all 50 states, 3,143 counties, and 5,389+ cities for EMS Providers & Fire Departments.
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
+              Synthesizing emergency call locations, cardiac arrest survival rates, transport distance isochrones, and senior population density across all 50 states, 3,143 counties, and 5,389+ cities for EMS Providers &amp; Fire Departments.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-500 font-medium">GIS Heatmap Layer:</span>
-            <div className="flex flex-wrap items-center bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs gap-1">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">GIS Layer:</span>
+            <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1 text-xs gap-1">
               <button
                 onClick={() => setSelectedLayer('nemsis_cardiac')}
                 className={`px-3 py-1.5 rounded-lg transition-all font-semibold flex items-center gap-1.5 cursor-pointer ${
                   selectedLayer === 'nemsis_cardiac' 
                     ? 'bg-rose-600 text-white font-bold shadow-xs' 
-                    : 'text-slate-700 hover:text-slate-900'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <HeartPulse className="w-3.5 h-3.5" />
                 <span>NEMSIS Cardiac Acuity</span>
-                <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold ${
-                  selectedLayer === 'nemsis_cardiac' ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-800'
-                }`}>
-                  HOTSPOTS
-                </span>
               </button>
               <button
                 onClick={() => setSelectedLayer('cardiac')}
                 className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'cardiac' ? 'bg-white text-rose-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  selectedLayer === 'cardiac' ? 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Survival Deficit
@@ -979,7 +1312,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               <button
                 onClick={() => setSelectedLayer('aed')}
                 className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'aed' ? 'bg-white text-sky-700 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  selectedLayer === 'aed' ? 'bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 AED Need
@@ -987,7 +1320,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               <button
                 onClick={() => setSelectedLayer('transport')}
                 className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'transport' ? 'bg-white text-amber-800 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  selectedLayer === 'transport' ? 'bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Long Transport (&gt;20 min)
@@ -995,7 +1328,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               <button
                 onClick={() => setSelectedLayer('cms')}
                 className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'cms' ? 'bg-white text-emerald-800 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  selectedLayer === 'cms' ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 CMS Denial Zones
@@ -1004,77 +1337,92 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
           </div>
         </div>
 
-        {/* Strategic Corridor Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100">
-          {TERRITORY_CLUSTERS.map((cluster) => {
-            const isSelected = selectedClusterId === cluster.id;
-            return (
-              <div
-                key={cluster.id}
-                onClick={() => {
-                  setSelectedClusterId(isSelected ? 'all' : cluster.id);
-                  onFilterByCluster(isSelected ? 'all' : cluster.id);
-                }}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  isSelected 
-                    ? 'bg-sky-50 border-sky-400 shadow-md ring-1 ring-sky-300' 
-                    : 'bg-slate-50/70 border-slate-200/90 hover:bg-slate-100/70'
-                }`}
-              >
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-mono text-sky-800 font-bold">
-                    {cluster.states.join(', ')} Corridor
-                  </span>
-                  <span className="text-slate-500 font-mono">
-                    {cluster.highPriorityAgencyCount} Accounts
-                  </span>
-                </div>
-
-                <h3 className="font-bold text-slate-900 text-xs mt-1.5 leading-snug">
-                  {cluster.name}
-                </h3>
-
-                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-                  {cluster.description}
-                </p>
-
-                <div className="mt-3 pt-2.5 border-t border-slate-200/80 flex items-center justify-between text-[11px]">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Pipeline</span>
-                    <span className="font-mono font-bold text-emerald-700 tabular-nums">
-                      ${(cluster.totalPipelineValue / 1000000).toFixed(2)}M
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Avg Survival</span>
-                    <span className="font-mono font-bold text-rose-700 tabular-nums">
-                      {cluster.averageSurvivalRate}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Transport</span>
-                    <span className="font-mono font-bold text-amber-800 tabular-nums">
-                      {cluster.averageTransportMinutes} min
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* Strategic Corridor Summary — Flush 1px Hairline Ledger Grid */}
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <button
+            onClick={() => setShowCorridors(prev => !prev)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors"
+          >
+            <span className="font-bold text-sky-800 dark:text-sky-400">Strategic High-Volume Corridors ({TERRITORY_CLUSTERS.length})</span>
+            {showCorridors ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          <span className="text-[11px] text-slate-400 font-mono">
+            {showCorridors ? 'Click corridor to filter map' : 'Collapsed for full-screen map visibility'}
+          </span>
         </div>
+
+        {showCorridors && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden mt-3">
+            {TERRITORY_CLUSTERS.map((cluster) => {
+              const isSelected = selectedClusterId === cluster.id;
+              return (
+                <div
+                  key={cluster.id}
+                  onClick={() => {
+                    setSelectedClusterId(isSelected ? 'all' : cluster.id);
+                    onFilterByCluster(isSelected ? 'all' : cluster.id);
+                  }}
+                  className={`p-4 cursor-pointer transition-colors ${
+                    isSelected 
+                      ? 'bg-slate-900 text-white dark:bg-blue-950' 
+                      : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className={`font-bold ${isSelected ? 'text-sky-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                      {cluster.states.join(' · ')}
+                    </span>
+                    <span className={isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}>
+                      {cluster.highPriorityAgencyCount} Accounts
+                    </span>
+                  </div>
+
+                  <h3 className={`font-bold text-xs mt-1.5 leading-snug ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+                    {cluster.name}
+                  </h3>
+
+                  <p className={`text-[11px] mt-1 line-clamp-2 ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {cluster.description}
+                  </p>
+
+                  <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${isSelected ? 'border-slate-700' : 'border-slate-100 dark:border-slate-800'}`}>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-mono">Pipeline</span>
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        ${(cluster.totalPipelineValue / 1000000).toFixed(2)}M
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-mono">Survival</span>
+                      <span className="font-mono font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                        {cluster.averageSurvivalRate}%
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-mono">Transport</span>
+                      <span className="font-mono font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                        {cluster.averageTransportMinutes} min
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main Interactive Map & Equipment Demand Matcher */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start w-full min-w-0">
         
         {/* Interactive GIS Spatial Visualizer */}
-        <div className="lg:col-span-8 min-w-0 bg-white border border-slate-300 rounded-2xl overflow-hidden shadow-xs flex flex-col text-slate-900">
+        <div className={`${isExpandedView ? 'lg:col-span-12' : 'lg:col-span-8'} min-w-0 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs flex flex-col text-slate-900 dark:text-white transition-all`}>
           {/* Interactive Jurisdiction Navigation & Geographic Filter Bar */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90">
+          <div className="p-3.5 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 dark:bg-slate-900">
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-sky-600" />
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                <MapPin className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
                   {selectedLayer === 'nemsis_cardiac'
                     ? `NEMSIS Cardiac Acuity Intensity (${filteredAgencies.length.toLocaleString()} Providers)`
                     : selectedLayer === 'cardiac'
@@ -1086,8 +1434,8 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           : `CMS Billing Denials (${filteredAgencies.length.toLocaleString()} Providers)`}
                 </h2>
               </div>
-              <span className="text-[10px] font-mono font-bold text-sky-800 bg-sky-100/80 border border-sky-300 px-2 py-0.5 rounded-md">
-                {selectedCity !== 'all' ? `${selectedCity}, ${selectedState}` : selectedCounty !== 'all' ? `${selectedCounty}, ${selectedState}` : selectedState !== 'all' ? `${ALL_50_STATES_SUMMARIES[selectedState]?.state || selectedState} (${selectedState})` : 'US Nationwide (50 States + DC)'}
+              <span className="text-[11px] font-mono text-sky-700 dark:text-sky-400">
+                · {selectedCity !== 'all' ? `${selectedCity}, ${selectedState}` : selectedCounty !== 'all' ? `${selectedCounty}, ${selectedState}` : selectedState !== 'all' ? `${ALL_50_STATES_SUMMARIES[selectedState]?.state || selectedState} (${selectedState})` : 'US Nationwide (50 States + DC)'}
               </span>
             </div>
 
@@ -1224,6 +1572,31 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   Reset Jurisdiction
                 </button>
               )}
+
+              {/* Full Width (12-Col) and Theater Fullscreen Buttons */}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button
+                  onClick={() => setIsExpandedView(prev => !prev)}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                    isExpandedView
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 shadow-2xs'
+                  }`}
+                  title={isExpandedView ? 'Switch to split layout (8 cols map + 4 cols intelligence)' : 'Expand map across full screen width (12 cols)'}
+                >
+                  {isExpandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">{isExpandedView ? 'Split View' : 'Full Width'}</span>
+                </button>
+
+                <button
+                  onClick={() => setIsTheaterModal(true)}
+                  className="px-2.5 py-1 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Open dedicated Full-Screen Theater GIS Command Center (Esc to exit)"
+                >
+                  <Eye className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Theater Fullscreen</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1260,18 +1633,12 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                          selectedLayer === 'transport' ? 'Extended Transport Isochrones (>20 min)' :
                          'CMS Medicare Claim Denial Concentrations'}
                       </span>
-                      <span className={`text-[10px] font-mono border px-2 py-0.5 rounded-full font-bold ${
-                        selectedLayer === 'nemsis_cardiac' ? 'bg-rose-500/30 border-rose-400/50 text-rose-200' :
-                        selectedLayer === 'cardiac' ? 'bg-red-500/30 border-red-400/50 text-red-200' :
-                        selectedLayer === 'aed' ? 'bg-fuchsia-500/30 border-fuchsia-400/50 text-fuchsia-200' :
-                        selectedLayer === 'transport' ? 'bg-amber-500/30 border-amber-400/50 text-amber-200' :
-                        'bg-emerald-500/30 border-emerald-400/50 text-emerald-200'
-                      }`}>
-                        {selectedLayer === 'nemsis_cardiac' ? 'v3.5 LIVE DATASET' :
-                         selectedLayer === 'cardiac' ? 'UTSTEIN RESUSCITATION REGISTRY' :
-                         selectedLayer === 'aed' ? 'GIS PAD CENSUS' :
-                         selectedLayer === 'transport' ? 'NEMSIS TRANSIT REGISTRY' :
-                         'MEDICARE MAC REVENUE AUDIT'}
+                      <span className="text-[10px] font-mono text-slate-400 font-medium tracking-wider uppercase">
+                        · {selectedLayer === 'nemsis_cardiac' ? 'v3.5 Live Dataset' :
+                           selectedLayer === 'cardiac' ? 'Utstein Resuscitation Registry' :
+                           selectedLayer === 'aed' ? 'GIS PAD Census' :
+                           selectedLayer === 'transport' ? 'NEMSIS Transit Registry' :
+                           'Medicare MAC Revenue Audit'}
                       </span>
                     </h3>
                   </div>
@@ -1322,7 +1689,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                             : 'text-rose-400 hover:text-rose-300'
                         }`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                         <span>≥800 Epicenters</span>
                       </button>
                     </>
@@ -1481,9 +1848,33 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
                 </div>
 
-                {/* Map Display Mode: Choropleth, Hotspots, Pins */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 text-[11px]">
+                {/* Map Display Mode: Thermal KDE, H3 Hexbins, Choropleth, Tactical Pins & Kernel Tuning */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1 bg-slate-900/95 border border-slate-700/80 rounded-xl p-1 text-[11px]">
+                    <button
+                      onClick={() => setMapDisplayMode('kde')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        mapDisplayMode === 'kde'
+                          ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white font-bold shadow-xs'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                      title="2D Gaussian Kernel Density Estimation (KDE) continuous thermal field"
+                    >
+                      <Flame className="w-3.5 h-3.5" />
+                      <span>Thermal KDE</span>
+                    </button>
+                    <button
+                      onClick={() => setMapDisplayMode('hexbin')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        mapDisplayMode === 'hexbin'
+                          ? 'bg-purple-600 text-white font-bold shadow-xs'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                      title="H3 Spatial Hexagonal Tessellation & Binning"
+                    >
+                      <Hexagon className="w-3.5 h-3.5" />
+                      <span>H3 Hexbins</span>
+                    </button>
                     <button
                       onClick={() => setMapDisplayMode('choropleth')}
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -1494,19 +1885,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       title="State-level choropleth intensity shading based on active layer"
                     >
                       <Layers className="w-3.5 h-3.5" />
-                      <span>Choropleth (States)</span>
-                    </button>
-                    <button
-                      onClick={() => setMapDisplayMode('hotspots')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        mapDisplayMode === 'hotspots'
-                          ? 'bg-rose-600 text-white font-bold shadow-xs'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                      title="GIS Heatmap with spatial density halos"
-                    >
-                      <Flame className="w-3.5 h-3.5" />
-                      <span>Hotspots & Halos</span>
+                      <span>Choropleth</span>
                     </button>
                     <button
                       onClick={() => setMapDisplayMode('pins')}
@@ -1515,35 +1894,90 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           ? 'bg-emerald-600 text-white font-bold shadow-xs'
                           : 'text-slate-300 hover:text-white'
                       }`}
-                      title="Clean provider location pins"
+                      title="Tactical EMS/Fire station vector markers"
                     >
                       <MapPin className="w-3.5 h-3.5" />
-                      <span>Pins & Markers</span>
+                      <span>Station Vectors</span>
                     </button>
                   </div>
 
-                  {mapDisplayMode === 'hotspots' && (
-                    <div className="flex items-center gap-1 bg-slate-900/80 border border-slate-700/80 rounded-xl px-2 py-1 text-[11px] text-slate-300">
-                      <button
-                        onClick={() => setShowDensityHalos(prev => !prev)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                          showDensityHalos ? 'bg-sky-900/80 text-sky-200 font-bold' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Toggle spatial GIS density halo radii"
-                      >
-                        Halos: {showDensityHalos ? 'ON' : 'OFF'}
-                      </button>
-                      <button
-                        onClick={() => setShowPulseAnimations(prev => !prev)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                          showPulseAnimations ? 'bg-sky-900/80 text-sky-200 font-bold' : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="Toggle pulsing rings on critical epicenters"
-                      >
-                        Pulse: {showPulseAnimations ? 'ON' : 'OFF'}
-                      </button>
-                    </div>
-                  )}
+                  {/* Scientific Spectrum & Basemap Controls */}
+                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-2.5 py-1 text-[11px] text-slate-300">
+                    {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
+                      <>
+                        <div className="flex items-center gap-1 pr-2 border-r border-slate-700/80">
+                          <span className="text-[10px] font-mono uppercase text-slate-400">Spectrum:</span>
+                          {(['inferno', 'plasma', 'viridis'] as const).map((ramp) => (
+                            <button
+                              key={ramp}
+                              onClick={() => setColorSpectrum(ramp)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase transition-colors cursor-pointer ${
+                                colorSpectrum === ramp
+                                  ? 'bg-sky-500/25 text-sky-300 border border-sky-400/40 font-bold'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {ramp}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {mapDisplayMode === 'kde' && (
+                      <>
+                        <div className="flex items-center gap-1.5 pr-2 border-r border-slate-700/80" title="Gaussian Kernel Bandwidth (Sigma)">
+                          <span className="text-[10px] font-mono text-slate-400">σ={kdeBandwidth}px</span>
+                          <input
+                            type="range"
+                            min={18}
+                            max={56}
+                            step={2}
+                            value={kdeBandwidth}
+                            onChange={(e) => setKdeBandwidth(Number(e.target.value))}
+                            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setShowIsoContours(prev => !prev)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer ${
+                            showIsoContours ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title="Toggle topographic iso-density contour bands"
+                        >
+                          Iso-Contours: {showIsoContours ? 'ON' : 'OFF'}
+                        </button>
+                        <button
+                          onClick={() => setShowStationOverlay(prev => !prev)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer ${
+                            showStationOverlay ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title="Overlay EMS/Fire station vectors atop KDE thermal field"
+                        >
+                          Stations: {showStationOverlay ? 'ON' : 'OFF'}
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      onClick={() => setShowGraticule(prev => !prev)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer ${
+                        showGraticule ? 'bg-slate-800 text-slate-200 font-bold' : 'text-slate-500 hover:text-white'
+                      }`}
+                      title="Toggle Geodetic Lat/Lon Graticule Grid"
+                    >
+                      Grid
+                    </button>
+
+                    <button
+                      onClick={() => setBasemapTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                      className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Switch between Tactical Dark and Daylight Survey cartography"
+                    >
+                      {basemapTheme === 'dark' ? <Moon className="w-3 h-3 text-sky-400" /> : <Sun className="w-3 h-3 text-amber-400" />}
+                      <span>{basemapTheme === 'dark' ? 'Tactical Dark' : 'Daylight'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1747,449 +2181,649 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
             </div>
           </div>
 
-          <div className="relative flex-1 bg-[#F8FAFC] p-3 min-h-[460px] flex items-center justify-center overflow-hidden">
-            <svg viewBox={`0 0 ${mapWidth} ${mapHeight}`} className="w-full h-full max-h-[500px] select-none">
+          <div
+            className={`relative flex-1 ${
+              basemapTheme === 'dark'
+                ? 'bg-gradient-to-b from-[#040914] via-[#071022] to-[#050B16]'
+                : 'bg-gradient-to-b from-[#F1F5F9] to-[#E2E8F0]'
+            } p-2 sm:p-3 ${
+              isExpandedView ? 'min-h-[640px] lg:min-h-[720px]' : 'min-h-[560px] lg:min-h-[640px]'
+            } flex flex-col justify-between overflow-hidden transition-colors`}
+          >
+            {/* Interactive Map Zoom, Pan & Opacity Control Cluster */}
+            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-auto">
+              <div className="relative backdrop-blur-md bg-slate-950/85 border border-white/10 text-slate-100 rounded-xl shadow-2xl overflow-hidden p-0.5">
+                {/* Tactical corner ticks */}
+                <span className="absolute top-0.5 left-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute top-0.5 right-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute bottom-0.5 left-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute bottom-0.5 right-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+
+                <div className="flex flex-col">
+                  <button 
+                    onClick={() => setZoomLevel(z => Math.min(3.5, +(z + 0.35).toFixed(2)))} 
+                    title="Zoom In (+)" 
+                    className="p-2 hover:bg-sky-500/20 hover:text-sky-400 transition-colors border-b border-white/10 cursor-pointer text-slate-200"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setZoomLevel(z => Math.max(1, +(z - 0.35).toFixed(2)))} 
+                    title="Zoom Out (-)" 
+                    className="p-2 hover:bg-sky-500/20 hover:text-sky-400 transition-colors border-b border-white/10 cursor-pointer text-slate-200"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => { setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }} 
+                    title="Reset Nationwide View" 
+                    className="p-2 hover:bg-sky-500/20 hover:text-sky-400 transition-colors text-[10px] font-mono font-bold cursor-pointer text-slate-200"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="px-2 py-0.5 text-[8.5px] font-mono text-slate-400 border-t border-white/10 flex items-center justify-between gap-1.5 bg-slate-900/60">
+                  <span className="text-sky-400 font-bold">MAG</span>
+                  <span className="tabular-nums text-slate-200 font-semibold">{zoomLevel.toFixed(1)}x</span>
+                </div>
+              </div>
+
+              {/* Active Geodesic Route Corridors Toggle */}
+              {activeRouteCorridorPoints.length > 0 && (
+                <button
+                  onClick={() => setShowCorridors(prev => !prev)}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-mono font-bold uppercase tracking-wider shadow-2xl flex items-center gap-1.5 cursor-pointer transition-all backdrop-blur-md ${
+                    showCorridors
+                      ? 'bg-emerald-950/85 border-emerald-500/60 text-emerald-300'
+                      : 'bg-slate-950/85 border-white/10 text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Toggle active field route geodesic vector corridor"
+                >
+                  <Navigation className="w-3 h-3 text-emerald-400" />
+                  <span>Route ({activeRouteCorridorPoints.length})</span>
+                </button>
+              )}
+            </div>
+
+            <svg
+              viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+              className={`w-full flex-1 select-none ${isDraggingMap ? 'cursor-grabbing' : zoomLevel > 1 ? 'cursor-grab' : 'cursor-crosshair'}`}
+              onMouseDown={(e) => {
+                if (e.button !== 0) return;
+                setIsDraggingMap(true);
+                setDragStartPt({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+              }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                  const rawSvgX = ((e.clientX - rect.left) / rect.width) * mapWidth;
+                  const rawSvgY = ((e.clientY - rect.top) / rect.height) * mapHeight;
+                  const adjX = (rawSvgX - 460 - panOffset.x) / zoomLevel + 460;
+                  const adjY = (rawSvgY - 250 - panOffset.y) / zoomLevel + 250;
+                  setCursorGeoCoords(unprojectCoord(adjX, adjY));
+                }
+                if (isDraggingMap) {
+                  setPanOffset({
+                    x: Math.max(-420 * zoomLevel, Math.min(420 * zoomLevel, e.clientX - dragStartPt.x)),
+                    y: Math.max(-240 * zoomLevel, Math.min(240 * zoomLevel, e.clientY - dragStartPt.y))
+                  });
+                }
+              }}
+              onMouseUp={() => setIsDraggingMap(false)}
+              onMouseLeave={() => {
+                setIsDraggingMap(false);
+                setCursorGeoCoords(null);
+              }}
+            >
               <defs>
-                <pattern id="gis-map-grid" width="46" height="46" patternUnits="userSpaceOnUse">
-                  <path d="M 46 0 L 0 0 0 46" fill="none" stroke="rgba(148, 163, 184, 0.14)" strokeWidth="1" />
+                <pattern id="gis-map-grid-dark" width="46" height="46" patternUnits="userSpaceOnUse">
+                  <path d="M 46 0 L 0 0 0 46" fill="none" stroke="rgba(56, 189, 248, 0.06)" strokeWidth="0.75" />
+                </pattern>
+                <pattern id="gis-map-grid-light" width="46" height="46" patternUnits="userSpaceOnUse">
+                  <path d="M 46 0 L 0 0 0 46" fill="none" stroke="rgba(148, 163, 184, 0.16)" strokeWidth="0.75" />
                 </pattern>
 
-                {/* NEMSIS Cardiac Intensity Gradients */}
-                <radialGradient id="nemsis-critical-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#be123c" stopOpacity="0.85" />
-                  <stop offset="35%" stopColor="#e11d48" stopOpacity="0.6" />
-                  <stop offset="70%" stopColor="#f43f5e" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#fda4af" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="nemsis-high-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#c2410c" stopOpacity="0.75" />
-                  <stop offset="40%" stopColor="#ea580c" stopOpacity="0.5" />
-                  <stop offset="75%" stopColor="#fb923c" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#fdba74" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="nemsis-moderate-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.7" />
-                  <stop offset="45%" stopColor="#f59e0b" stopOpacity="0.4" />
-                  <stop offset="80%" stopColor="#fde047" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#fef08a" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="nemsis-baseline-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#0284c7" stopOpacity="0.6" />
-                  <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.28" />
-                  <stop offset="100%" stopColor="#bae6fd" stopOpacity="0" />
-                </radialGradient>
-
-                {/* Survival Deficit Gradients */}
-                <radialGradient id="survival-critical-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#b91c1c" stopOpacity="0.85" />
-                  <stop offset="35%" stopColor="#dc2626" stopOpacity="0.6" />
-                  <stop offset="70%" stopColor="#f87171" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#fee2e2" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="survival-high-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#c2410c" stopOpacity="0.75" />
-                  <stop offset="40%" stopColor="#ea580c" stopOpacity="0.5" />
-                  <stop offset="75%" stopColor="#fb923c" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#ffedd5" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="survival-moderate-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.7" />
-                  <stop offset="45%" stopColor="#f59e0b" stopOpacity="0.4" />
-                  <stop offset="80%" stopColor="#fde047" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#fef9c3" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="survival-benchmark-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#047857" stopOpacity="0.65" />
-                  <stop offset="50%" stopColor="#10b981" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#d1fae5" stopOpacity="0" />
-                </radialGradient>
-
-                {/* AED Need Gradients */}
-                <radialGradient id="aed-critical-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#a21caf" stopOpacity="0.85" />
-                  <stop offset="35%" stopColor="#c026d3" stopOpacity="0.6" />
-                  <stop offset="70%" stopColor="#e879f9" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#fae8ff" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="aed-high-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#0369a1" stopOpacity="0.75" />
-                  <stop offset="40%" stopColor="#0284c7" stopOpacity="0.5" />
-                  <stop offset="75%" stopColor="#38bdf8" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#e0f2fe" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="aed-moderate-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#0f766e" stopOpacity="0.7" />
-                  <stop offset="45%" stopColor="#0d9488" stopOpacity="0.4" />
-                  <stop offset="80%" stopColor="#2dd4bf" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#ccfbf1" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="aed-baseline-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#475569" stopOpacity="0.55" />
-                  <stop offset="50%" stopColor="#64748b" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#f1f5f9" stopOpacity="0" />
-                </radialGradient>
-
-                {/* Transport Isochrone Gradients */}
-                <radialGradient id="transport-critical-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#9a3412" stopOpacity="0.85" />
-                  <stop offset="35%" stopColor="#b45309" stopOpacity="0.6" />
-                  <stop offset="70%" stopColor="#f59e0b" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#fef3c7" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="transport-high-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#c2410c" stopOpacity="0.75" />
-                  <stop offset="40%" stopColor="#d97706" stopOpacity="0.5" />
-                  <stop offset="75%" stopColor="#fbbf24" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#fef9c3" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="transport-moderate-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#047857" stopOpacity="0.65" />
-                  <stop offset="50%" stopColor="#059669" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#d1fae5" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="transport-baseline-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#0284c7" stopOpacity="0.55" />
-                  <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#e0f2fe" stopOpacity="0" />
-                </radialGradient>
-
-                {/* CMS Denial Gradients */}
-                <radialGradient id="cms-critical-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#9f1239" stopOpacity="0.85" />
-                  <stop offset="35%" stopColor="#be123c" stopOpacity="0.6" />
-                  <stop offset="70%" stopColor="#fb7185" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#ffe4e6" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="cms-high-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#6d28d9" stopOpacity="0.75" />
-                  <stop offset="40%" stopColor="#7c3aed" stopOpacity="0.5" />
-                  <stop offset="75%" stopColor="#a78bfa" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#ede9fe" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="cms-moderate-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#0369a1" stopOpacity="0.65" />
-                  <stop offset="45%" stopColor="#0284c7" stopOpacity="0.35" />
-                  <stop offset="80%" stopColor="#38bdf8" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#e0f2fe" stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="cms-baseline-gradient" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#047857" stopOpacity="0.55" />
-                  <stop offset="50%" stopColor="#059669" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#d1fae5" stopOpacity="0" />
-                </radialGradient>
-
                 <filter id="nemsis-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="1.8" result="coloredBlur" />
+                  <feGaussianBlur stdDeviation="2.2" result="coloredBlur" />
                   <feMerge>
                     <feMergeNode in="coloredBlur" />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
               </defs>
-              <rect width={mapWidth} height={mapHeight} fill="url(#gis-map-grid)" />
 
-              {/* Alaska & Hawaii Inset Frames */}
-              <g>
-                <rect x="14" y="356" width="174" height="134" rx="10" fill="#FFFFFF" fillOpacity="0.9" stroke="#CBD5E1" strokeWidth="1.25" strokeDasharray="4 4" />
-                <text x="24" y="373" fill="#475569" fontSize="10" fontFamily="monospace" fontWeight="800">ALASKA (AK)</text>
+              {/* Dynamic Pan & Zoom Transformation Wrapper */}
+              <g 
+                transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`} 
+                style={{
+                  transformOrigin: '460px 250px',
+                  transition: isDraggingMap ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+              >
+                <rect
+                  width={mapWidth}
+                  height={mapHeight}
+                  fill={basemapTheme === 'dark' ? 'url(#gis-map-grid-dark)' : 'url(#gis-map-grid-light)'}
+                />
 
-                <rect x="196" y="396" width="124" height="94" rx="10" fill="#FFFFFF" fillOpacity="0.9" stroke="#CBD5E1" strokeWidth="1.25" strokeDasharray="4 4" />
-                <text x="206" y="413" fill="#475569" fontSize="10" fontFamily="monospace" fontWeight="800">HAWAII (HI)</text>
-              </g>
+                {/* Geodetic Graticule Parallels & Meridians (25°N–45°N, 120°W–70°W) */}
+                {showGraticule && (
+                  <g className="pointer-events-none select-none">
+                    {[25, 30, 35, 40, 45].map((lat) => {
+                      const y = 20 + ((49.5 - lat) / (49.5 - 24.5)) * 425;
+                      return (
+                        <g key={`grat-lat-${lat}`}>
+                          <line
+                            x1={24}
+                            y1={y}
+                            x2={805}
+                            y2={y}
+                            stroke={basemapTheme === 'dark' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(100, 116, 139, 0.18)'}
+                            strokeWidth="0.6"
+                            strokeDasharray="3 3"
+                          />
+                          <text
+                            x={8}
+                            y={y - 2}
+                            fill={basemapTheme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(71, 85, 105, 0.65)'}
+                            fontSize="7.5"
+                            fontFamily="monospace"
+                          >
+                            {lat}°N
+                          </text>
+                        </g>
+                      );
+                    })}
+                    {[-120, -110, -100, -90, -80, -70].map((lon) => {
+                      const x = 32 + ((lon - (-124.8)) / ((-66.8) - (-124.8))) * 755;
+                      return (
+                        <g key={`grat-lon-${lon}`}>
+                          <line
+                            x1={x}
+                            y1={14}
+                            x2={x}
+                            y2={455}
+                            stroke={basemapTheme === 'dark' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(100, 116, 139, 0.18)'}
+                            strokeWidth="0.6"
+                            strokeDasharray="3 3"
+                          />
+                          <text
+                            x={x + 2}
+                            y={12}
+                            fill={basemapTheme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(71, 85, 105, 0.65)'}
+                            fontSize="7.5"
+                            fontFamily="monospace"
+                          >
+                            {Math.abs(lon)}°W
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
 
-              {/* Authoritative U.S. Census 50-State + DC Boundary Polygons */}
-              <g>
-                {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
-                  const isActiveState = selectedState === 'all' || selectedState === sc;
-                  const isHovered = hoveredStateCode === sc;
-                  const acuity = stateAcuityMap[sc];
+                {/* Alaska & Hawaii Inset Frames */}
+                <g>
+                  <rect
+                    x="14"
+                    y="356"
+                    width="174"
+                    height="134"
+                    rx="8"
+                    fill={basemapTheme === 'dark' ? '#070E1C' : '#FFFFFF'}
+                    fillOpacity="0.92"
+                    stroke={basemapTheme === 'dark' ? '#1E293B' : '#94A3B8'}
+                    strokeWidth="1"
+                  />
+                  <text
+                    x="22"
+                    y="371"
+                    fill={basemapTheme === 'dark' ? '#64748B' : '#334155'}
+                    fontSize="8.5"
+                    fontFamily="monospace"
+                    fontWeight="800"
+                  >
+                    ALASKA INSET (54°N–71°N)
+                  </text>
 
-                  // Determine fill and stroke based on display mode
-                  let fill = '#E2E8F0';
-                  let stroke = '#94A3B8';
-                  let strokeWidth = 0.9;
-                  let opacity = isActiveState ? 0.95 : 0.35;
+                  <rect
+                    x="196"
+                    y="396"
+                    width="124"
+                    height="94"
+                    rx="8"
+                    fill={basemapTheme === 'dark' ? '#070E1C' : '#FFFFFF'}
+                    fillOpacity="0.92"
+                    stroke={basemapTheme === 'dark' ? '#1E293B' : '#94A3B8'}
+                    strokeWidth="1"
+                  />
+                  <text
+                    x="204"
+                    y="411"
+                    fill={basemapTheme === 'dark' ? '#64748B' : '#334155'}
+                    fontSize="8.5"
+                    fontFamily="monospace"
+                    fontWeight="800"
+                  >
+                    HAWAII (19°N–22°N)
+                  </text>
+                </g>
 
-                  if (mapDisplayMode === 'choropleth') {
-                    if (selectedState === sc) {
-                      fill = '#3B82F6';
-                      stroke = '#1E3A8A';
-                      strokeWidth = 2.5;
-                      opacity = 1;
-                    } else if (isHovered) {
-                      fill = acuity?.fillColor ? acuity.fillColor : '#BFDBFE';
-                      stroke = '#0F172A';
-                      strokeWidth = 2;
-                      opacity = 1;
+                {/* Authoritative U.S. Census 50-State + DC Boundary Polygons */}
+                <g>
+                  {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                    const isActiveState = selectedState === 'all' || selectedState === sc;
+                    const isHovered = hoveredStateCode === sc;
+                    const acuity = stateAcuityMap[sc];
+
+                    let fill = basemapTheme === 'dark' ? '#0C1629' : '#E2E8F0';
+                    let stroke = basemapTheme === 'dark' ? '#1E293B' : '#94A3B8';
+                    let strokeWidth = 0.85;
+                    let opacity = isActiveState ? 0.96 : 0.32;
+
+                    if (mapDisplayMode === 'choropleth') {
+                      if (selectedState === sc) {
+                        fill = basemapTheme === 'dark' ? '#1D4ED8' : '#3B82F6';
+                        stroke = '#38BDF8';
+                        strokeWidth = 2.2;
+                        opacity = 1;
+                      } else if (isHovered) {
+                        fill = acuity?.fillColor || '#1E3A8A';
+                        stroke = basemapTheme === 'dark' ? '#F8FAFC' : '#0F172A';
+                        strokeWidth = 1.8;
+                        opacity = 1;
+                      } else {
+                        fill = acuity?.fillColor || (basemapTheme === 'dark' ? '#0F172A' : '#E2E8F0');
+                        stroke = acuity?.borderColor || (basemapTheme === 'dark' ? '#334155' : '#94A3B8');
+                        strokeWidth = selectedState === 'all' ? 1.05 : 0.75;
+                        opacity = selectedState === 'all' ? 0.92 : 0.28;
+                      }
                     } else {
-                      fill = acuity?.fillColor || '#E2E8F0';
-                      stroke = acuity?.borderColor || '#94A3B8';
-                      strokeWidth = selectedState === 'all' ? 1.2 : 0.8;
-                      opacity = selectedState === 'all' ? 0.95 : 0.35;
+                      if (selectedState === sc) {
+                        fill = basemapTheme === 'dark' ? '#112240' : '#DBEAFE';
+                        stroke = '#38BDF8';
+                        strokeWidth = 1.8;
+                        opacity = 1;
+                      } else if (isHovered) {
+                        fill = basemapTheme === 'dark' ? '#16243D' : '#E2E8F0';
+                        stroke = basemapTheme === 'dark' ? '#64748B' : '#475569';
+                        strokeWidth = 1.3;
+                      } else {
+                        fill = basemapTheme === 'dark' ? '#0B1426' : '#F8FAFC';
+                        stroke = basemapTheme === 'dark' ? '#1E293B' : '#CBD5E1';
+                        strokeWidth = 0.85;
+                      }
                     }
-                  } else {
-                    if (selectedState === sc) {
-                      fill = '#DBEAFE';
-                      stroke = '#1E3A8A';
-                      strokeWidth = 2;
-                      opacity = 1;
-                    } else if (isHovered) {
-                      fill = '#E2E8F0';
-                      stroke = '#475569';
-                      strokeWidth = 1.5;
-                    } else {
-                      fill = '#F8FAFC';
-                      stroke = '#CBD5E1';
-                      strokeWidth = 0.9;
-                    }
-                  }
 
-                  return (
-                    <path
-                      key={`gis-poly-${sc}`}
-                      d={boundary.d}
-                      fill={fill}
-                      stroke={stroke}
-                      strokeWidth={strokeWidth}
-                      opacity={opacity}
-                      onMouseEnter={() => setHoveredStateCode(sc)}
-                      onMouseLeave={() => setHoveredStateCode(null)}
-                      onClick={() => {
-                        const next = selectedState === sc ? 'all' : sc;
-                        setSelectedState(next);
-                        setSelectedCounty('all');
-                        setSelectedCity('all');
-                        if (onSelectState) onSelectState(next);
-                        if (onSelectCounty) onSelectCounty('all');
-                        if (onSelectCity) onSelectCity('all');
-                      }}
-                      className="cursor-pointer transition-colors duration-150"
-                    >
-                      <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc}) - ${acuity?.metricLabel || ''}: ${acuity?.metricValue || ''}`}</title>
-                    </path>
-                  );
-                })}
-              </g>
+                    return (
+                      <path
+                        key={`gis-poly-${sc}`}
+                        d={boundary.d}
+                        fill={fill}
+                        stroke={stroke}
+                        strokeWidth={strokeWidth}
+                        opacity={opacity}
+                        onMouseEnter={() => setHoveredStateCode(sc)}
+                        onMouseLeave={() => setHoveredStateCode(null)}
+                        onClick={() => {
+                          const next = selectedState === sc ? 'all' : sc;
+                          setSelectedState(next);
+                          setSelectedCounty('all');
+                          setSelectedCity('all');
+                          if (onSelectState) onSelectState(next);
+                          if (onSelectCounty) onSelectCounty('all');
+                          if (onSelectCity) onSelectCity('all');
 
-              {/* State Abbreviation Typography Labels for Interior States */}
-              <g className="pointer-events-none select-none">
-                {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
-                  const isCallout = EAST_COAST_CALLOUT_STATES.some(c => c.code === sc);
-                  if (isCallout) return null; // Small East Coast states rendered via badges below
-                  const isSelected = selectedState === sc;
-                  const isHovered = hoveredStateCode === sc;
-                  const isActive = selectedState === 'all' || isSelected;
+                          if (next !== 'all' && boundary) {
+                            setZoomLevel(1.55);
+                            setPanOffset({
+                              x: (mapWidth / 2 - boundary.labelX) * 0.7,
+                              y: (mapHeight / 2 - boundary.labelY) * 0.7
+                            });
+                          } else {
+                            setZoomLevel(1);
+                            setPanOffset({ x: 0, y: 0 });
+                          }
+                        }}
+                        className="cursor-pointer transition-colors duration-150"
+                      >
+                        <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc}) — ${acuity?.metricLabel || ''}: ${acuity?.metricValue || ''}`}</title>
+                      </path>
+                    );
+                  })}
+                </g>
 
-                  return (
-                    <text
-                      key={`lbl-${sc}`}
-                      x={boundary.labelX}
-                      y={boundary.labelY}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={sc === 'CA' || sc === 'TX' || sc === 'MT' || sc === 'AK' ? '11' : '9.5'}
-                      fontWeight="800"
-                      fill={isSelected ? '#FFFFFF' : isHovered ? '#0F172A' : '#1E293B'}
-                      opacity={isActive ? 0.95 : 0.35}
-                      className="font-mono tracking-tight"
-                    >
-                      {sc}
-                    </text>
-                  );
-                })}
-              </g>
+                {/* LAYER MODE 1: Continuous 2D Gaussian Kernel Density Estimation (KDE) Surface */}
+                {(mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && kdeThermalDataUrl && (
+                  <image
+                    href={kdeThermalDataUrl}
+                    x={0}
+                    y={0}
+                    width={mapWidth}
+                    height={mapHeight}
+                    opacity={kdeOpacity}
+                    preserveAspectRatio="none"
+                    className="pointer-events-none"
+                    style={{ mixBlendMode: basemapTheme === 'dark' ? 'screen' : 'multiply' }}
+                  />
+                )}
 
-              {/* East Coast Callout Badges with Clean Leader Lines */}
-              <g className="select-none">
-                {EAST_COAST_CALLOUT_STATES.map((callout) => {
-                  const boundary = US_STATES_SVG_PATHS[callout.code];
-                  if (!boundary) return null;
-                  const isSelected = selectedState === callout.code;
-                  const isHovered = hoveredStateCode === callout.code;
-                  const acuity = stateAcuityMap[callout.code];
+                {/* Crisp State Borders Overlay Above Thermal KDE so state boundaries stay razor-sharp */}
+                {(mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && (
+                  <g className="pointer-events-none">
+                    {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => (
+                      <path
+                        key={`kde-border-${sc}`}
+                        d={boundary.d}
+                        fill="none"
+                        stroke={
+                          selectedState === sc
+                            ? '#38BDF8'
+                            : basemapTheme === 'dark'
+                            ? 'rgba(148, 163, 184, 0.35)'
+                            : 'rgba(51, 65, 85, 0.35)'
+                        }
+                        strokeWidth={selectedState === sc ? 1.8 : 0.75}
+                      />
+                    ))}
+                  </g>
+                )}
+
+                {/* LAYER MODE 2: H3 Spatial Hexagonal Tessellation Bins */}
+                {mapDisplayMode === 'hexbin' && (
+                  <g>
+                    {hexBinCells.map((cell) => {
+                      const isHexHovered = hoveredHexCell?.id === cell.id;
+                      return (
+                        <g
+                          key={cell.id}
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredHexCell(cell)}
+                          onMouseLeave={() => setHoveredHexCell(null)}
+                          onClick={() => onSelectAgency(cell.topAgency)}
+                        >
+                          <polygon
+                            points={cell.points}
+                            fill={cell.fillColor}
+                            fillOpacity={isHexHovered ? 0.96 : 0.82}
+                            stroke={isHexHovered ? '#FFFFFF' : cell.strokeColor}
+                            strokeWidth={isHexHovered ? 2 : 0.9}
+                            className="transition-all duration-100"
+                          />
+                          {cell.agencyCount > 1 && (
+                            <text
+                              x={cell.cx}
+                              y={cell.cy}
+                              textAnchor="middle"
+                              dominantBaseline="central"
+                              fontSize="7.5"
+                              fontFamily="monospace"
+                              fontWeight="800"
+                              fill={cell.normalizedIntensity > 0.65 ? '#0F172A' : '#FFFFFF'}
+                              className="pointer-events-none"
+                            >
+                              {cell.agencyCount}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
+
+                {/* Active Field Route Geodesic Corridor Vector Polyline */}
+                {showCorridors && activeRouteCorridorPoints.length > 1 && (
+                  <g className="pointer-events-none">
+                    <polyline
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth="3.5"
+                      strokeOpacity="0.28"
+                      points={activeRouteCorridorPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                    />
+                    <polyline
+                      fill="none"
+                      stroke="#34D399"
+                      strokeWidth="1.6"
+                      strokeDasharray="5 3"
+                      points={activeRouteCorridorPoints.map(p => `${p.x},${p.y}`).join(' ')}
+                    />
+                  </g>
+                )}
+
+                {/* State Abbreviation Typography Labels for Interior States */}
+                <g className="pointer-events-none select-none">
+                  {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                    const isCallout = EAST_COAST_CALLOUT_STATES.some(c => c.code === sc);
+                    if (isCallout) return null;
+                    const isSelected = selectedState === sc;
+                    const isHovered = hoveredStateCode === sc;
+                    const isActive = selectedState === 'all' || isSelected;
+
+                    return (
+                      <text
+                        key={`lbl-${sc}`}
+                        x={boundary.labelX}
+                        y={boundary.labelY}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize={sc === 'CA' || sc === 'TX' || sc === 'MT' || sc === 'AK' ? '10.5' : '9'}
+                        fontWeight="800"
+                        fill={
+                          basemapTheme === 'dark'
+                            ? isSelected
+                              ? '#38BDF8'
+                              : isHovered
+                              ? '#FFFFFF'
+                              : 'rgba(226, 232, 240, 0.78)'
+                            : isSelected
+                            ? '#1E3A8A'
+                            : '#0F172A'
+                        }
+                        opacity={isActive ? 1 : 0.35}
+                        className="font-mono tracking-tight"
+                        style={{
+                          textShadow:
+                            basemapTheme === 'dark'
+                              ? '0 1px 3px rgba(0,0,0,0.95)'
+                              : '0 1px 2px rgba(255,255,255,0.9)'
+                        }}
+                      >
+                        {sc}
+                      </text>
+                    );
+                  })}
+                </g>
+
+                {/* East Coast Callout Badges with Clean Leader Lines */}
+                <g className="select-none">
+                  {EAST_COAST_CALLOUT_STATES.map((callout) => {
+                    const boundary = US_STATES_SVG_PATHS[callout.code];
+                    if (!boundary) return null;
+                    const isSelected = selectedState === callout.code;
+                    const isHovered = hoveredStateCode === callout.code;
+                    const acuity = stateAcuityMap[callout.code];
+
+                    return (
+                      <g
+                        key={`callout-${callout.code}`}
+                        className="cursor-pointer pointer-events-auto"
+                        onMouseEnter={() => setHoveredStateCode(callout.code)}
+                        onMouseLeave={() => setHoveredStateCode(null)}
+                        onClick={() => {
+                          const next = selectedState === callout.code ? 'all' : callout.code;
+                          setSelectedState(next);
+                          setSelectedCounty('all');
+                          setSelectedCity('all');
+                          if (onSelectState) onSelectState(next);
+                          if (onSelectCounty) onSelectCounty('all');
+                          if (onSelectCity) onSelectCity('all');
+                        }}
+                      >
+                        <line
+                          x1={boundary.labelX}
+                          y1={boundary.labelY}
+                          x2={callout.calloutX - 16}
+                          y2={callout.calloutY}
+                          stroke={isSelected ? '#38BDF8' : basemapTheme === 'dark' ? '#475569' : '#94A3B8'}
+                          strokeWidth={isSelected || isHovered ? 1.5 : 0.9}
+                          strokeDasharray="2 2"
+                        />
+                        <rect
+                          x={callout.calloutX - 16}
+                          y={callout.calloutY - 8}
+                          width="32"
+                          height="16"
+                          rx="4"
+                          fill={
+                            isSelected
+                              ? '#2563EB'
+                              : mapDisplayMode === 'choropleth'
+                              ? (acuity?.fillColor || (basemapTheme === 'dark' ? '#0F172A' : '#FFFFFF'))
+                              : basemapTheme === 'dark'
+                              ? '#0F172A'
+                              : '#FFFFFF'
+                          }
+                          stroke={
+                            isSelected
+                              ? '#38BDF8'
+                              : (acuity?.borderColor || (basemapTheme === 'dark' ? '#334155' : '#CBD5E1'))
+                          }
+                          strokeWidth={isSelected || isHovered ? 1.5 : 1}
+                        />
+                        <text
+                          x={callout.calloutX}
+                          y={callout.calloutY}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize="8.5"
+                          fontWeight="800"
+                          fill={isSelected || basemapTheme === 'dark' ? '#FFFFFF' : '#0F172A'}
+                          className="font-mono pointer-events-none"
+                        >
+                          {callout.code}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+
+                {/* Tactical Agency Station Vector Markers */}
+                {mapDisplayMode !== 'hexbin' && (mapDisplayMode !== 'kde' || showStationOverlay) && mapRenderedAgencies.map((agency) => {
+                  const { x, y } = projectCoord(agency.latitude, agency.longitude);
+                  const visual = getAgencyLayerVisual(agency, selectedLayer);
+                  const isHovered = hoveredAgency?.id === agency.id;
+                  const isRouteStop = Boolean(agency.inDayRoute);
+                  const baseR = mapDisplayMode === 'kde' ? Math.max(2.2, visual.markerRadius * 0.58) : visual.markerRadius * 0.85;
 
                   return (
                     <g
-                      key={`callout-${callout.code}`}
-                      className="cursor-pointer pointer-events-auto"
-                      onMouseEnter={() => setHoveredStateCode(callout.code)}
-                      onMouseLeave={() => setHoveredStateCode(null)}
-                      onClick={() => {
-                        const next = selectedState === callout.code ? 'all' : callout.code;
-                        setSelectedState(next);
-                        setSelectedCounty('all');
-                        setSelectedCity('all');
-                        if (onSelectState) onSelectState(next);
-                        if (onSelectCounty) onSelectCounty('all');
-                        if (onSelectCity) onSelectCity('all');
-                      }}
+                      key={agency.id}
+                      transform={`translate(${x}, ${y})`}
+                      className="cursor-pointer group"
+                      onClick={() => onSelectAgency(agency)}
+                      onMouseEnter={() => setHoveredAgency(agency)}
+                      onMouseLeave={() => setHoveredAgency(null)}
                     >
-                      {/* Dashed connector line */}
-                      <line
-                        x1={boundary.labelX}
-                        y1={boundary.labelY}
-                        x2={callout.calloutX - 16}
-                        y2={callout.calloutY}
-                        stroke={isSelected ? '#1E3A8A' : isHovered ? '#0F172A' : '#94A3B8'}
-                        strokeWidth={isSelected || isHovered ? 1.5 : 1}
-                        strokeDasharray="2 2"
+                      {(visual.isCritical || isRouteStop) && (
+                        <circle
+                          r={baseR + 3.2}
+                          fill="none"
+                          stroke={isRouteStop ? '#10B981' : visual.ringColor}
+                          strokeWidth={isRouteStop ? 1.6 : 1.1}
+                          opacity="0.85"
+                        />
+                      )}
+                      <circle
+                        r={isHovered ? baseR * 1.8 : baseR}
+                        fill={isRouteStop ? '#10B981' : visual.markerFill}
+                        stroke={basemapTheme === 'dark' ? '#0F172A' : '#FFFFFF'}
+                        strokeWidth={1.1}
+                        className="transition-transform duration-150"
                       />
-                      {/* State Badge */}
-                      <rect
-                        x={callout.calloutX - 16}
-                        y={callout.calloutY - 8}
-                        width="32"
-                        height="16"
-                        rx="4"
-                        fill={
-                          isSelected
-                            ? '#2563EB'
-                            : isHovered
-                            ? '#DBEAFE'
-                            : mapDisplayMode === 'choropleth'
-                            ? (acuity?.fillColor || '#FFFFFF')
-                            : '#FFFFFF'
-                        }
-                        stroke={
-                          isSelected
-                            ? '#1E3A8A'
-                            : isHovered
-                            ? '#0F172A'
-                            : (acuity?.borderColor || '#CBD5E1')
-                        }
-                        strokeWidth={isSelected || isHovered ? 1.5 : 1}
-                        className="transition-colors duration-150"
-                      />
-                      <text
-                        x={callout.calloutX}
-                        y={callout.calloutY}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fontSize="8.5"
-                        fontWeight="800"
-                        fill={isSelected ? '#FFFFFF' : '#0F172A'}
-                        className="font-mono pointer-events-none"
-                      >
-                        {callout.code}
-                      </text>
+                      {(visual.isCritical || isHovered) && (
+                        <circle
+                          r="1.3"
+                          fill="#FFFFFF"
+                        />
+                      )}
                     </g>
                   );
                 })}
               </g>
-
-              {/* GIS Heat Radii based on Active Layer (Shown in Hotspots & Choropleth modes) */}
-              {mapDisplayMode !== 'pins' && showDensityHalos && mapRenderedAgencies.map((agency) => {
-                const { x, y } = projectCoord(agency.latitude, agency.longitude);
-                const visual = getAgencyLayerVisual(agency, selectedLayer);
-
-                return (
-                  <g key={`heat-${agency.id}`} transform={`translate(${x}, ${y})`}>
-                    {/* Gradient Ambient Heat Zone */}
-                    <circle
-                      r={mapDisplayMode === 'choropleth' ? visual.heatRadius * 0.6 : visual.heatRadius * 0.8}
-                      fill={`url(#${visual.gradientId})`}
-                      filter="url(#nemsis-glow)"
-                      opacity={mapDisplayMode === 'choropleth' ? 0.35 : 0.65}
-                    />
-                    {/* Isochrone / Deficit Contour Ring */}
-                    <circle
-                      r={visual.heatRadius * 0.55}
-                      fill="none"
-                      stroke={visual.ringColor}
-                      strokeWidth="1"
-                      strokeDasharray={visual.isCritical ? "3 2" : "none"}
-                      opacity={visual.ringOpacity * 0.8}
-                    />
-                    {/* Animated Pulse Ring for Critical Hotspots */}
-                    {visual.isCritical && showPulseAnimations && (
-                      <circle
-                        r={visual.heatRadius * 0.75}
-                        fill="none"
-                        stroke={visual.ringColor}
-                        strokeWidth="1.25"
-                        opacity="0.5"
-                        className="animate-ping"
-                        style={{ transformOrigin: '0 0', animationDuration: '3s' }}
-                      />
-                    )}
-                  </g>
-                );
-              })}
-
-              {/* Agency Interactive Markers */}
-              {mapRenderedAgencies.map((agency) => {
-                const { x, y } = projectCoord(agency.latitude, agency.longitude);
-                const visual = getAgencyLayerVisual(agency, selectedLayer);
-                const isHovered = hoveredAgency?.id === agency.id;
-
-                return (
-                  <g
-                    key={agency.id}
-                    transform={`translate(${x}, ${y})`}
-                    className="cursor-pointer group"
-                    onClick={() => onSelectAgency(agency)}
-                    onMouseEnter={() => setHoveredAgency(agency)}
-                    onMouseLeave={() => setHoveredAgency(null)}
-                  >
-                    {visual.isCritical && (
-                      <circle
-                        r={visual.markerRadius + 3}
-                        fill="none"
-                        stroke={visual.ringColor}
-                        strokeWidth="1.5"
-                        opacity="0.8"
-                      />
-                    )}
-                    <circle
-                      r={isHovered ? visual.markerRadius * 1.5 : visual.markerRadius}
-                      fill={visual.markerFill}
-                      stroke="#ffffff"
-                      strokeWidth={visual.isCritical ? 1.75 : 1.25}
-                      className="transition-transform duration-150 group-hover:scale-150 shadow-md"
-                    />
-                    {visual.isCritical && (
-                      <circle
-                        r="1.8"
-                        fill="#ffffff"
-                      />
-                    )}
-                  </g>
-                );
-              })}
             </svg>
 
-            {/* Map Intensity Scale Legend Overlay */}
-            <div className="absolute top-4 right-4 z-10 bg-white/95 backdrop-blur-sm border border-slate-200/90 rounded-xl p-2.5 shadow-sm text-[11px] pointer-events-auto">
-              <span className="font-bold text-slate-800 uppercase text-[9px] tracking-wider block mb-1.5 flex items-center gap-1">
-                {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3 h-3 text-rose-600" /> :
-                 selectedLayer === 'cardiac' ? <Activity className="w-3 h-3 text-red-600" /> :
-                 selectedLayer === 'aed' ? <Zap className="w-3 h-3 text-fuchsia-600" /> :
-                 selectedLayer === 'transport' ? <Clock className="w-3 h-3 text-amber-600" /> :
-                 <DollarSign className="w-3 h-3 text-rose-600" />}
-                {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS Call Intensity' :
-                 selectedLayer === 'cardiac' ? 'Survival Deficit Intensity' :
-                 selectedLayer === 'aed' ? 'Public Access AED Need' :
-                 selectedLayer === 'transport' ? 'Transport Isochrones' :
-                 'CMS Denial Concentrations'}
-              </span>
+            {/* Scientific Spectrum & Layer Telemetry Legend Overlay */}
+            <div className="absolute top-4 right-4 z-10 backdrop-blur-md bg-slate-950/85 border border-white/10 text-white rounded-xl p-3 shadow-2xl text-[11px] pointer-events-auto min-w-[225px] relative">
+              {/* Tactical corner ticks */}
+              <span className="absolute top-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+              <span className="absolute top-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+              <span className="absolute bottom-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+              <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+
+              {/* Tactical Telemetry Ribbon */}
+              <div className="flex items-center justify-between text-[8px] font-mono text-sky-400/80 mb-1.5 pb-1 border-b border-white/10 tracking-widest uppercase">
+                <span>HUD TELEMETRY</span>
+                <span>KDE BW: {kdeBandwidth}KM</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="font-bold uppercase text-[9.5px] tracking-wider flex items-center gap-1.5 font-mono text-white">
+                  {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3.5 h-3.5 text-rose-500" /> :
+                   selectedLayer === 'cardiac' ? <Activity className="w-3.5 h-3.5 text-red-500" /> :
+                   selectedLayer === 'aed' ? <Zap className="w-3.5 h-3.5 text-fuchsia-400" /> :
+                   selectedLayer === 'transport' ? <Clock className="w-3.5 h-3.5 text-amber-400" /> :
+                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />}
+                  {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS OHCA Density' :
+                   selectedLayer === 'cardiac' ? 'Utstein Deficit Surface' :
+                   selectedLayer === 'aed' ? 'Public AED Deficit' :
+                   selectedLayer === 'transport' ? 'Transit Isochrones' :
+                   'CMS Claim Denials'}
+                </span>
+                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/40 font-bold">
+                  {mapDisplayMode.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Continuous Scientific Color Ramp Bar for KDE & Hexbin Modes */}
+              {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
+                <div className="mb-2.5 pb-2 border-b border-slate-700/50">
+                  <div
+                    className="h-2.5 w-full rounded-full border border-white/15"
+                    style={{
+                      background:
+                        colorSpectrum === 'inferno'
+                          ? 'linear-gradient(90deg, #0a0722 0%, #420a68 25%, #932667 50%, #dd513a 75%, #fca50a 90%, #fcffa4 100%)'
+                          : colorSpectrum === 'plasma'
+                          ? 'linear-gradient(90deg, #0d0887 0%, #6a00a8 25%, #b12a90 50%, #e16462 75%, #fca636 90%, #f0f921 100%)'
+                          : 'linear-gradient(90deg, #440154 0%, #3b528b 25%, #21918c 50%, #5ec962 75%, #fde725 100%)'
+                    }}
+                  />
+                  <div className="flex justify-between text-[9px] font-mono text-slate-400 mt-1">
+                    <span>Baseline (0.1σ)</span>
+                    <span>Median (0.5σ)</span>
+                    <span className="text-amber-300 font-bold">Peak Epicenter (1.0σ)</span>
+                  </div>
+                </div>
+              )}
 
               {selectedLayer === 'nemsis_cardiac' && (
                 <div className="space-y-1 font-mono text-[10px]">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-700 ring-2 ring-rose-300"></span>
-                    <span className="text-slate-800 font-semibold">≥800 Calls (Critical Epicenter)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40"></span>
+                    <span className="font-semibold">≥800 Calls (Critical Epicenter)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-600"></span>
-                    <span className="text-slate-700 font-medium">400–799 Calls (High Acuity)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                    <span className="opacity-90">400–799 Calls (High Acuity)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span className="text-slate-600">200–399 Calls (Moderate)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                    <span className="opacity-75">200–399 Calls (Moderate)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
-                    <span className="text-slate-500">&lt;200 Calls (Baseline)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                    <span className="opacity-65">&lt;200 Calls (Baseline)</span>
                   </div>
                 </div>
               )}
@@ -2197,20 +2831,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {selectedLayer === 'cardiac' && (
                 <div className="space-y-1 font-mono text-[10px]">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-700 ring-2 ring-red-300"></span>
-                    <span className="text-slate-800 font-semibold">&lt;22% Survival (Critical Deficit)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/40"></span>
+                    <span className="font-semibold">&lt;22% Survival (Critical Deficit)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-600"></span>
-                    <span className="text-slate-700 font-medium">22–26% Survival (High Deficit)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                    <span className="opacity-90">22–26% Survival (High Deficit)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span className="text-slate-600">26–30% Survival (Moderate Deficit)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                    <span className="opacity-75">26–30% Survival (Moderate)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                    <span className="text-slate-500">&gt;30% Survival (Benchmark Tier)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="opacity-65">&gt;30% Survival (Benchmark)</span>
                   </div>
                 </div>
               )}
@@ -2218,20 +2852,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {selectedLayer === 'aed' && (
                 <div className="space-y-1 font-mono text-[10px]">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-700 ring-2 ring-fuchsia-300"></span>
-                    <span className="text-slate-800 font-semibold">≥55% Deficit (Severe Shortage)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-500 ring-2 ring-fuchsia-400/40"></span>
+                    <span className="font-semibold">≥55% Deficit (Severe Shortage)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
-                    <span className="text-slate-700 font-medium">45–54% Deficit (High ZOLL Need)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                    <span className="opacity-90">45–54% Deficit (High ZOLL Need)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
-                    <span className="text-slate-600">35–44% Deficit (Moderate Need)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+                    <span className="opacity-75">35–44% Deficit (Moderate Need)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-                    <span className="text-slate-500">&lt;35% Deficit (Adequate Coverage)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                    <span className="opacity-65">&lt;35% Deficit (Adequate)</span>
                   </div>
                 </div>
               )}
@@ -2239,20 +2873,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {selectedLayer === 'transport' && (
                 <div className="space-y-1 font-mono text-[10px]">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-800 ring-2 ring-amber-300"></span>
-                    <span className="text-slate-800 font-semibold">≥28 min (Extreme Isochrone)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/40"></span>
+                    <span className="font-semibold">≥28 min (Extreme Isochrone)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                    <span className="text-slate-700 font-medium">22–27 min (Prolonged Route)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
+                    <span className="opacity-90">22–27 min (Prolonged Route)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                    <span className="text-slate-600">16–21 min (Standard Transit)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <span className="opacity-75">16–21 min (Standard Transit)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
-                    <span className="text-slate-500">&lt;16 min (Rapid Urban Dispatch)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                    <span className="opacity-65">&lt;16 min (Rapid Dispatch)</span>
                   </div>
                 </div>
               )}
@@ -2260,43 +2894,45 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {selectedLayer === 'cms' && (
                 <div className="space-y-1 font-mono text-[10px]">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-700 ring-2 ring-rose-300"></span>
-                    <span className="text-slate-800 font-semibold">≥21% Denials (Severe Denial Zone)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40"></span>
+                    <span className="font-semibold">≥21% Denials (Severe Zone)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-                    <span className="text-slate-700 font-medium">18–20.9% Denials (High AR Target)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                    <span className="opacity-90">18–20.9% Denials (High AR)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
-                    <span className="text-slate-600">14–17.9% Denials (Moderate Rate)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                    <span className="opacity-75">14–17.9% Denials (Moderate)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                    <span className="text-slate-500">&lt;14% Denials (Compliant Medicare)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <span className="opacity-65">&lt;14% Denials (Compliant)</span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Interactive Floating Hover Telemetry Card */}
+            {/* Interactive Floating Hover Telemetry Card for Agency */}
             {hoveredAgency && (
-              <div className="absolute bottom-4 left-4 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700/80 rounded-xl p-3.5 shadow-2xl max-w-sm pointer-events-auto transition-all animate-in fade-in duration-150">
-                <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2 mb-2">
+              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/85 border border-white/15 text-white rounded-xl p-3.5 shadow-2xl max-w-sm pointer-events-auto transition-all animate-in fade-in duration-150 relative">
+                {/* Tactical corner ticks */}
+                <span className="absolute top-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute top-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute bottom-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+
+                <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2 mb-2">
                   <div>
                     <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider">
-                      {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3.5 h-3.5 text-rose-500 animate-pulse" /> :
-                       selectedLayer === 'cardiac' ? <Activity className="w-3.5 h-3.5 text-red-500 animate-pulse" /> :
-                       selectedLayer === 'aed' ? <Zap className="w-3.5 h-3.5 text-fuchsia-400 animate-pulse" /> :
-                       selectedLayer === 'transport' ? <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" /> :
-                       <DollarSign className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />}
+                      <HeartPulse className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
                       <span>{getAgencyLayerVisual(hoveredAgency, selectedLayer).tierLabel}</span>
                     </div>
                     <h4 className="font-bold text-xs text-white leading-tight mt-0.5">
                       {hoveredAgency.name}
                     </h4>
-                    <p className="text-[11px] text-slate-400">
-                      {hoveredAgency.city}, {hoveredAgency.stateCode} · {hoveredAgency.county}
+                    <p className="text-[11px] text-slate-400 font-mono">
+                      {hoveredAgency.city}, {hoveredAgency.stateCode} · LAT {hoveredAgency.latitude.toFixed(2)}°N · LON {Math.abs(hoveredAgency.longitude).toFixed(2)}°W
                     </p>
                   </div>
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0 ${
@@ -2308,7 +2944,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 py-1 text-center bg-slate-800/60 rounded-lg p-2 border border-slate-700/50 mb-2.5">
+                <div className="grid grid-cols-3 gap-2 py-1 text-center bg-slate-900/80 rounded-lg p-2 border border-white/10 mb-2.5">
                   <div>
                     <span className="text-[9px] text-slate-400 uppercase block font-semibold">Annual OHCA</span>
                     <span className="text-xs font-mono font-bold text-rose-400">
@@ -2322,9 +2958,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     </span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">STEMI Alerts</span>
+                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Priority Score</span>
                     <span className="text-xs font-mono font-bold text-amber-400">
-                      {Math.round((hoveredAgency.annualCardiacArrestCalls || 500) * 0.165)}
+                      {hoveredAgency.zollOpportunity.pulseIqScore}/100
                     </span>
                   </div>
                 </div>
@@ -2335,29 +2971,87 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     <span className="font-semibold text-white">{hoveredAgency.installedFleet.defibBrand} ({hoveredAgency.installedFleet.defibAgeYears} yrs)</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Mechanical CPR:</span>
-                    <span className="font-semibold text-white">{hoveredAgency.installedFleet.mechanicalCPR}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Clinical Solution:</span>
-                    <span className="font-semibold text-sky-400">AutoPulse + Real CPR Help</span>
+                    <span className="text-slate-400">Target Solution:</span>
+                    <span className="font-semibold text-sky-400">{hoveredAgency.zollOpportunity.primaryTargetProduct}</span>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => onSelectAgency(hoveredAgency)}
-                  className="w-full py-1.5 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <span>Open Full Clinical Battlecard</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => onSelectAgency(hoveredAgency)}
+                    className="flex-1 py-1.5 px-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-md"
+                  >
+                    <span>Battlecard</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  {onToggleRoute && (
+                    <button
+                      onClick={() => onToggleRoute(hoveredAgency.id)}
+                      className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+                        hoveredAgency.inDayRoute
+                          ? 'bg-emerald-600/30 border-emerald-500 text-emerald-300'
+                          : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+                      }`}
+                    >
+                      <Navigation className="w-3 h-3" />
+                      <span>{hoveredAgency.inDayRoute ? 'In Route' : '+ Route'}</span>
+                    </button>
+                  )}
+                  {onOpenRfpGenerator && (
+                    <button
+                      onClick={() => onOpenRfpGenerator(hoveredAgency)}
+                      className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                      title="Generate RFP Response"
+                    >
+                      <FileText className="w-3 h-3 text-sky-400" />
+                      <span>RFP</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Interactive Floating Hover State Card (when no agency is hovered) */}
-            {hoveredStateCode && !hoveredAgency && stateAcuityMap[hoveredStateCode] && (
-              <div className="absolute bottom-4 left-4 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700/80 rounded-xl p-3 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150">
-                <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5 mb-1.5">
+            {/* Interactive Floating Hover Card for H3 Hexagonal Spatial Bin */}
+            {hoveredHexCell && !hoveredAgency && (
+              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/85 border border-purple-500/40 text-white rounded-xl p-3.5 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150 relative">
+                {/* Tactical corner ticks */}
+                <span className="absolute top-1 left-1.5 text-[8px] font-mono text-purple-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute top-1 right-1.5 text-[8px] font-mono text-purple-400/70 leading-none select-none pointer-events-none">+</span>
+
+                <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5 mb-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-purple-300 font-bold">
+                    <Hexagon className="w-3.5 h-3.5 text-purple-400" />
+                    <span>H3 Spatial Bin · {hoveredHexCell.id.toUpperCase()}</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-bold">
+                    {hoveredHexCell.agencyCount} {hoveredHexCell.agencyCount === 1 ? 'Agency' : 'Agencies'}
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs font-mono mb-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-sans">Cluster Metric:</span>
+                    <span className="font-bold text-amber-300">{hoveredHexCell.metricSummary}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-sans">Avg Utstein ROSC:</span>
+                    <span className="font-bold text-emerald-400">{hoveredHexCell.avgSurvival}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400 font-sans">Lead Epicenter:</span>
+                    <span className="font-bold text-white truncate max-w-[145px]">{hoveredHexCell.topAgency.name}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Interactive Floating Hover State Card (when no agency or hex is hovered) */}
+            {hoveredStateCode && !hoveredAgency && !hoveredHexCell && stateAcuityMap[hoveredStateCode] && (
+              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/85 border border-white/15 text-white rounded-xl p-3 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150 relative">
+                {/* Tactical corner ticks */}
+                <span className="absolute top-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+                <span className="absolute top-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+
+                <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-1.5 mb-1.5">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold block">
                       {ALL_50_STATES_SUMMARIES[hoveredStateCode]?.region || 'US'} Region · {hoveredStateCode}
@@ -2405,11 +3099,50 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Bottom Cartographic Geodetic Telemetry & Scale Bar HUD */}
+            <div className="mt-2 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md bg-slate-950/85 text-white flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono shadow-2xl relative">
+              {/* Tactical corner ticks */}
+              <span className="absolute top-0.5 left-1.5 text-[8px] font-mono text-sky-400/60 leading-none select-none pointer-events-none">+</span>
+              <span className="absolute top-0.5 right-1.5 text-[8px] font-mono text-sky-400/60 leading-none select-none pointer-events-none">+</span>
+
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1 text-sky-400 font-bold">
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>EPSG:4326 · ALBERS US COMPOSITE</span>
+                </span>
+                <span className="hidden sm:inline text-white/20">|</span>
+                <span className="hidden sm:flex items-center gap-1">
+                  <Crosshair className="w-3 h-3 text-emerald-400" />
+                  {cursorGeoCoords ? (
+                    <span className="text-white font-semibold">
+                      LAT {cursorGeoCoords.lat.toFixed(3)}°N · LON {Math.abs(cursorGeoCoords.lon).toFixed(3)}°W
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">LAT 31.968°N · LON 99.901°W · KDE BANDWIDTH: {kdeBandwidth}KM</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className="hidden md:inline text-slate-400">
+                  KERNEL: <span className="text-sky-300 font-bold">{mapDisplayMode === 'kde' ? `2D GAUSSIAN (σ=${kdeBandwidth}px, ${colorSpectrum.toUpperCase()})` : mapDisplayMode === 'hexbin' ? `H3 HEXBIN (${hexBinCells.length} CELLS)` : mapDisplayMode.toUpperCase()}</span>
+                </span>
+                {/* Dynamic Cartographic Scale Bar */}
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span>0</span>
+                  <div className="w-16 h-1.5 border border-white/30 flex">
+                    <div className="w-1/2 h-full bg-white/70" />
+                  </div>
+                  <span className="font-semibold text-white">{Math.round(500 / zoomLevel)} mi</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Right Side Panel: NEMSIS High-Acuity Call Epicenters & Product Demand Matrix */}
-        <div className="lg:col-span-4 min-w-0 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
+        <div className={`${isExpandedView ? 'lg:col-span-12' : 'lg:col-span-4'} min-w-0 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4 transition-all`}>
           <div className="border-b border-slate-100 pb-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
@@ -2840,6 +3573,498 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         </div>
       </div>
 
+      {/* THEATER FULLSCREEN MODE (Immersive Command-Center View) */}
+      {isTheaterModal && (
+        <div className="fixed inset-0 z-50 bg-[#070D1E] text-white flex flex-col overflow-hidden animate-in fade-in duration-150">
+          {/* Top Control Bar */}
+          <div className="bg-[#0B1528] border-b border-slate-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-sky-400" />
+                <div>
+                  <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>ZOLL Spatial GIS Command Center</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                      FULL THEATER
+                    </span>
+                  </h2>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {filteredAgencies.length.toLocaleString()} Active Accounts · {selectedState === 'all' ? 'Nationwide Coverage' : `${selectedState} (${ALL_50_STATES_SUMMARIES[selectedState]?.state || selectedState})`}
+                  </p>
+                </div>
+              </div>
+
+              {/* State Filter Dropdown in Theater Mode */}
+              <div className="flex items-center gap-1.5 ml-2 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white">
+                <span className="text-slate-400 font-mono text-[10px] uppercase font-bold">State:</span>
+                <select
+                  value={selectedState}
+                  onChange={(e) => {
+                    const st = e.target.value;
+                    setSelectedState(st);
+                    setSelectedCounty('all');
+                    setSelectedCity('all');
+                    if (onSelectState) onSelectState(st);
+                    if (st !== 'all' && US_STATES_SVG_PATHS[st]) {
+                      setZoomLevel(1.5);
+                      setPanOffset({
+                        x: (mapWidth / 2 - US_STATES_SVG_PATHS[st].labelX) * 0.7,
+                        y: (mapHeight / 2 - US_STATES_SVG_PATHS[st].labelY) * 0.7
+                      });
+                    } else {
+                      setZoomLevel(1);
+                      setPanOffset({ x: 0, y: 0 });
+                    }
+                  }}
+                  className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
+                >
+                  <option value="all" className="bg-slate-900 text-white">All 50 States (National)</option>
+                  {availableStates.map(sc => (
+                    <option key={sc} value={sc} className="bg-slate-900 text-white">
+                      {sc} - {ALL_50_STATES_SUMMARIES[sc]?.state || sc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Layer Selection Pills */}
+            <div className="flex flex-wrap items-center bg-slate-900/90 border border-slate-800 rounded-xl p-1 text-xs gap-1">
+              <button
+                onClick={() => setSelectedLayer('nemsis_cardiac')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedLayer === 'nemsis_cardiac' ? 'bg-rose-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <HeartPulse className="w-3.5 h-3.5" />
+                <span>NEMSIS Cardiac</span>
+              </button>
+              <button
+                onClick={() => setSelectedLayer('cardiac')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  selectedLayer === 'cardiac' ? 'bg-rose-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Survival Deficits
+              </button>
+              <button
+                onClick={() => setSelectedLayer('aed')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  selectedLayer === 'aed' ? 'bg-fuchsia-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                AED Need
+              </button>
+              <button
+                onClick={() => setSelectedLayer('transport')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  selectedLayer === 'transport' ? 'bg-amber-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Transit Times
+              </button>
+              <button
+                onClick={() => setSelectedLayer('cms')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  selectedLayer === 'cms' ? 'bg-emerald-700 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                CMS Denials
+              </button>
+            </div>
+
+            {/* Display Mode & Exit Button */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs">
+                <button
+                  onClick={() => setMapDisplayMode('kde')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer ${mapDisplayMode === 'kde' ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Thermal KDE
+                </button>
+                <button
+                  onClick={() => setMapDisplayMode('hexbin')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer ${mapDisplayMode === 'hexbin' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                >
+                  H3 Hexbins
+                </button>
+                <button
+                  onClick={() => setMapDisplayMode('choropleth')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer ${mapDisplayMode === 'choropleth' ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Choropleth
+                </button>
+                <button
+                  onClick={() => setMapDisplayMode('pins')}
+                  className={`px-2 py-1 rounded text-xs font-semibold cursor-pointer ${mapDisplayMode === 'pins' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Stations
+                </button>
+              </div>
+
+              {/* Toggle Intelligence Slide Drawer */}
+              <button
+                onClick={() => setIsDrawerOpen(prev => !prev)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isDrawerOpen
+                    ? 'bg-sky-600 text-white border-sky-500 font-bold'
+                    : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-white'
+                }`}
+                title="Toggle Territory Intelligence slideout drawer"
+              >
+                {isDrawerOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">Telemetry</span>
+              </button>
+
+              {/* Exit Fullscreen Button */}
+              <button
+                onClick={() => setIsTheaterModal(false)}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md transition-colors"
+                title="Exit theater fullscreen mode (Esc)"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>Exit Fullscreen</span>
+                <kbd className="hidden sm:inline bg-rose-800 text-white text-[10px] px-1 rounded font-mono">Esc</kbd>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Full-Screen Body */}
+          <div className="relative flex-1 w-full h-full flex overflow-hidden">
+            {/* Map Canvas */}
+            <div className="relative flex-1 w-full h-full bg-[#040914] flex items-center justify-center overflow-hidden">
+              {/* Zoom & Pan Widget in Theater Mode */}
+              <div className="absolute top-4 left-4 z-20 flex flex-col bg-slate-900/90 backdrop-blur-md border border-slate-700 rounded-xl shadow-lg overflow-hidden text-slate-200 pointer-events-auto">
+                <button 
+                  onClick={() => setZoomLevel(z => Math.min(3.5, +(z + 0.35).toFixed(2)))} 
+                  title="Zoom In (+)" 
+                  className="p-2 hover:bg-slate-800 hover:text-white transition-colors border-b border-slate-700 cursor-pointer"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setZoomLevel(z => Math.max(1, +(z - 0.35).toFixed(2)))} 
+                  title="Zoom Out (-)" 
+                  className="p-2 hover:bg-slate-800 hover:text-white transition-colors border-b border-slate-700 cursor-pointer"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => { setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }} 
+                  title="Reset Nationwide View" 
+                  className="p-2 hover:bg-slate-800 hover:text-white transition-colors text-[10px] font-mono font-bold cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Theater SVG Map */}
+              <svg viewBox={`0 0 ${mapWidth} ${mapHeight}`} className="w-full h-full select-none">
+                <defs>
+                  <pattern id="gis-theater-grid" width="46" height="46" patternUnits="userSpaceOnUse">
+                    <path d="M 46 0 L 0 0 0 46" fill="none" stroke="rgba(56, 189, 248, 0.08)" strokeWidth="1" />
+                  </pattern>
+                </defs>
+
+                <g 
+                  transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`} 
+                  style={{ transformOrigin: '460px 250px', transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
+                >
+                  <rect width={mapWidth} height={mapHeight} fill="url(#gis-theater-grid)" />
+
+                  {/* Alaska & Hawaii Inset Frames */}
+                  <g>
+                    <rect x="14" y="356" width="174" height="134" rx="10" fill="#0F172A" fillOpacity="0.85" stroke="#334155" strokeWidth="1" />
+                    <text x="24" y="373" fill="#94A3B8" fontSize="10" fontFamily="monospace" fontWeight="800">ALASKA (AK)</text>
+
+                    <rect x="196" y="396" width="124" height="94" rx="10" fill="#0F172A" fillOpacity="0.85" stroke="#334155" strokeWidth="1" />
+                    <text x="206" y="413" fill="#94A3B8" fontSize="10" fontFamily="monospace" fontWeight="800">HAWAII (HI)</text>
+                  </g>
+
+                  {/* Authoritative U.S. Census 50-State + DC Boundary Polygons */}
+                  <g>
+                    {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                      const isActiveState = selectedState === 'all' || selectedState === sc;
+                      const isHovered = hoveredStateCode === sc;
+                      const acuity = stateAcuityMap[sc];
+
+                      let fill = '#0B1426';
+                      let stroke = '#1E293B';
+                      let strokeWidth = 0.9;
+                      let opacity = isActiveState ? 0.95 : 0.3;
+
+                      if (mapDisplayMode === 'choropleth') {
+                        if (selectedState === sc) {
+                          fill = '#2563EB';
+                          stroke = '#60A5FA';
+                          strokeWidth = 2.5;
+                          opacity = 1;
+                        } else if (isHovered) {
+                          fill = '#38BDF8';
+                          stroke = '#FFFFFF';
+                          strokeWidth = 2;
+                          opacity = 1;
+                        } else {
+                          fill = acuity?.fillColor || '#0F172A';
+                          stroke = acuity?.borderColor || '#334155';
+                          strokeWidth = 1.1;
+                          opacity = selectedState === 'all' ? 0.9 : 0.25;
+                        }
+                      } else {
+                        if (selectedState === sc) {
+                          fill = '#112240';
+                          stroke = '#38BDF8';
+                          strokeWidth = 2;
+                          opacity = 1;
+                        } else if (isHovered) {
+                          fill = '#1E293B';
+                          stroke = '#94A3B8';
+                          strokeWidth = 1.5;
+                        }
+                      }
+
+                      return (
+                        <path
+                          key={`gis-theater-poly-${sc}`}
+                          d={boundary.d}
+                          fill={fill}
+                          stroke={stroke}
+                          strokeWidth={strokeWidth}
+                          opacity={opacity}
+                          onMouseEnter={() => setHoveredStateCode(sc)}
+                          onMouseLeave={() => setHoveredStateCode(null)}
+                          onClick={() => {
+                            const next = selectedState === sc ? 'all' : sc;
+                            setSelectedState(next);
+                            setSelectedCounty('all');
+                            setSelectedCity('all');
+                            if (onSelectState) onSelectState(next);
+                            if (next !== 'all' && boundary) {
+                              setZoomLevel(1.5);
+                              setPanOffset({
+                                x: (mapWidth / 2 - boundary.labelX) * 0.7,
+                                y: (mapHeight / 2 - boundary.labelY) * 0.7
+                              });
+                            } else {
+                              setZoomLevel(1);
+                              setPanOffset({ x: 0, y: 0 });
+                            }
+                          }}
+                          className="cursor-pointer transition-colors duration-150"
+                        >
+                          <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc})`}</title>
+                        </path>
+                      );
+                    })}
+                  </g>
+
+                  {/* Continuous KDE Thermal Surface in Theater Mode */}
+                  {(mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && kdeThermalDataUrl && (
+                    <image
+                      href={kdeThermalDataUrl}
+                      x={0}
+                      y={0}
+                      width={mapWidth}
+                      height={mapHeight}
+                      opacity={kdeOpacity}
+                      preserveAspectRatio="none"
+                      className="pointer-events-none"
+                      style={{ mixBlendMode: 'screen' }}
+                    />
+                  )}
+
+                  {/* H3 Hexbins in Theater Mode */}
+                  {mapDisplayMode === 'hexbin' && (
+                    <g>
+                      {hexBinCells.map((cell) => (
+                        <polygon
+                          key={`theater-${cell.id}`}
+                          points={cell.points}
+                          fill={cell.fillColor}
+                          fillOpacity={0.85}
+                          stroke={cell.strokeColor}
+                          strokeWidth={0.9}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            onSelectAgency(cell.topAgency);
+                            setIsTheaterModal(false);
+                          }}
+                        />
+                      ))}
+                    </g>
+                  )}
+
+                  {/* State Abbreviation Typography Labels */}
+                  <g className="pointer-events-none select-none">
+                    {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                      const isCallout = EAST_COAST_CALLOUT_STATES.some(c => c.code === sc);
+                      if (isCallout) return null;
+                      const isSelected = selectedState === sc;
+                      const isHovered = hoveredStateCode === sc;
+                      const isActive = selectedState === 'all' || isSelected;
+
+                      return (
+                        <text
+                          key={`theater-lbl-${sc}`}
+                          x={boundary.labelX}
+                          y={boundary.labelY}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize={sc === 'CA' || sc === 'TX' || sc === 'MT' || sc === 'AK' ? '11' : '9.5'}
+                          fontWeight="800"
+                          fill={isSelected ? '#38BDF8' : isHovered ? '#FFFFFF' : 'rgba(226,232,240,0.78)'}
+                          opacity={isActive ? 1 : 0.4}
+                          className="font-mono tracking-tight"
+                          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.95)' }}
+                        >
+                          {sc}
+                        </text>
+                      );
+                    })}
+                  </g>
+
+                  {/* Agency Markers */}
+                  {mapDisplayMode !== 'hexbin' && mapRenderedAgencies.map((agency) => {
+                    const { x, y } = projectCoord(agency.latitude, agency.longitude);
+                    const visual = getAgencyLayerVisual(agency, selectedLayer);
+                    const isHovered = hoveredAgency?.id === agency.id;
+                    const baseR = mapDisplayMode === 'kde' ? Math.max(2.2, visual.markerRadius * 0.58) : visual.markerRadius * 0.85;
+
+                    return (
+                      <g
+                        key={`theater-ag-${agency.id}`}
+                        transform={`translate(${x}, ${y})`}
+                        className="cursor-pointer group"
+                        onClick={() => {
+                          onSelectAgency(agency);
+                          setIsTheaterModal(false);
+                        }}
+                        onMouseEnter={() => setHoveredAgency(agency)}
+                        onMouseLeave={() => setHoveredAgency(null)}
+                      >
+                        <circle
+                          r={isHovered ? baseR * 1.6 : baseR}
+                          fill={visual.markerFill}
+                          stroke="#0F172A"
+                          strokeWidth={1.1}
+                          className="transition-transform duration-150"
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+
+              {/* Intensity Scale Legend in Theater Mode */}
+              <div className="absolute top-4 right-4 z-20 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-xl text-xs pointer-events-auto">
+                <span className="font-bold text-white uppercase text-[10px] tracking-wider block mb-1.5 flex items-center gap-1.5 font-mono">
+                  <Activity className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Intensity Scale</span>
+                </span>
+                <div className="space-y-1 font-mono text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-rose-400"></span>
+                    <span className="text-white font-semibold">Critical Epicenter</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                    <span className="text-slate-300">High Acuity / Deficit</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                    <span className="text-slate-400">Moderate Need</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                    <span className="text-slate-400">Baseline Tier</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* State Hover Telemetry in Theater Mode */}
+              {hoveredStateCode && !hoveredAgency && stateAcuityMap[hoveredStateCode] && (
+                <div className="absolute bottom-5 left-5 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 rounded-xl p-3 shadow-2xl max-w-xs animate-in fade-in duration-100">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold block">
+                    {ALL_50_STATES_SUMMARIES[hoveredStateCode]?.region || 'US'} Region · {hoveredStateCode}
+                  </span>
+                  <h4 className="font-bold text-sm text-white">
+                    {stateAcuityMap[hoveredStateCode].name}
+                  </h4>
+                  <div className="space-y-1 text-xs text-slate-300 mt-1.5 font-mono">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-sans">{stateAcuityMap[hoveredStateCode].metricLabel}:</span>
+                      <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].metricValue}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-sans">EMS / Fire Agencies:</span>
+                      <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].agencyCount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Agency Hover Telemetry in Theater Mode */}
+              {hoveredAgency && (
+                <div className="absolute bottom-5 left-5 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 rounded-xl p-3.5 shadow-2xl max-w-sm animate-in fade-in duration-100">
+                  <h4 className="font-bold text-sm text-white">{hoveredAgency.name}</h4>
+                  <p className="text-xs text-slate-400">{hoveredAgency.city}, {hoveredAgency.stateCode} · {hoveredAgency.county}</p>
+                  <div className="mt-2 text-xs font-mono text-emerald-400">
+                    Target: {hoveredAgency.zollOpportunity.primaryTargetProduct} (${(hoveredAgency.zollOpportunity.estimatedDealValue || hoveredAgency.zollOpportunity.projectedPipelineValue).toLocaleString()})
+                  </div>
+                  <button
+                    onClick={() => {
+                      onSelectAgency(hoveredAgency);
+                      setIsTheaterModal(false);
+                    }}
+                    className="mt-2 w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Open Account Battlecard
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Slide-out Intelligence Telemetry Drawer */}
+            {isDrawerOpen && (
+              <div className="w-80 sm:w-96 bg-[#0B1528] border-l border-slate-800 p-4 overflow-y-auto flex flex-col z-30 shadow-2xl animate-in slide-in-from-right duration-200">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-sky-400" />
+                    <span>Territory Telemetry</span>
+                  </h3>
+                  <button
+                    onClick={() => setIsDrawerOpen(false)}
+                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[11px] font-mono font-bold text-slate-400 uppercase">Top Layer Hotspots</span>
+                  {topCardiacEpicenters.map((agency) => (
+                    <div
+                      key={`drawer-${agency.id}`}
+                      onClick={() => {
+                        onSelectAgency(agency);
+                        setIsTheaterModal(false);
+                      }}
+                      className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-sky-500/50 cursor-pointer transition-all"
+                    >
+                      <div className="font-bold text-xs text-white truncate">{agency.name}</div>
+                      <div className="text-[11px] text-slate-400">{agency.city}, {agency.stateCode}</div>
+                      <div className="mt-1 flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-rose-400">{getAgencyLayerVisual(agency, selectedLayer).metricDisplay}</span>
+                        <span className="text-emerald-400">${(agency.zollOpportunity.estimatedDealValue || agency.zollOpportunity.projectedPipelineValue).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

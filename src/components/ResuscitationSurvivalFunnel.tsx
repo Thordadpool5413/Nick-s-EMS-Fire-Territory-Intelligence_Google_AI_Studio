@@ -112,36 +112,34 @@ export const ResuscitationSurvivalFunnel: React.FC<ResuscitationSurvivalFunnelPr
   ];
 
   return (
-    <div className={`bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5 ${className}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-2xs space-y-5 ${className}`}>
       
       {/* Header with Telemetry Summary */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
-              CARES &amp; NEMSIS RESUSCITATION FUNNEL
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <span className="font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+              CARES &amp; NEMSIS RESUSCITATION LEDGER
             </span>
-            <span className="text-xs font-mono text-slate-500">
-              Utstein Protocol Specification
-            </span>
+            <span aria-hidden="true">·</span>
+            <span>Utstein Protocol Specification</span>
           </div>
-          <h3 className="text-base font-bold text-slate-900 mt-1 flex items-center gap-2">
-            <HeartPulse className="w-5 h-5 text-rose-600" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             <span>Pre-Hospital Cardiac Arrest Survival Chain &amp; Conversion Delta</span>
           </h3>
         </div>
 
-        {/* Live Sparklines Header */}
-        <div className="flex items-center gap-4 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-          <div>
-            <span className="text-[9px] uppercase font-mono text-slate-500 block font-semibold">5-Yr Call Trend</span>
+        {/* Flush Hairline Sparklines Header */}
+        <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+          <div className="bg-slate-50 dark:bg-slate-900 p-2.5">
+            <span className="text-[9px] uppercase font-mono text-slate-500 dark:text-slate-400 block font-semibold">5-Yr Call Trend</span>
             <div className="w-24">
               <InteractiveSparkline data={fiveYearCalls} color="rose" height={22} valueSuffix=" calls" />
             </div>
           </div>
-          <div className="w-px h-6 bg-slate-200"></div>
-          <div>
-            <span className="text-[9px] uppercase font-mono text-slate-500 block font-semibold">5-Yr Survival Trend</span>
+          <div className="bg-slate-50 dark:bg-slate-900 p-2.5">
+            <span className="text-[9px] uppercase font-mono text-slate-500 dark:text-slate-400 block font-semibold">5-Yr Survival Trend</span>
             <div className="w-24">
               <InteractiveSparkline 
                 data={fiveYearSurvival} 
@@ -155,96 +153,95 @@ export const ResuscitationSurvivalFunnel: React.FC<ResuscitationSurvivalFunnelPr
         </div>
       </div>
 
-      {/* Clinical Opportunity Impact Banner */}
-      <div className="p-4 bg-gradient-to-r from-rose-50 via-amber-50 to-emerald-50 rounded-xl border border-rose-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white border border-rose-200 flex items-center justify-center text-rose-600 font-mono font-bold text-lg shadow-xs shrink-0">
+      {/* Clinical Opportunity Impact Hairline Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+        <div className="bg-slate-50/70 dark:bg-slate-900 p-4 flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400 font-mono font-bold text-lg shrink-0 tabular-nums">
             +{additionalLivesSaved}
           </div>
           <div>
-            <h4 className="font-bold text-xs text-slate-900 leading-tight">
-              Estimated Additional Lives Saved Annually in {agency.city}
+            <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
+              Estimated Additional Neurological Survivors Annually in {agency.city}
             </h4>
-            <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-              Eliminating CPR transport interruptions with the <strong>AutoPulse Resuscitation System</strong> and continuous depth/rate feedback via <strong>Real CPR Help</strong> closes the gap between {agency.name}'s current {currentSurvival}% survival rate and the national 29.7% benchmark.
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
+              Eliminating CPR transport interruptions with <strong>AutoPulse</strong> and continuous depth/rate feedback via <strong>Real CPR Help</strong> closes the gap between {agency.name}&apos;s {currentSurvival}% survival rate and the 29.7% national benchmark.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 text-xs">
-          <div className="bg-white/90 border border-slate-200 px-3 py-1.5 rounded-lg text-center shadow-xs">
-            <span className="text-[10px] text-slate-400 block font-semibold">Current Survivors</span>
-            <span className="font-mono font-bold text-slate-800 text-sm">{currentSurvivors} / yr</span>
+        <div className="bg-slate-50/70 dark:bg-slate-900 p-4 flex items-center gap-3 shrink-0 text-xs">
+          <div className="text-right">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block uppercase">Baseline</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-white text-sm tabular-nums">{currentSurvivors} / yr</span>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400" />
-          <div className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-center shadow-xs">
-            <span className="text-[10px] text-emerald-100 block font-semibold">With ZOLL AutoPulse</span>
-            <span className="font-mono font-bold text-white text-sm">{potentialSurvivors} / yr</span>
+          <div className="text-right pl-2 border-l border-slate-200 dark:border-slate-800">
+            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 block uppercase font-bold">ZOLL Projected</span>
+            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm tabular-nums">{potentialSurvivors} / yr</span>
           </div>
         </div>
       </div>
 
-      {/* Interactive Step-Down Funnel Diagram */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
+      {/* Interactive Step-Down Funnel Ledger */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
           <span>Resuscitation Continuum Stages</span>
           <div className="flex items-center gap-4 text-[11px] font-mono">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
+              <span className="w-2.5 h-2 bg-rose-500"></span>
               <span>{agency.name} Actual</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-1 border-b-2 border-slate-400 border-dashed"></span>
-              <span>National 90th %ile Benchmark</span>
+              <span className="w-0.5 h-3 bg-slate-900 dark:bg-white"></span>
+              <span>CARES 90th %ile Benchmark Tick</span>
             </span>
           </div>
         </div>
 
-        <div className="space-y-2">
-          {funnelSteps.map((step, idx) => {
+        <div className="grid grid-cols-1 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+          {funnelSteps.map((step) => {
             const isHovered = activeStep === step.step;
-            const widthPct = Math.max(6, Math.min(100, step.pct));
-            const benchWidthPct = Math.max(6, Math.min(100, step.benchmarkPct));
+            const widthPct = Math.max(4, Math.min(100, step.pct));
+            const benchWidthPct = Math.max(4, Math.min(100, step.benchmarkPct));
 
             return (
               <div 
                 key={`funnel-${step.step}`}
                 onMouseEnter={() => setActiveStep(step.step)}
                 onMouseLeave={() => setActiveStep(null)}
-                className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                  isHovered ? 'bg-slate-50 border-sky-300 shadow-xs' : 'bg-white border-slate-200'
+                className={`p-3 transition-colors cursor-pointer ${
+                  isHovered ? 'bg-slate-50 dark:bg-slate-800/80' : 'bg-white dark:bg-slate-900'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 text-xs mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-700 flex items-center justify-center shrink-0">
-                      {step.step}
+                <div className="flex items-baseline justify-between gap-2 text-xs mb-1.5">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                      0{step.step}
                     </span>
-                    <span className="font-bold text-slate-900">{step.name}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{step.name}</span>
                   </div>
-                  <div className="flex items-center gap-3 font-mono text-xs">
+                  <span className="flex-1 border-b border-dotted border-slate-200 dark:border-slate-800 mx-2 hidden sm:block" />
+                  <div className="flex items-center gap-3 font-mono text-xs shrink-0 tabular-nums">
                     <span className={`font-bold ${step.textColor}`}>{step.count}</span>
-                    <span className="text-slate-400 text-[10px]">Benchmark: {step.benchmarkPct}%</span>
+                    <span className="text-slate-400 dark:text-slate-500 text-[10px]">Bench {step.benchmarkPct}%</span>
                   </div>
                 </div>
 
-                {/* Comparative Dual Progress Bars */}
-                <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden">
-                  {/* Agency actual bar */}
+                {/* Ultra-Crisp Comparative Horizontal Progress Bar with Benchmark Reference Tick */}
+                <div className="relative h-2 bg-slate-100 dark:bg-slate-800 overflow-hidden">
                   <div 
-                    className={`h-full ${step.color} transition-all duration-500 rounded-full`}
+                    className={`h-full ${step.color} transition-all duration-500`}
                     style={{ width: `${widthPct}%` }}
                   />
-                  {/* Benchmark marker line */}
                   <div 
-                    className="absolute top-0 bottom-0 w-0.5 bg-slate-700 z-10"
+                    className="absolute top-0 bottom-0 w-0.5 bg-slate-900 dark:bg-white z-10"
                     style={{ left: `${benchWidthPct}%` }}
                     title={`National Benchmark: ${step.benchmarkPct}%`}
                   />
                 </div>
 
                 {isHovered && (
-                  <p className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100 animate-in fade-in duration-100">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
                     {step.description}
                   </p>
                 )}

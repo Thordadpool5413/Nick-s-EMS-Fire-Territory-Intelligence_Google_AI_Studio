@@ -451,8 +451,8 @@ export const GeminiChatbotDrawer: React.FC<GeminiChatbotDrawerProps> = ({
       style={containerStyle}
       className={
         windowMode === 'floating'
-          ? 'fixed z-50 bg-white border border-slate-200 rounded-lg shadow-[0_8px_28px_rgba(15,23,42,0.12)] flex flex-col text-[#0F172A] overflow-hidden'
-          : 'fixed inset-y-0 right-0 z-50 w-full sm:w-[500px] bg-white border-l border-slate-200 shadow-[0_8px_28px_rgba(15,23,42,0.10)] flex flex-col text-[#0F172A]'
+          ? 'fixed z-55 bg-white border border-slate-200 rounded-lg shadow-[0_8px_28px_rgba(15,23,42,0.12)] flex flex-col text-[#0F172A] overflow-hidden'
+          : 'fixed inset-y-0 right-0 z-55 w-full sm:w-[500px] bg-white border-l border-slate-200 shadow-[0_8px_28px_rgba(15,23,42,0.10)] flex flex-col text-[#0F172A]'
       }
     >
       {/* Draggable Clinical Assistant Header */}

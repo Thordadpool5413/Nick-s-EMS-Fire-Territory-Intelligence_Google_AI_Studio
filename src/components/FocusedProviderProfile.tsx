@@ -47,6 +47,7 @@ import {
 } from '../data/clinicalAndCompetitiveIntelligence';
 import { ResuscitationSurvivalFunnel } from './ResuscitationSurvivalFunnel';
 import { TcoCumulativeSavingsChart } from './TcoCumulativeSavingsChart';
+import { QualityScorecard } from './QualityScorecard';
 
 interface FocusedProviderProfileProps {
   agency: Agency;
@@ -65,7 +66,7 @@ type ProfileSection =
   | 'all'
   | 'deal_story'
   | 'battlecard'
-  | 'score_explainer'
+  | 'facts'
   | 'overview'
   | 'savings'
   | 'clinical'
@@ -73,11 +74,9 @@ type ProfileSection =
 
 import { nationalProviderDb } from '../services/nationalProviderDatabase';
 import { ExternalLink, RefreshCw, Globe } from 'lucide-react';
-import { PulseIqScoreTooltip } from './PulseIqScoreTooltip';
 import { ExecutiveBriefingDossier } from './ExecutiveBriefingDossier';
 import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
-import { PulseIqScoreExplainerHub } from './PulseIqScoreExplainerHub';
 
 /**
  * Guarantees complete agency fields for any selected EMS Provider or Fire Department
@@ -560,11 +559,11 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
   const primaryContact = agency.keyContacts[0];
 
-  const showSection = (sec: 'deal_story' | 'battlecard' | 'score_explainer' | 'leadership' | 'fleet' | 'software' | 'suppliers' | 'grants' | 'clinical' | 'billing' | 'notes') => {
+  const showSection = (sec: 'deal_story' | 'battlecard' | 'facts' | 'leadership' | 'fleet' | 'software' | 'suppliers' | 'grants' | 'clinical' | 'billing' | 'notes') => {
     if (activeSection === 'all') return true;
     if (activeSection === 'deal_story') return sec === 'deal_story';
     if (activeSection === 'battlecard') return sec === 'battlecard';
-    if (activeSection === 'score_explainer') return sec === 'score_explainer';
+    if (activeSection === 'facts') return sec === 'facts';
     if (activeSection === 'overview') return sec === 'leadership' || sec === 'fleet' || sec === 'software';
     if (activeSection === 'savings') return sec === 'suppliers' || sec === 'grants';
     if (activeSection === 'clinical') return sec === 'clinical' || sec === 'billing';
@@ -573,13 +572,13 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#F8F7F4] overflow-y-auto w-full h-full">
+    <div className="fixed inset-0 z-55 bg-[#F8F7F4] dark:bg-slate-950 overflow-y-auto w-full h-full">
       <main
         aria-label={`${agency.name} Full-Screen Provider Profile`}
-        className="w-full min-h-screen bg-[#F8F7F4] text-[#111827] flex flex-col font-sans pb-20"
+        className="w-full min-h-screen bg-[#F8F7F4] dark:bg-slate-950 text-[#111827] dark:text-slate-100 flex flex-col font-sans pb-20"
       >
         {/* Top Sticky Full-Width Header with Back Navigation & Quick Actions */}
-        <header className="sticky top-0 z-40 bg-white border-b border-[#E5E4DF] px-4 sm:px-8 py-3.5 shadow-2xs">
+        <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-8 py-3 shadow-2xs">
           <div className="max-w-[1440px] mx-auto w-full flex flex-wrap items-center justify-between gap-3">
             
             {/* Home / Back Navigation & Breadcrumbs */}
@@ -587,43 +586,30 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
               {onGoHome && (
                 <button
                   onClick={onGoHome}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
                   title="Return directly to Home Screen Cockpit"
                 >
-                  <Home className="w-4 h-4 text-white" />
-                  <span>Home Screen</span>
+                  <Home className="w-3.5 h-3.5 text-white" />
+                  <span>Home</span>
                 </button>
               )}
 
               <button
                 onClick={onBack}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-[#111827] bg-[#F1EFEA] hover:bg-[#E5E4DF] border border-[#E5E4DF] transition-colors whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                 title="Return to Territory Explorer (Escape)"
               >
-                <ArrowLeft className="w-4 h-4 text-[#111827]" />
-                <span>Back to Results</span>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
               </button>
 
-              <div className="hidden md:flex items-center gap-2 text-xs text-slate-600 font-medium">
-                {onGoHome && (
-                  <>
-                    <button
-                      onClick={onGoHome}
-                      className="text-[#1E3A8A] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
-                      title="Go to Home Cockpit"
-                    >
-                      <Home className="w-3.5 h-3.5" />
-                      <span>Home</span>
-                    </button>
-                    <span aria-hidden="true" className="text-slate-400">›</span>
-                  </>
-                )}
+              <div className="hidden md:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {onNavigateGeography ? (
                   <>
                     <button
                       type="button"
                       onClick={() => onNavigateGeography(agency.stateCode, 'all', 'all')}
-                      className="text-[#1E3A8A] hover:underline cursor-pointer font-medium"
+                      className="text-[#1E3A8A] dark:text-blue-400 hover:underline cursor-pointer font-medium"
                       title={`Back to ${agency.state} Counties`}
                     >
                       {agency.state} ({agency.stateCode})
@@ -632,13 +618,13 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     <button
                       type="button"
                       onClick={() => onNavigateGeography(agency.stateCode, agency.county, 'all')}
-                      className="text-[#1E3A8A] hover:underline cursor-pointer font-medium"
+                      className="text-[#1E3A8A] dark:text-blue-400 hover:underline cursor-pointer font-medium"
                       title={`Back to ${agency.county} Providers`}
                     >
                       {agency.county}
                     </button>
                     <span aria-hidden="true" className="text-slate-400">›</span>
-                    <span className="font-bold text-[#111827]">{agency.city}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{agency.city}</span>
                   </>
                 ) : (
                   <>
@@ -646,7 +632,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     <span aria-hidden="true" className="text-slate-400">›</span>
                     <span>{agency.county}</span>
                     <span aria-hidden="true" className="text-slate-400">›</span>
-                    <span className="font-bold text-[#111827]">{agency.city}</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{agency.city}</span>
                   </>
                 )}
               </div>
@@ -657,19 +643,19 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
               <button
                 onClick={triggerLiveVerification}
                 disabled={isVerifyingLive}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                 title="Query Federal CMS NPPES NPI Registry & Google Maps for live verified address and authorized official"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingLive ? 'animate-spin' : ''}`} />
-                <span>{isVerifyingLive ? 'Verifying NPI & Maps...' : 'Verify Federal NPI & Maps'}</span>
+                <span>{isVerifyingLive ? 'Verifying NPI & Maps...' : 'Verify Federal NPI'}</span>
               </button>
 
               <button
                 onClick={() => onToggleRoute(agency.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   agency.inDayRoute
-                    ? 'bg-[#111827] text-white'
-                    : 'bg-white border border-[#E5E4DF] text-slate-700 hover:bg-[#F8F7F4]'
+                    ? 'bg-slate-900 dark:bg-blue-600 text-white'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
               >
                 <Navigation className="w-3.5 h-3.5" />
@@ -681,7 +667,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   agency.isBookmarked
                     ? 'bg-[#1E3A8A] text-white'
-                    : 'bg-white border border-[#E5E4DF] text-slate-700 hover:bg-[#F8F7F4]'
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                 }`}
               >
                 <Bookmark className="w-3.5 h-3.5" />
@@ -701,10 +687,10 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
               {onOpenDataLineage && (
                 <button
                   onClick={() => onOpenDataLineage(agency)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 border border-sky-200 text-sky-800 hover:bg-sky-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300 hover:bg-sky-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   title="Audit verified 7-pillar data lineage and federal citations"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                   <span>Audit Data Lineage</span>
                 </button>
               )}
@@ -712,10 +698,10 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDossierModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-[#B8B6AF] hover:border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50/50 transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-[#1E3A8A] text-[#1E3A8A] dark:text-blue-400 transition-all whitespace-nowrap shrink-0 cursor-pointer shadow-2xs"
                 title="Print or Download Executive Account Briefing Dossier (PDF)"
               >
-                <Printer className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                <Printer className="w-3.5 h-3.5" />
                 <span>Print / PDF Dossier</span>
               </button>
             </div>
@@ -723,110 +709,91 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
           </div>
         </header>
 
-        {/* Main Full-Screen Provider Dossier Container (Cohesive Responsive CSS Grid) */}
+        {/* Main Full-Screen Provider Dossier Container */}
         <div className="workspace-grid-shell px-3 sm:px-6 lg:px-8 py-5 sm:py-6 min-w-0">
           
-          {/* 1. TOP PROVIDER IDENTITY & ALL-IN-ONE EXECUTIVE CALLOUT SUMMARY */}
-          <section aria-label="Department Overview & Verified Headquarters" className="bg-white rounded-xl border border-[#E5E4DF] p-4 sm:p-6 lg:p-8 shadow-[0_1px_3px_rgba(17,24,39,0.03)] grid grid-cols-1 gap-6 min-w-0">
+          {/* 1. TOP PROVIDER IDENTITY & ARCHITECTURAL HAIRLINE LEDGER SUMMARY */}
+          <section aria-label="Department Overview & Verified Headquarters" className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 lg:p-8 shadow-2xs grid grid-cols-1 gap-6 min-w-0">
             
-            {/* Top Identity, Color-Coded Urgency Badges & Status Row */}
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] items-start gap-6 pb-6 border-b border-[#E5E4DF] min-w-0">
+            {/* Top Identity & Priority Score Row */}
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] items-start gap-6 pb-6 border-b border-slate-200 dark:border-slate-800 min-w-0">
               
               <div className="space-y-4 flex-1 min-w-0">
-                {/* Prominent High-Contrast Color-Coded Callout & Status Badges */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-extrabold uppercase tracking-wider text-white shadow-2xs ${
-                    isFire ? 'bg-[#B91C1C]' : 'bg-[#1E3A8A]'
-                  }`}>
-                    {isFire ? <Flame className="w-3.5 h-3.5 text-white" /> : <Siren className="w-3.5 h-3.5 text-white" />}
+                {/* Zero-Pill Unboxed Executive Metadata Strip */}
+                <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
+                  <span className="font-semibold text-slate-900 dark:text-slate-100 font-sans flex items-center gap-1.5">
+                    {isFire ? <Flame className="w-3.5 h-3.5 text-amber-500" /> : <Siren className="w-3.5 h-3.5 text-sky-500" />}
                     <span>{isFire ? 'Fire Department' : 'EMS Provider'}</span>
                   </span>
-
-                  {/* Urgent Replacement / Warranty Badge */}
-                  <span className={`px-3 py-1 rounded-lg text-xs font-extrabold border inline-flex items-center gap-1.5 ${
-                    agency.installedFleet.defibAgeYears >= 6 || agency.installedFleet.defibWarrantyStatus.toLowerCase().includes('out') || agency.installedFleet.defibWarrantyStatus.toLowerCase().includes('expir')
-                      ? 'bg-rose-50 text-rose-800 border-rose-300'
-                      : 'bg-amber-50 text-amber-900 border-amber-300'
-                  }`}>
-                    <span>Monitors {agency.installedFleet.defibAgeYears} Yrs Old · {agency.installedFleet.defibWarrantyStatus}</span>
-                  </span>
-
-                  {/* Dollar Savings + Claim Recovery Callout Badge */}
-                  <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1.5">
-                    <span>+${(tcoModel.totalSavingsIncludingTradeIn / 1000).toFixed(0)}K 5-Yr Savings · +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K/yr Claims</span>
-                  </span>
-
-                  {/* Contract Expiration Badge */}
-                  <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-amber-50 text-amber-900 border border-amber-300">
-                    Contract Exp: {agency.competitorContract.contractEndDate}
-                  </span>
-
-                  {/* FEMA Grant Badge */}
-                  <span className="px-3 py-1 rounded-lg text-xs font-extrabold bg-blue-50 text-[#1E3A8A] border border-blue-200">
-                    {agency.grantStatus.afgAwarded
-                      ? `FEMA AFG Awarded: $${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K`
-                      : 'FEMA AFG FY2026 Eligible'}
-                  </span>
-
+                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                  <span>FDID {agency.fdid}</span>
                   {agency.npiNumber && (
-                    <span className="px-3 py-1 rounded-lg text-xs font-bold font-mono bg-[#F8F7F4] text-[#111827] border border-[#E5E4DF]">
-                      NPI: {agency.npiNumber}
-                    </span>
+                    <>
+                      <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                      <span>NPI {agency.npiNumber}</span>
+                    </>
                   )}
+                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                  <span>{agency.installedFleet.defibAgeYears}y Fleet ({agency.installedFleet.defibWarrantyStatus})</span>
+                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
+                    +${(tcoModel.totalSavingsIncludingTradeIn / 1000).toFixed(0)}K 5-Yr TCO Savings
+                  </span>
+                  <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                  <span>Contract Exp {agency.competitorContract.contractEndDate}</span>
                 </div>
 
-                {/* Massive, Crisp Department Title */}
+                {/* Department Title */}
                 <div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#111827] tracking-tight leading-tight">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
                     {agency.name}
                   </h1>
-                  <p className="text-sm sm:text-base font-semibold text-[#374151] mt-1.5 flex flex-wrap items-center gap-2">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-1.5 flex flex-wrap items-center gap-2">
                     <span>{agency.state} ({agency.stateCode})</span>
-                    <span aria-hidden="true" className="text-[#D4D2CD]">·</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
                     <span>{agency.county}</span>
-                    <span aria-hidden="true" className="text-[#D4D2CD]">·</span>
-                    <span className="text-[#111827] font-bold">{agency.city}</span>
-                    <span aria-hidden="true" className="text-[#D4D2CD]">·</span>
-                    <span className="font-mono tabular-nums text-[#111827]">ZIP {agency.zipCode}</span>
-                    <span aria-hidden="true" className="text-[#D4D2CD]">·</span>
-                    <span className="text-emerald-700 font-bold">{agency.agencyType}</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="text-slate-900 dark:text-white font-semibold">{agency.city}</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300">ZIP {agency.zipCode}</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{agency.agencyType}</span>
                   </p>
                 </div>
 
-                {/* Single Consolidated Decision Maker, Street Address, Google Maps & Official Website Bar */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-[#F8F7F4] p-4 sm:p-5 rounded-xl border border-[#E5E4DF]">
+                {/* Flush 1px Hairline Ledger Grid: Decision Maker, Street Address & Official Website */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
                   {/* 1. Decision Maker / Command Contact */}
-                  <div>
-                    <div className="text-xs font-extrabold uppercase tracking-wider text-[#1E3A8A]">
+                  <div className="bg-slate-50/70 dark:bg-slate-900 p-4">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
                       Primary Decision Maker
                     </div>
                     <div className="mt-1">
-                      <div className="text-base sm:text-lg font-extrabold text-[#111827]">
+                      <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                         {primaryContact?.name || `${agency.name} Command`}
                       </div>
-                      <div className="text-sm text-[#374151] font-semibold mt-0.5">
+                      <div className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
                         {primaryContact?.title || (isFire ? 'Office of the Fire Chief' : 'Office of the EMS Director')}
                       </div>
                     </div>
                   </div>
 
                   {/* 2. Verified Street Address & Google Maps */}
-                  <div className="md:border-l md:border-[#E5E4DF] md:pl-5">
-                    <div className="text-xs font-extrabold uppercase tracking-wider text-[#1E3A8A]">
+                  <div className="bg-slate-50/70 dark:bg-slate-900 p-4">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
                       Verified Headquarters Address
                     </div>
                     <div className="mt-1 space-y-2">
-                      <div className="text-sm sm:text-base font-bold text-[#111827] flex items-start gap-1.5">
-                        <MapPin className="w-4 h-4 text-[#1E3A8A] shrink-0 mt-1" />
+                      <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white flex items-start gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400 shrink-0 mt-0.5" />
                         <span className="leading-snug">{agency.address}</span>
                       </div>
                       <a
                         href={agency.googleMapsUri}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E3A8A] text-white hover:bg-[#111827] text-xs font-bold transition-colors shadow-2xs"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 hover:underline"
                       >
-                        <MapPin className="w-3.5 h-3.5" />
                         <span>Open Station in Google Maps</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
@@ -834,19 +801,19 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                   </div>
 
                   {/* 3. Official Department Website */}
-                  <div className="md:border-l md:border-[#E5E4DF] md:pl-5">
-                    <div className="text-xs font-extrabold uppercase tracking-wider text-[#1E3A8A]">
+                  <div className="bg-slate-50/70 dark:bg-slate-900 p-4">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
                       Official Municipal Portal
                     </div>
                     <div className="mt-1 space-y-2">
-                      <div className="text-sm font-semibold text-[#374151]">
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
                         Verified official web directory &amp; leadership roster
                       </div>
                       <a
                         href={agency.officialWebsite}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#1E3A8A] text-[#1E3A8A] hover:bg-[#1E3A8A] hover:text-white text-xs font-bold transition-colors shadow-2xs"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 hover:underline"
                       >
                         <Globe className="w-3.5 h-3.5 shrink-0" />
                         <span>Open Official Website</span>
@@ -857,35 +824,52 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 </div>
               </div>
 
-              {/* Opportunity Priority Score, Upgrade Value & Stage Card */}
-              <div className="xl:pl-6 xl:border-l xl:border-[#E5E4DF] min-w-[280px] shrink-0 space-y-4 bg-[#F8F7F4] p-5 rounded-xl border border-[#E5E4DF]">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#374151] font-extrabold uppercase tracking-wider text-xs">Priority Tier</span>
-                  <span className="font-extrabold text-white text-xs px-2.5 py-1 bg-[#1E3A8A] rounded-md shadow-2xs">
-                    {agency.zollOpportunity.priorityTier}
+              {/* Opportunity Priority Score, Upgrade Value & Stage Panel */}
+              <div className="xl:pl-6 xl:border-l xl:border-slate-200 dark:xl:border-slate-800 min-w-[280px] shrink-0 space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-mono uppercase tracking-wider text-[11px] font-semibold">
+                    Priority Score · {agency.zollOpportunity.priorityTier}
+                  </span>
+                  <span className="font-mono font-bold text-lg text-slate-900 dark:text-white tabular-nums">
+                    {agency.zollOpportunity.pulseIqScore}<span className="text-xs text-slate-400">/100</span>
                   </span>
                 </div>
 
-                <div className="flex items-baseline justify-between pt-1">
-                  <PulseIqScoreTooltip agency={agency} size="large" showLabel={true} />
+                {/* Ultra-thin 2px progress bar */}
+                <div className="w-full h-[2px] bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full bg-[#1E3A8A] dark:bg-blue-400"
+                    style={{ width: `${agency.zollOpportunity.pulseIqScore}%` }}
+                  />
+                </div>
 
-                  <div className="text-right">
-                    <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-emerald-700">
+                <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden pt-0">
+                  <div className="bg-slate-50/70 dark:bg-slate-900 p-3">
+                    <div className="text-xl font-bold font-mono tabular-nums text-slate-900 dark:text-white">
+                      {agency.installedFleet.defibAgeYears} <span className="text-xs font-normal text-slate-500">yrs</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {agency.installedFleet.defibBrand.split(' ')[0]} Fleet Age
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50/70 dark:bg-slate-900 p-3 text-right">
+                    <div className="text-xl font-bold font-mono tabular-nums text-emerald-700 dark:text-emerald-400">
                       ${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K
                     </div>
-                    <div className="text-xs font-bold text-[#374151]">Est. Project Value</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Est. Project Value</div>
                   </div>
                 </div>
 
                 {/* Sales Stage Dropdown */}
-                <div className="pt-3 border-t border-[#E5E4DF]">
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-[#374151] mb-1.5">
+                <div className="pt-1">
+                  <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                     Current Pipeline Stage
                   </label>
                   <select
                     value={agency.zollOpportunity.salesStage}
                     onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
-                    className="w-full h-10 bg-white hover:bg-[#F8F7F4] border border-[#D4D2CD] rounded-lg px-3 text-sm font-bold text-[#111827] focus:outline-none focus:border-[#1E3A8A] cursor-pointer shadow-2xs"
+                    className="w-full h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
                   >
                     {stages.map(s => (
                       <option key={s} value={s}>{s}</option>
@@ -896,124 +880,124 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
             </div>
 
-            {/* 6 HIGH-CONTRAST EXECUTIVE CALLOUT CARDS (ALL KEY INDICATORS AT A GLANCE) */}
+            {/* 6-CELL ARCHITECTURAL HAIRLINE LEDGER GRID (REPLACES NESTED SUB-CARDS) */}
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <div className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-[#111827] flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-[#B91C1C]" />
-                  <span>What Needs To Be Seen Immediately · Executive Callout Summary</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <div className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>Executive Telemetry Ledger · 6-Pillar Account Snapshot</span>
                 </div>
-                <span className="text-xs font-semibold text-[#4B5563]">
-                  Color-coded by urgency: <strong className="text-rose-700">Red = Replacement Need</strong> · <strong className="text-emerald-700">Green = Dollar Savings &amp; Grants</strong> · <strong className="text-[#1E3A8A]">Navy = Clinical &amp; Stack</strong>
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                  Verified NEMSIS v3.5 · CMS Part B · FEMA AFG
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
                 
-                {/* Callout 1: Urgent Replacement Need & Installed Monitor Fleet */}
-                <div className="p-4 sm:p-5 rounded-xl bg-rose-50/70 border-2 border-rose-200 space-y-1.5">
+                {/* Cell 1: Urgent Replacement Need & Installed Monitor Fleet */}
+                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-rose-900">
-                      1. Urgent Replacement Need
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                      01 · Fleet Obsolescence
                     </span>
-                    <span className="px-2 py-0.5 rounded text-xs font-extrabold bg-rose-700 text-white">
-                      {agency.installedFleet.defibAgeYears} Yrs Old · {agency.installedFleet.defibWarrantyStatus}
+                    <span className="text-[11px] font-mono text-rose-700 dark:text-rose-400 tabular-nums">
+                      {agency.installedFleet.defibAgeYears}y Old · {agency.installedFleet.defibWarrantyStatus}
                     </span>
                   </div>
-                  <div className="text-lg sm:text-xl font-black text-[#111827] leading-snug pt-0.5">
+                  <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug pt-0.5 font-mono tabular-nums">
                     {agency.installedFleet.defibUnitsCount}× {agency.installedFleet.defibBrand}
                   </div>
-                  <div className="text-sm font-semibold text-rose-950">
-                    Serving <strong>{agency.totalAmbulances} Ambulances</strong>{agency.totalFireEngines > 0 ? ` & ${agency.totalFireEngines} Fire Engines` : ''} across {agency.stationsCount} stations
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Serving <strong className="text-slate-900 dark:text-white font-mono">{agency.totalAmbulances}</strong> Ambulances{agency.totalFireEngines > 0 ? ` · ${agency.totalFireEngines} Engines` : ''} ({agency.stationsCount} stations)
                   </div>
                 </div>
 
-                {/* Callout 2: Total Dollar Savings & Recoverable Medicare Revenue */}
-                <div className="p-4 sm:p-5 rounded-xl bg-emerald-50/80 border-2 border-emerald-200 space-y-1.5">
+                {/* Cell 2: Total Dollar Savings & Recoverable Medicare Revenue */}
+                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-900">
-                      2. Dollar Savings &amp; Claim Recovery
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      02 · TCO &amp; Claim Recovery
                     </span>
-                    <span className="px-2 py-0.5 rounded text-xs font-extrabold bg-emerald-700 text-white">
-                      {agency.cmsData.claimDenialRate}% Claims Denied
+                    <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 tabular-nums">
+                      {agency.cmsData.claimDenialRate}% Denials
                     </span>
                   </div>
-                  <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-emerald-800 pt-0.5">
+                  <div className="text-base sm:text-lg font-bold font-mono tabular-nums text-emerald-700 dark:text-emerald-400 pt-0.5">
                     +${(tcoModel.totalSavingsIncludingTradeIn / 1000).toFixed(0)}K 5-Yr TCO · +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K/yr
                   </div>
-                  <div className="text-sm font-semibold text-emerald-950">
-                    Includes <strong>${(tcoModel.totalTradeInCredit / 1000).toFixed(1)}K Trade-In Credit</strong> + Code {agency.cmsData.topDenialReasonCode} billing recovery
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Includes <strong className="text-slate-900 dark:text-white font-mono">${(tcoModel.totalTradeInCredit / 1000).toFixed(1)}K</strong> Trade-In + Code {agency.cmsData.topDenialReasonCode} recovery
                   </div>
                 </div>
 
-                {/* Callout 3: Recommended Solution & Pitch Angle */}
-                <div className="p-4 sm:p-5 rounded-xl bg-blue-50/70 border-2 border-blue-200 space-y-1.5">
+                {/* Cell 3: Recommended Solution & Pitch Angle */}
+                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#1E3A8A]">
-                      3. Target Upgrade &amp; Pitch Angle
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
+                      03 · Target Solution
                     </span>
-                    <span className="px-2 py-0.5 rounded text-xs font-extrabold bg-[#1E3A8A] text-white">
-                      Win Prob: {agency.zollOpportunity.probabilityPct}%
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 tabular-nums">
+                      Win Prob {agency.zollOpportunity.probabilityPct}%
                     </span>
                   </div>
-                  <div className="text-lg sm:text-xl font-black text-[#111827] leading-snug pt-0.5">
+                  <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug pt-0.5 truncate">
                     {agency.zollOpportunity.primaryTargetProduct}
                   </div>
-                  <div className="text-sm font-semibold text-[#1E3A8A]">
-                    Lead with <strong>Real BVM Help®</strong> &amp; NEMSIS v3.5 automated billing sync
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    Lead with <strong className="text-[#1E3A8A] dark:text-blue-400">Real BVM Help®</strong> &amp; NEMSIS v3.5 billing sync
                   </div>
                 </div>
 
-                {/* Callout 4: Clinical Survival Rate & 911 Call Volume */}
-                <div className="p-4 sm:p-5 rounded-xl bg-[#F8F7F4] border border-[#D4D2CD] space-y-1.5">
+                {/* Cell 4: Clinical Survival Rate & 911 Call Volume */}
+                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#374151]">
-                      4. Clinical Survival &amp; Call Volume
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      04 · Clinical Acuity
                     </span>
-                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-[#111827] text-white font-mono">
-                      {agency.utsteinSurvivalRate}% Utstein Survival
+                    <span className="text-[11px] font-mono text-sky-700 dark:text-sky-400 tabular-nums">
+                      {agency.utsteinSurvivalRate}% Utstein
                     </span>
                   </div>
-                  <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#111827] pt-0.5">
-                    {agency.annual911Transports.toLocaleString()} <span className="text-sm font-bold font-sans text-[#4B5563]">911 Transports/yr</span>
+                  <div className="text-base sm:text-lg font-bold font-mono tabular-nums text-slate-900 dark:text-white pt-0.5">
+                    {agency.annual911Transports.toLocaleString()} <span className="text-xs font-normal font-sans text-slate-500">911 Runs/yr</span>
                   </div>
-                  <div className="text-sm font-semibold text-[#374151]">
-                    <strong>{agency.annualCallVolume.toLocaleString()}</strong> total dispatches · <strong>{agency.annualCardiacArrestCalls}</strong> cardiac arrests/yr
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
+                    <strong className="text-slate-900 dark:text-white font-mono">{agency.annualCallVolume.toLocaleString()}</strong> dispatches · <strong className="text-slate-900 dark:text-white font-mono">{agency.annualCardiacArrestCalls}</strong> OHCA/yr
                   </div>
                 </div>
 
-                {/* Callout 5: Installed Software Stack (ePCR, CAD & Billing) */}
-                <div className="p-4 sm:p-5 rounded-xl bg-[#F8F7F4] border border-[#D4D2CD] space-y-1.5">
+                {/* Cell 5: Installed Software Stack (ePCR, CAD & Billing) */}
+                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-[#374151]">
-                      5. Installed Software Stack
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      05 · Software &amp; CAD Stack
                     </span>
-                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                      NEMSIS v3.5 Ready
+                    <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400">
+                      NEMSIS v3.5
                     </span>
                   </div>
-                  <div className="text-base sm:text-lg font-black text-[#111827] leading-snug pt-0.5 truncate" title={agency.installedFleet.epcrCadSoftware}>
+                  <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-snug pt-0.5 truncate" title={agency.installedFleet.epcrCadSoftware}>
                     ePCR: {agency.installedFleet.epcrCadSoftware}
                   </div>
-                  <div className="text-sm font-semibold text-[#374151] truncate">
-                    Billing: <strong>{agency.installedFleet.billingSoftware}</strong> · CAD: <strong>{agency.installedFleet.dispatchCadVendor || 'Enterprise CAD'}</strong>
+                  <div className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                    Billing: <strong className="text-slate-900 dark:text-white">{agency.installedFleet.billingSoftware}</strong> · CAD: <strong className="text-slate-900 dark:text-white">{agency.installedFleet.dispatchCadVendor || 'Enterprise CAD'}</strong>
                   </div>
                 </div>
 
-                {/* Callout 6: Federal Grant Eligibility & Contract Expiration Dates */}
-                <div className="p-4 sm:p-5 rounded-xl bg-amber-50/70 border-2 border-amber-200 space-y-1.5">
+                {/* Cell 6: Federal Grant Eligibility & Contract Expiration Dates */}
+                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-amber-950">
-                      6. Grants &amp; Contract Expiration
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                      06 · Grants &amp; Contract Horizon
                     </span>
-                    <span className="px-2 py-0.5 rounded text-xs font-extrabold bg-amber-800 text-white">
+                    <span className="text-[11px] font-mono text-amber-700 dark:text-amber-400">
                       {agency.competitorContract.status}
                     </span>
                   </div>
-                  <div className="text-lg sm:text-xl font-black text-[#111827] pt-0.5">
-                    Expires: <span className="font-mono text-rose-700">{agency.competitorContract.contractEndDate}</span>
+                  <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white pt-0.5">
+                    Expires <span className="font-mono text-rose-700 dark:text-rose-400 tabular-nums">{agency.competitorContract.contractEndDate}</span>
                   </div>
-                  <div className="text-sm font-semibold text-amber-950">
+                  <div className="text-xs text-slate-600 dark:text-slate-400">
                     {agency.grantStatus.afgAwarded
                       ? `Approved $${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K FEMA AFG Grant (FY${agency.grantStatus.afgFiscalYear})`
                       : 'Priority Candidate for FEMA AFG FY2026 Equipment Grant'}
@@ -1025,8 +1009,8 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
           </section>
 
-          {/* Provider Workspace Filter Bar (Defaults to All Sections so everything is visible, plus dedicated focused tabs) */}
-          <nav aria-label="Department profile tabs" className="bg-white border border-[#E5E4DF] rounded-xl p-2 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 shadow-[0_1px_2px_rgba(17,24,39,0.03)]">
+          {/* Provider Workspace Filter Bar */}
+          <nav aria-label="Department profile tabs" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-2 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 shadow-2xs">
             {[
               {
                 id: 'all',
@@ -1047,9 +1031,9 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 icon: Scale
               },
               {
-                id: 'score_explainer',
-                label: '★ PulseIQ Math',
-                subtitle: `${agency.zollOpportunity.pulseIqScore}/100 point attribution`,
+                id: 'facts',
+                label: '★ Agency Facts',
+                subtitle: `${agency.installedFleet.defibAgeYears}y fleet · ${agency.annual911Transports.toLocaleString()} calls`,
                 icon: Activity
               },
               {
@@ -1115,9 +1099,117 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
             <CompetitiveBattlecardView agency={agency} variant="full" />
           )}
 
-          {/* 3. PulseIQ Opportunity Scoring Algorithm & Factor Attribution Section */}
-          {showSection('score_explainer') && (
-            <PulseIqScoreExplainerHub agency={agency} variant="full" />
+          {/* 3. Pure Empirical Agency Facts & Operational Baseline Section */}
+          {showSection('facts') && (
+            <section className="bg-white rounded-xl border border-[#E5E4DF] p-6 shadow-[0_1px_3px_rgba(17,24,39,0.03)] space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E5E4DF] pb-4">
+                <div>
+                  <div className="text-xs font-mono font-bold uppercase tracking-wider text-[#1E3A8A] flex items-center gap-1.5">
+                    <Activity className="w-4 h-4 text-[#1E3A8A]" />
+                    <span>Empirical Agency Facts &amp; Operational Baseline</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-[#111827] mt-0.5">
+                    Verified Hardware, Operational Volume &amp; Contract Records
+                  </h3>
+                </div>
+                <div className="text-xs font-mono font-semibold px-3 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
+                  Zero Synthetic Weights · Raw Empirical Data
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Fact Block 1: Fleet & Hardware Reality */}
+                <div className="p-4 rounded-xl bg-[#F8F7F4] border border-[#E5E4DF] space-y-2.5">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-slate-600 font-mono">
+                    1. Installed Fleet &amp; Hardware
+                  </div>
+                  <div className="text-sm space-y-1.5">
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Monitor Brand</span>
+                      <strong className="text-slate-900">{agency.installedFleet.defibBrand}</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Deployed Fleet Age</span>
+                      <strong className="text-amber-700 font-mono">{agency.installedFleet.defibAgeYears} Years Old</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Total Defib Units</span>
+                      <strong className="font-mono text-slate-900">{agency.installedFleet.defibUnitsCount} Units</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Warranty Support</span>
+                      <strong className={agency.installedFleet.defibWarrantyStatus.includes('Expired') ? 'text-rose-700' : 'text-slate-900'}>
+                        {agency.installedFleet.defibWarrantyStatus}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-500">ePCR System</span>
+                      <strong className="text-slate-900 truncate max-w-[160px]">{agency.installedFleet.epcrCadSoftware}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fact Block 2: Emergency Response Volume */}
+                <div className="p-4 rounded-xl bg-[#F8F7F4] border border-[#E5E4DF] space-y-2.5">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-slate-600 font-mono">
+                    2. Emergency Volume &amp; Acuity
+                  </div>
+                  <div className="text-sm space-y-1.5">
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Annual 911 Calls</span>
+                      <strong className="font-mono text-slate-900">{(agency.annualCallVolume || agency.annual911Transports).toLocaleString()}</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Annual Cardiac Arrests</span>
+                      <strong className="font-mono text-rose-700">{agency.annualCardiacArrestCalls.toLocaleString()} Runs</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Utstein Survival Rate</span>
+                      <strong className="font-mono text-slate-900">{agency.utsteinSurvivalRate}%</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Active Ambulances</span>
+                      <strong className="font-mono text-slate-900">{agency.totalAmbulances} Units</strong>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-500">Fire Suppression Engines</span>
+                      <strong className="font-mono text-slate-900">{agency.totalFireEngines} Units</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fact Block 3: Contracts, CMS & Grants */}
+                <div className="p-4 rounded-xl bg-[#F8F7F4] border border-[#E5E4DF] space-y-2.5">
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-slate-600 font-mono">
+                    3. Contract &amp; Financial Realities
+                  </div>
+                  <div className="text-sm space-y-1.5">
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Contract End Date</span>
+                      <strong className="font-mono text-rose-700">{agency.competitorContract.contractEndDate}</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Contract Status</span>
+                      <strong className="text-slate-900">{agency.competitorContract.status}</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Medicare Claim Denials</span>
+                      <strong className="font-mono text-amber-700">{agency.cmsData.claimDenialRate}% Denied</strong>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-200/70">
+                      <span className="text-slate-500">Lost Claim Revenue</span>
+                      <strong className="font-mono text-emerald-700">+${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K/yr</strong>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-500">FEMA AFG Grants</span>
+                      <strong className="text-slate-900 truncate max-w-[160px]">
+                        {agency.grantStatus.afgAwarded ? `$${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K (FY${agency.grantStatus.afgFiscalYear})` : 'Eligible Candidate'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
 
           {/* Granular Apparatus Vehicle Fleet, Hospital Transport Logistics & Multi-Year FEMA Grant History */}
@@ -1272,6 +1364,9 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
           <div className="space-y-6">
             {/* Interactive Longitudinal Performance & Survival Funnel Visualizer */}
             <ResuscitationSurvivalFunnel agency={agency} />
+
+            {/* Interactive NEMSQA, AHA Mission: Lifeline & CARES Quality Uplift Simulator */}
+            <QualityScorecard agency={agency} onOpenRfpGenerator={onOpenRfpGenerator} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               
@@ -1988,87 +2083,87 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
         {/* SECTION: ACTIVE DEFIBRILLATOR & BIOMEDICAL FLEET + FRONTLINE APPARATUS & MAINTENANCE CONTRACTS */}
         {showSection('fleet') && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <Truck className="w-4 h-4 text-[#1E3A8A]" />
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Truck className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
                 <span>Active Defibrillator &amp; Biomedical Fleet</span>
               </h2>
 
-              <div className="space-y-3 text-xs">
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-                  <div className="text-slate-500 font-medium">Frontline Monitor / Defibrillators</div>
-                  <div className="text-sm font-bold text-[#0F172A]">{agency.installedFleet.defibBrand}</div>
-                  <div className="text-slate-600 font-mono tabular-nums">
-                    <strong className="text-[#0F172A]">{agency.installedFleet.defibUnitsCount} active units</strong> · <strong className="text-[#0F172A]">{agency.installedFleet.defibAgeYears} years</strong> in service · Warranty: <strong className="font-sans text-[#0F172A]">{agency.installedFleet.defibWarrantyStatus}</strong>
+              <div className="grid grid-cols-1 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
+                <div className="p-3.5 bg-white dark:bg-slate-900 space-y-1">
+                  <div className="text-slate-500 dark:text-slate-400 font-medium font-mono text-[11px] uppercase tracking-wider">Frontline Monitor / Defibrillators</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{agency.installedFleet.defibBrand}</div>
+                  <div className="text-slate-600 dark:text-slate-300 font-mono tabular-nums">
+                    <strong className="text-slate-900 dark:text-white">{agency.installedFleet.defibUnitsCount} active units</strong> · <strong className="text-slate-900 dark:text-white">{agency.installedFleet.defibAgeYears} years</strong> in service · Warranty: <strong className="font-sans text-slate-900 dark:text-white">{agency.installedFleet.defibWarrantyStatus}</strong>
                   </div>
-                  <div className="text-slate-500 text-[11px]">
-                    Current Supplier: <strong className="text-[#0F172A]">{suppliers.defibSupplier}</strong>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Current Supplier: <strong className="text-slate-900 dark:text-white">{suppliers.defibSupplier}</strong>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-                  <div className="text-slate-500 font-medium">Mechanical CPR Equipment</div>
-                  <div className="text-sm font-bold text-[#0F172A]">{agency.installedFleet.mechanicalCPR}</div>
-                  <div className="text-slate-600">
+                <div className="p-3.5 bg-white dark:bg-slate-900 space-y-1">
+                  <div className="text-slate-500 dark:text-slate-400 font-medium font-mono text-[11px] uppercase tracking-wider">Mechanical CPR Equipment</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{agency.installedFleet.mechanicalCPR}</div>
+                  <div className="text-slate-600 dark:text-slate-300">
                     {agency.installedFleet.cprUnitsCount > 0
                       ? `${agency.installedFleet.cprUnitsCount} automated compression units deployed across frontline units`
                       : 'Currently manual compressions only — high priority for mechanical CPR upgrade'}
                   </div>
-                  <div className="text-slate-500 text-[11px]">
-                    Current Supplier: <strong className="text-[#0F172A]">{suppliers.cprSupplier}</strong>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Current Supplier: <strong className="text-slate-900 dark:text-white">{suppliers.cprSupplier}</strong>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-                  <div className="text-slate-500 font-medium">Emergency Transport Ventilators</div>
-                  <div className="text-sm font-bold text-[#0F172A]">{agency.installedFleet.transportVentilator}</div>
-                  <div className="text-slate-600">
+                <div className="p-3.5 bg-white dark:bg-slate-900 space-y-1">
+                  <div className="text-slate-500 dark:text-slate-400 font-medium font-mono text-[11px] uppercase tracking-wider">Emergency Transport Ventilators</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{agency.installedFleet.transportVentilator}</div>
+                  <div className="text-slate-600 dark:text-slate-300">
                     {agency.installedFleet.ventUnitsCount > 0
                       ? `${agency.installedFleet.ventUnitsCount} transport ventilator units deployed`
                       : 'Bag-Valve-Mask only during emergency transports'}
                   </div>
-                  <div className="text-slate-500 text-[11px]">
-                    Current Supplier: <strong className="text-[#0F172A]">{suppliers.ventSupplier}</strong>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Current Supplier: <strong className="text-slate-900 dark:text-white">{suppliers.ventSupplier}</strong>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#1E3A8A]" />
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
                 <span>Frontline Apparatus &amp; Maintenance Contracts</span>
               </h2>
 
-              <dl className="grid grid-cols-2 gap-3.5 text-xs">
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Ambulance Fleet</dt>
-                  <dd className="text-base font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.totalAmbulances} Frontline Units</dd>
+              <dl className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Ambulance Fleet</dt>
+                  <dd className="text-base font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.totalAmbulances} Frontline Units</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Fire Apparatus</dt>
-                  <dd className="text-base font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.totalFireEngines} Engines / Ladders</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Fire Apparatus</dt>
+                  <dd className="text-base font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.totalFireEngines} Engines / Ladders</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Current Maintenance Vendor</dt>
-                  <dd className="font-bold text-[#0F172A] mt-0.5">{agency.competitorContract.vendor}</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Current Maintenance Vendor</dt>
+                  <dd className="font-bold text-slate-900 dark:text-white mt-0.5">{agency.competitorContract.vendor}</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Contract Expiration Date</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.competitorContract.contractEndDate}</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Contract Expiration Date</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.competitorContract.contractEndDate}</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Annual Service Cost / Unit</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">${agency.competitorContract.annualServiceCostPerUnit.toLocaleString()} / yr</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Annual Service Cost / Unit</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">${agency.competitorContract.annualServiceCostPerUnit.toLocaleString()} / yr</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Renewal Notice Window</dt>
-                  <dd className="font-bold font-mono tabular-nums text-amber-700 mt-0.5">{agency.competitorContract.renewalWindowDays} Days ({agency.competitorContract.status})</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Renewal Notice Window</dt>
+                  <dd className="font-bold font-mono tabular-nums text-amber-600 dark:text-amber-400 mt-0.5">{agency.competitorContract.renewalWindowDays} Days ({agency.competitorContract.status})</dd>
                 </div>
               </dl>
 
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 space-y-1">
-                <div className="font-bold text-[#0F172A]">Maintenance Contract &amp; Fleet Action Plan</div>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                <div className="font-bold text-slate-900 dark:text-white">Maintenance Contract &amp; Fleet Action Plan</div>
                 <p className="leading-relaxed">{agency.competitorContract.actionRecommendation}</p>
               </div>
             </section>
@@ -2077,36 +2172,36 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
         {/* SECTION: CAD, ePCR & BILLING SOFTWARE */}
         {showSection('software') && (
-          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-            <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-[#1E3A8A]" />
+          <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
               <span>Emergency Communications, 911 CAD Dispatch &amp; Clinical ePCR Systems</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                <div className="font-semibold text-[#1E3A8A] text-[11px]">911 Dispatch CAD System</div>
-                <div className="text-base font-bold text-[#0F172A]">{agency.installedFleet.dispatchCadVendor}</div>
-                <div className="text-slate-700">Current Supplier: <strong className="text-[#0F172A]">{suppliers.cadSupplier}</strong></div>
-                <p className="text-slate-600">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
+              <div className="p-4 bg-white dark:bg-slate-900 space-y-2">
+                <div className="font-semibold text-[#1E3A8A] dark:text-blue-400 font-mono text-[10px] uppercase tracking-wider">911 Dispatch CAD System</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{agency.installedFleet.dispatchCadVendor}</div>
+                <div className="text-slate-600 dark:text-slate-400">Current Supplier: <strong className="text-slate-900 dark:text-white">{suppliers.cadSupplier}</strong></div>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
                   Primary PSAP computer-aided dispatch system routing emergency calls to {agency.stationsCount} station{agency.stationsCount > 1 ? 's' : ''} and frontline apparatus.
                 </p>
               </div>
 
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                <div className="font-semibold text-[#1E3A8A] text-[11px]">Electronic Patient Care Report (ePCR)</div>
-                <div className="text-base font-bold text-[#0F172A]">{agency.installedFleet.epcrCadSoftware}</div>
-                <div className="text-slate-700">Current Supplier: <strong className="text-[#0F172A]">{suppliers.epcrSupplier}</strong></div>
-                <p className="text-slate-600">
+              <div className="p-4 bg-white dark:bg-slate-900 space-y-2">
+                <div className="font-semibold text-[#1E3A8A] dark:text-blue-400 font-mono text-[10px] uppercase tracking-wider">Electronic Patient Care Report (ePCR)</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{agency.installedFleet.epcrCadSoftware}</div>
+                <div className="text-slate-600 dark:text-slate-400">Current Supplier: <strong className="text-slate-900 dark:text-white">{suppliers.epcrSupplier}</strong></div>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
                   Field clinical chart documentation platform managing <span className="font-mono tabular-nums">{agency.annual911Transports.toLocaleString()}</span> annual transports under NEMSIS v3.5 standards.
                 </p>
               </div>
 
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                <div className="font-semibold text-[#1E3A8A] text-[11px]">EMS Billing &amp; Revenue Software</div>
-                <div className="text-base font-bold text-[#0F172A]">{agency.installedFleet.billingSoftware}</div>
-                <div className="text-slate-700">Current Supplier: <strong className="text-[#0F172A]">{suppliers.billingSupplier}</strong></div>
-                <p className="text-slate-600">
+              <div className="p-4 bg-white dark:bg-slate-900 space-y-2">
+                <div className="font-semibold text-[#1E3A8A] dark:text-blue-400 font-mono text-[10px] uppercase tracking-wider">EMS Billing &amp; Revenue Software</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">{agency.installedFleet.billingSoftware}</div>
+                <div className="text-slate-600 dark:text-slate-400">Current Supplier: <strong className="text-slate-900 dark:text-white">{suppliers.billingSupplier}</strong></div>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
                   Revenue cycle management system processing Medicare ({agency.cmsData.medicarePayerPct}%), Medicaid ({agency.cmsData.medicaidPayerPct}%), Commercial ({agency.cmsData.commercialPayerMixPct}%), and Self-Pay ({agency.cmsData.selfPayPayerPct}%) claims.
                 </p>
               </div>
@@ -2119,43 +2214,43 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Federal FEMA Grant Readiness & Funding Status */}
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#1E3A8A]" />
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
                 <span>Federal FEMA Grant Readiness &amp; Funding Status</span>
               </h2>
 
               <div className="space-y-3 text-xs">
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                  <div className="font-semibold text-[#1E3A8A] text-[11px]">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg space-y-2">
+                  <div className="font-semibold text-[#1E3A8A] dark:text-blue-400 text-[11px] font-mono uppercase tracking-wider">
                     FEMA Assistance to Firefighters Grant (AFG)
                   </div>
-                  <div className="text-base font-bold text-[#0F172A]">
+                  <div className="text-base font-bold text-slate-900 dark:text-white">
                     {agency.grantStatus.afgAwarded ? (
-                      <span className="text-emerald-700 flex items-center gap-1.5 font-mono tabular-nums">
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-mono tabular-nums">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Awarded: ${(agency.grantStatus.afgAwardAmount || 0).toLocaleString()} (FY {agency.grantStatus.afgFiscalYear})</span>
                       </span>
                     ) : (
-                      <span className="text-[#0F172A]">Eligible Regional Applicant — Pre-Application Spec Ready (FY {agency.grantStatus.afgFiscalYear || 2025})</span>
+                      <span className="text-slate-900 dark:text-white">Eligible Regional Applicant — Pre-Application Spec Ready (FY {agency.grantStatus.afgFiscalYear || 2025})</span>
                     )}
                   </div>
-                  <p className="text-slate-600">
-                    Approved Funding Scope: <strong className="text-[#0F172A]">{agency.grantStatus.afgPurpose || 'Operations & Safety — Cardiac Monitor & Mechanical CPR Upgrade'}</strong>
+                  <p className="text-slate-600 dark:text-slate-300">
+                    Approved Funding Scope: <strong className="text-slate-900 dark:text-white">{agency.grantStatus.afgPurpose || 'Operations & Safety — Cardiac Monitor & Mechanical CPR Upgrade'}</strong>
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-                    <div className="font-semibold text-slate-500 text-[11px]">FEMA SAFER Staffing Grant</div>
-                    <div className="font-bold text-[#0F172A]">
+                <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                  <div className="p-3.5 bg-white dark:bg-slate-900 space-y-1">
+                    <div className="font-semibold text-slate-500 dark:text-slate-400 text-[10px] font-mono uppercase tracking-wider">FEMA SAFER Staffing Grant</div>
+                    <div className="font-bold text-slate-900 dark:text-white">
                       {agency.grantStatus.saferGrantActive ? 'Active SAFER Grant Operational' : 'Standard Municipal Staffing Budget'}
                     </div>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-                    <div className="font-semibold text-slate-500 text-[11px]">Municipal Budget Cycle</div>
-                    <div className="font-bold text-[#0F172A]">
+                  <div className="p-3.5 bg-white dark:bg-slate-900 space-y-1">
+                    <div className="font-semibold text-slate-500 dark:text-slate-400 text-[10px] font-mono uppercase tracking-wider">Municipal Budget Cycle</div>
+                    <div className="font-bold text-slate-900 dark:text-white">
                       {agency.gisData.fiscalBudgetCycleQuarter} · FY Ends {agency.grantStatus.fiscalYearEndMonth}
                     </div>
                   </div>
@@ -2164,48 +2259,48 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
             </section>
 
             {/* Jurisdiction & Service Demographics */}
-            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#1E3A8A]" />
+            <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
                 <span>Jurisdiction &amp; Service Demographics</span>
               </h2>
 
-              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Service Model</dt>
-                  <dd className="font-bold text-[#0F172A] mt-0.5">{agency.agencyType}</dd>
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Service Model</dt>
+                  <dd className="font-bold text-slate-900 dark:text-white mt-0.5">{agency.agencyType}</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Government Level</dt>
-                  <dd className="font-bold text-[#0F172A] mt-0.5">{agency.jurisdictionLevel} Jurisdiction</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Government Level</dt>
+                  <dd className="font-bold text-slate-900 dark:text-white mt-0.5">{agency.jurisdictionLevel} Jurisdiction</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Population Served</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.populationServed.toLocaleString()}</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Population Served</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.populationServed.toLocaleString()}</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Stations &amp; Facilities</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.stationsCount} Active Stations</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Stations &amp; Facilities</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.stationsCount} Active Stations</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Certified Personnel</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.totalEMSStaff} Responders</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Certified Personnel</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.totalEMSStaff} Responders</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Coverage Territory</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.responseAreaSqMiles} Sq. Miles</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Coverage Territory</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.responseAreaSqMiles} Sq. Miles</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Senior Population (65+)</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.gisData.seniorPopulationPct}% of Residents</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Senior Population (65+)</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.gisData.seniorPopulationPct}% of Residents</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Median Household Income</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">${agency.gisData.medianHouseholdIncome.toLocaleString()}</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Median Household Income</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">${agency.gisData.medianHouseholdIncome.toLocaleString()}</dd>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <dt className="text-slate-500">Community Poverty Rate</dt>
-                  <dd className="font-bold font-mono tabular-nums text-[#0F172A] mt-0.5">{agency.gisData.povertyRate}%</dd>
+                <div className="p-3 bg-white dark:bg-slate-900">
+                  <dt className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-mono">Community Poverty Rate</dt>
+                  <dd className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">{agency.gisData.povertyRate}%</dd>
                 </div>
               </dl>
             </section>
@@ -2409,27 +2504,105 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
       </div>
       </main>
 
-      {/* Floating Quick Navigation Pill (Visible on deep scrolls, hidden on print) */}
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 print:hidden shadow-xl">
-        {onGoHome && (
-          <button
-            onClick={onGoHome}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] shadow-md transition-all cursor-pointer hover:scale-105 border border-blue-400/30"
-            title="Return directly to Home Screen Cockpit"
-          >
-            <Home className="w-4 h-4" />
-            <span>Home Screen</span>
-          </button>
-        )}
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-xs font-semibold text-[#111827] bg-white border border-[#E5E4DF] hover:bg-[#F8F7F4] shadow-md transition-all cursor-pointer"
-          title="Return to Territory Results"
-        >
-          <ArrowLeft className="w-4 h-4 text-[#111827]" />
-          <span>Back</span>
-        </button>
-      </div>
+      {/* Sticky Account Quick-Action Bar (Docked bottom tray for field tablets & deep scrolls, hidden on print) */}
+      <aside 
+        aria-label="Account Action Dock"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] print:hidden transition-all"
+      >
+        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3">
+          
+          {/* Left: Department Identity & Quick Pipeline Stage Switcher */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="hidden sm:block min-w-0">
+              <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[240px] lg:max-w-[360px]">
+                {agency.name}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                {agency.city}, {agency.stateCode} · <span className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K Value</span>
+              </div>
+            </div>
+
+            {/* Quick Stage Transition Dropdown with minimum 44px touch target */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 hidden xl:inline">Stage:</span>
+              <select
+                value={agency.zollOpportunity.salesStage}
+                onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
+                className="h-11 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer shadow-2xs"
+                title="Update CRM Sales Pipeline Stage"
+              >
+                {stages.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Right: Generous 44px Field Touch Targets */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 1. Add to Day Driving Route */}
+            <button
+              onClick={() => onToggleRoute(agency.id)}
+              className={`h-11 px-3.5 sm:px-4 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
+                agency.inDayRoute
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+              title="Add station coordinates to today's multi-stop driving itinerary"
+            >
+              <Navigation className="w-4 h-4" />
+              <span>{agency.inDayRoute ? "In Today's Route" : 'Add to Route'}</span>
+            </button>
+
+            {/* 2. Pre-Emptive Technical RFP Spec Generator */}
+            {onOpenRfpGenerator && (
+              <button
+                onClick={() => onOpenRfpGenerator(agency)}
+                className="h-11 px-3.5 sm:px-4 rounded-lg text-xs font-bold bg-[#1E3A8A] hover:bg-[#1E40AF] text-white flex items-center gap-2 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+                title="Generate clinical technical specifications to lock out competitor bids"
+              >
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Generate RFP Spec</span>
+                <span className="inline sm:hidden">RFP Spec</span>
+              </button>
+            )}
+
+            {/* 3. Executive Printable Dossier */}
+            <button
+              type="button"
+              onClick={() => setShowDossierModal(true)}
+              className="h-11 px-3 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#1E3A8A] dark:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+              title="Print or export complete account briefing dossier"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden md:inline">Print Dossier</span>
+            </button>
+
+            {/* 4. Home Cockpit (if provided) */}
+            {onGoHome && (
+              <button
+                onClick={onGoHome}
+                className="h-11 px-3 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                title="Return to Home Screen Cockpit"
+              >
+                <Home className="w-4 h-4" />
+                <span className="hidden lg:inline">Home</span>
+              </button>
+            )}
+
+            {/* 5. Back Navigation */}
+            <button
+              onClick={onBack}
+              className="h-11 px-3.5 sm:px-4 rounded-lg text-xs font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+              title="Return to Territory Results (Escape)"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
+            </button>
+          </div>
+
+        </div>
+      </aside>
 
       {/* One-Click Printable Executive Account Briefing Dossier Modal */}
       <ExecutiveBriefingDossier

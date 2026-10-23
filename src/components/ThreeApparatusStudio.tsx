@@ -19,7 +19,8 @@ import {
   Flame, 
   Activity, 
   Sliders,
-  Check
+  Check,
+  Crosshair
 } from 'lucide-react';
 import { Agency } from '../types';
 
@@ -31,10 +32,139 @@ export interface ThreeApparatusStudioProps {
   activeAccount?: Agency | null;
 }
 
+export interface ApparatusHotspot {
+  id: string;
+  label: string;
+  subsystem: string;
+  spherical: { radius: number; theta: number; phi: number };
+  lookAt: [number, number, number];
+  zollAdvantage: string;
+  competitorGap: string;
+}
+
+const APPARATUS_HOTSPOTS: Record<ApparatusType, ApparatusHotspot[]> = {
+  defib: [
+    {
+      id: 'cpr_display',
+      label: 'Real CPR Help & BVM HUD',
+      subsystem: 'High-Contrast Sunlight LCD • Dual Depth/Rate Bar',
+      spherical: { radius: 4.8, theta: 0.12, phi: 1.25 },
+      lookAt: [0, 1.35, 0.45],
+      zollAdvantage: 'Real-time numeric depth (2.0–2.4 in), release velocity, and Perfusion Performance Indicator (PPI) on screen.',
+      competitorGap: 'Stryker LIFEPAK 15 requires external TrueCPR puck; lacks integrated Real BVM Help tidal volume/rate telemetry.'
+    },
+    {
+      id: 'onestep_bay',
+      label: 'OneStep Pacing & Defib Bay',
+      subsystem: 'Right High-Voltage Therapy Connector & Printer',
+      spherical: { radius: 5.0, theta: 0.85, phi: 1.22 },
+      lookAt: [0.95, 1.25, 0.2],
+      zollAdvantage: 'Single OneStep cable integrates ECG monitoring, rectilinear biphasic 200J defib, and 40mA pacing without separate 3-lead cable.',
+      competitorGap: 'Legacy 360J escalating monophasic/biphasic designs require higher peak current and separate pacing/ECG lead sets.'
+    },
+    {
+      id: 'masimo_ports',
+      label: 'Masimo Rainbow SET & EtCO2',
+      subsystem: 'Left Patient Telemetry Manifold (SpO2 / SpCO / NIBP)',
+      spherical: { radius: 5.0, theta: -0.95, phi: 1.25 },
+      lookAt: [-0.95, 1.15, 0.15],
+      zollAdvantage: 'Simultaneous 3-waveform display + Sidestream/Mainstream EtCO2 + Masimo SpCO carbon monoxide screening for fireground rehab.',
+      competitorGap: 'Rival units weigh 18.9+ lbs (vs ZOLL 11.7 lbs), increasing medic musculoskeletal fatigue on multi-story carry-downs.'
+    },
+    {
+      id: 'surepower_battery',
+      label: 'SurePower II Li-Ion Bay',
+      subsystem: 'Rear Smart Battery Well & Rapid-Charge Interface',
+      spherical: { radius: 5.4, theta: 2.75, phi: 1.2 },
+      lookAt: [0, 1.2, -0.55],
+      zollAdvantage: '6-hour continuous runtime per SurePower II pack with calibrated runtime-in-minutes LED telemetry (eliminates blind battery swaps).',
+      competitorGap: 'Unsealed SLA/legacy packs suffer memory degradation and require 2x more frequent battery replacement cycles over 7 years.'
+    }
+  ],
+  ambulance: [
+    {
+      id: 'als_module',
+      label: 'ALS Patient Module & Mount',
+      subsystem: 'SAE J3043 Crash-Rated X Series & AutoPulse Action Wall',
+      spherical: { radius: 7.2, theta: -0.65, phi: 1.18 },
+      lookAt: [-0.5, 1.65, 0],
+      zollAdvantage: '26G SAE J3043 certified swivel mount keeps X Series & Z Vent within 18-inch ergonomic reach of airway seat.',
+      competitorGap: 'Heavy 19 lb legacy monitors require reinforced dual-latch brackets and obstruct action-wall oxygen flowmeters.'
+    },
+    {
+      id: 'cab_telemetry',
+      label: 'Cab CAD & STEMI Telemetry',
+      subsystem: '5G/LTE RescueNet CaseReview & Hospital Pre-Alert Router',
+      spherical: { radius: 6.5, theta: 0.72, phi: 1.22 },
+      lookAt: [2.1, 1.35, 0.3],
+      zollAdvantage: 'Automated 12-lead STEMI transmission to receiving cath lab + zero-touch NEMSIS 3.5 ePCR waveform upload.',
+      competitorGap: 'Manual modem pairing adds 3.5+ minutes to door-to-balloon activation during rural/suburban STEMI transports.'
+    },
+    {
+      id: 'extrication_bay',
+      label: 'Exterior O2 & Z Vent Bay',
+      subsystem: 'Weather-Sealed Exterior Medical & Cylinder Compartment',
+      spherical: { radius: 6.8, theta: 0.55, phi: 1.32 },
+      lookAt: [-1.2, 1.2, 1.15],
+      zollAdvantage: 'Z Vent internal compressor runs 10+ hours without depleting onboard M-tank oxygen during long interfacility transfers.',
+      competitorGap: 'Pneumatic-only transport vents consume 100% driving gas from portable D-cylinders, risking mid-transport O2 depletion.'
+    },
+    {
+      id: 'lightbar_array',
+      label: 'NFPA 1917 Emergency Array',
+      subsystem: 'Perimeter Whelen LED Warning & Scene Flood Optics',
+      spherical: { radius: 7.5, theta: 0.35, phi: 0.85 },
+      lookAt: [0.2, 2.55, 0],
+      zollAdvantage: 'High-visibility scene lighting paired with ZOLL RescueNet Road Safety reduces intersection collision risk by 42%.',
+      competitorGap: 'Standard fleet telematics lack real-time G-force patient compartment smoothness scoring for medic safety.'
+    }
+  ],
+  engine: [
+    {
+      id: 'pump_panel',
+      label: 'Mid-Ship 1500 GPM Pump Panel',
+      subsystem: 'NFPA 1901 Master Pressure Governor & Crosslay Manifold',
+      spherical: { radius: 6.8, theta: 0.25, phi: 1.28 },
+      lookAt: [0.4, 1.35, 1.15],
+      zollAdvantage: 'Engine company first-response ALS integration: Masimo Rainbow SET SpCO screens firefighters for CO toxicity at rehab.',
+      competitorGap: 'Standard pulse oximeters read carboxyhemoglobin as normal SpO2, masking lethal carbon monoxide exposure.'
+    },
+    {
+      id: 'als_compartment',
+      label: 'ALS Medical & AutoPulse Bay',
+      subsystem: 'Roll-Up Rescue Compartment #2 (Monitor + Mechanical CPR)',
+      spherical: { radius: 6.8, theta: -0.35, phi: 1.28 },
+      lookAt: [-1.3, 1.4, 1.15],
+      zollAdvantage: 'Slim X Series (11.7 lbs) + AutoPulse low-profile board fit standard 18-inch deep pumper compartments without custom shelving.',
+      competitorGap: 'Bulky piston CPR devices + 19 lb monitors require full compartment reconfiguration on Class A pumpers.'
+    },
+    {
+      id: 'crew_cab',
+      label: 'Heavy Rescue Crew Cab',
+      subsystem: '6-Person SCBA Command Cab & In-Transit Charging Mount',
+      spherical: { radius: 7.0, theta: 0.78, phi: 1.18 },
+      lookAt: [2.2, 1.6, 0.4],
+      zollAdvantage: 'Direct 12V DC apparatus shoreline trickle-charges X Series & AutoPulse batteries continuously between 911 runs.',
+      competitorGap: 'Desktop-only battery bays force crews to rotate depleted batteries back at the firehouse.'
+    },
+    {
+      id: 'rear_hosebed',
+      label: 'Booster Tank & Ladders',
+      subsystem: '750-Gallon Poly Tank & 24-Ft Extension Ladder Rack',
+      spherical: { radius: 7.8, theta: -2.2, phi: 1.1 },
+      lookAt: [-2.2, 1.8, -0.5],
+      zollAdvantage: 'IP55 dust/water ingress protection withstands high-pressure hose spray and extreme fireground particulates.',
+      competitorGap: 'IP44-rated rival monitors are vulnerable to water spray ingress during inclement weather fireground operations.'
+    }
+  ]
+};
+
 // Module-scope scratch objects to ensure 0 GC allocations inside the render loop
 const _vec3 = new THREE.Vector3();
 const _targetVec = new THREE.Vector3();
 const _camTarget = new THREE.Vector3();
+const _lookTarget = new THREE.Vector3(0, 1.2, 0);
+const _currentLook = new THREE.Vector3(0, 1.2, 0);
 
 /**
  * Creates a procedural diamond plate bump texture for fire apparatus and ambulance steps
@@ -193,6 +323,9 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
   const [explodedFactor, setExplodedFactor] = useState<number>(0);
   const [isRotating, setIsRotating] = useState<boolean>(true);
   const [isControlsCollapsed, setIsControlsCollapsed] = useState<boolean>(false);
+  const [activeHotspotId, setActiveHotspotId] = useState<string | null>(null);
+
+  const activeHotspot = APPARATUS_HOTSPOTS[apparatusType].find(h => h.id === activeHotspotId) || null;
 
   // Auto-switch apparatus when activeAccount changes
   useEffect(() => {
@@ -202,6 +335,7 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
       } else {
         setApparatusType('ambulance');
       }
+      setActiveHotspotId(null);
     }
   }, [activeAccount?.id, activeAccount?.agencyType, activeAccount?.providerCategory]);
 
@@ -212,6 +346,7 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
     cameraPreset,
     explodedFactor,
     isRotating,
+    activeHotspot: null as ApparatusHotspot | null,
   });
 
   useEffect(() => {
@@ -221,8 +356,9 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
       cameraPreset,
       explodedFactor,
       isRotating,
+      activeHotspot,
     };
-  }, [apparatusType, preset, cameraPreset, explodedFactor, isRotating]);
+  }, [apparatusType, preset, cameraPreset, explodedFactor, isRotating, activeHotspot]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -741,9 +877,22 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
         switchModel(currentModelType);
       }
 
-      // Auto-rotation if enabled and not dragging
-      if (currentState.isRotating && !isDragging) {
-        spherical.theta += dt * 0.35;
+      // If an interactive hotspot is selected, smoothly damp spherical coordinates and lookAt target toward the subsystem
+      if (currentState.activeHotspot && !isDragging) {
+        spherical.radius = THREE.MathUtils.damp(spherical.radius, currentState.activeHotspot.spherical.radius, 4.5, dt);
+        spherical.theta = THREE.MathUtils.damp(spherical.theta, currentState.activeHotspot.spherical.theta, 4.5, dt);
+        spherical.phi = THREE.MathUtils.damp(spherical.phi, currentState.activeHotspot.spherical.phi, 4.5, dt);
+        _lookTarget.set(
+          currentState.activeHotspot.lookAt[0],
+          currentState.activeHotspot.lookAt[1],
+          currentState.activeHotspot.lookAt[2]
+        );
+      } else {
+        _lookTarget.set(0, 1.2, 0);
+        // Auto-rotation if enabled and not dragging
+        if (currentState.isRotating && !isDragging) {
+          spherical.theta += dt * 0.35;
+        }
       }
 
       // Smooth Camera Damping
@@ -754,7 +903,11 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
       camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX, 5, dt);
       camera.position.y = THREE.MathUtils.damp(camera.position.y, Math.max(0.8, targetY), 5, dt);
       camera.position.z = THREE.MathUtils.damp(camera.position.z, targetZ, 5, dt);
-      camera.lookAt(0, 1.2, 0);
+
+      _currentLook.x = THREE.MathUtils.damp(_currentLook.x, _lookTarget.x, 5, dt);
+      _currentLook.y = THREE.MathUtils.damp(_currentLook.y, _lookTarget.y, 5, dt);
+      _currentLook.z = THREE.MathUtils.damp(_currentLook.z, _lookTarget.z, 5, dt);
+      camera.lookAt(_currentLook);
 
       // Smooth Exploded View Layer Separation
       const targetExp = currentState.explodedFactor;
@@ -799,27 +952,31 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
   }, []);
 
   return (
-    <div className="relative w-full h-[620px] rounded-2xl overflow-hidden border border-slate-300 bg-slate-100 shadow-md select-none">
+    <div className="relative w-full h-[620px] rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-slate-950 shadow-md select-none">
       
       {/* 3D WebGL Canvas Container */}
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Top Left: 3D Studio Identity & Active Specification HUD */}
+      {/* Top Left: 3D Studio Identity & Active Specification HUD with Crosshair Corner Ticks */}
       <div className="absolute top-4 left-4 z-10 pointer-events-none">
-        <div className="flex items-center gap-2 bg-white/95 border border-slate-300 px-3.5 py-2 rounded-xl shadow-md">
-          <Box className="w-4 h-4 text-sky-600" />
+        <div className="relative flex items-center gap-2.5 backdrop-blur-md bg-slate-950/85 border border-white/10 px-4 py-2.5 rounded-xl shadow-lg text-white">
+          <span className="absolute top-0 left-0 w-2 h-2 border-t border-l border-sky-400/60 pointer-events-none" />
+          <span className="absolute top-0 right-0 w-2 h-2 border-t border-r border-sky-400/60 pointer-events-none" />
+          <span className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-sky-400/60 pointer-events-none" />
+          <span className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-sky-400/60 pointer-events-none" />
+          <Box className="w-4 h-4 text-sky-400 shrink-0" />
           <div>
-            <div className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-              <span>ZOLL Hardware & Apparatus 3D Studio</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-50 text-sky-700 border border-sky-200 font-mono">Three.js PBR</span>
+            <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 font-mono">
+              <span>ZOLL Hardware &amp; Apparatus 3D CAD Studio</span>
+              <span className="text-[10px] text-sky-400 font-mono">· Three.js PBR</span>
             </div>
-            <div className="text-[11px] text-slate-600 font-mono mt-0.5">
-              {apparatusType === 'ambulance' && 'Type III Modular ALS Transport Unit • Stryker/ZOLL Interface'}
-              {apparatusType === 'engine' && 'Class A Rescue Pumper • NFPA 1901 Spec • High-Pressure Foam'}
-              {apparatusType === 'defib' && 'ZOLL X Series Advanced • Real CPR Help • 12-Lead ECG • AutoPulse Ready'}
+            <div className="text-[11px] text-slate-300 font-mono mt-0.5">
+              {apparatusType === 'ambulance' && 'Type III Modular ALS Transport Unit · Stryker/ZOLL Interface'}
+              {apparatusType === 'engine' && 'Class A Rescue Pumper · NFPA 1901 Spec · High-Pressure Foam'}
+              {apparatusType === 'defib' && 'ZOLL X Series Advanced · Real CPR Help · 12-Lead ECG · AutoPulse Ready'}
             </div>
             {activeAccount && (
-              <div className="mt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-700">
+              <div className="mt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
                 <span>Account Spec: <strong>{activeAccount.name}</strong> ({activeAccount.fleet?.currentDefibVendor || activeAccount.installedFleet?.defibBrand || 'Competitor'} fleet)</span>
               </div>
             )}
@@ -827,37 +984,53 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
         </div>
       </div>
 
-      {/* Top Right: Exploded Factor Readout & Auto-Rotate Toggle HUD */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        <button
-          onClick={() => setIsRotating(!isRotating)}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
-            isRotating 
-              ? 'bg-sky-600 text-white border border-sky-600' 
-              : 'bg-white text-slate-700 hover:text-slate-900 border border-slate-300'
-          }`}
-          title="Toggle Turntable Rotation"
-        >
-          <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'animate-spin' : ''}`} />
-          <span>{isRotating ? 'Auto-Orbiting' : 'Paused'}</span>
-        </button>
+      {/* Top Right: CAD Telemetry Badge & Turntable HUD */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2 pointer-events-auto">
+        {/* CAD Telemetry HUD Readout */}
+        <div className="backdrop-blur-md bg-slate-950/85 border border-white/10 rounded-xl px-2.5 py-1.5 shadow-2xl flex items-center gap-2.5 text-[9.5px] font-mono text-slate-300">
+          <span className="text-sky-400 font-bold flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            CAD SPEC 1:1
+          </span>
+          <span className="text-white/20">|</span>
+          <span>PITCH: <span className="tabular-nums text-white font-semibold">-14°</span></span>
+          <span className="text-white/20">·</span>
+          <span>YAW: <span className="tabular-nums text-white font-semibold">122°</span></span>
+          <span className="text-white/20">·</span>
+          <span>FOV: <span className="tabular-nums text-white font-semibold">45mm</span></span>
+        </div>
 
-        <button
-          onClick={() => setExplodedFactor(explodedFactor > 0.05 ? 0 : 1)}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
-            explodedFactor > 0.05
-              ? 'bg-amber-600 text-white border border-amber-600'
-              : 'bg-white text-slate-700 hover:text-slate-900 border border-slate-300'
-          }`}
-          title="Exploded View Toggle"
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>{explodedFactor > 0.05 ? 'Collapse Parts' : 'Explode Spec'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsRotating(!isRotating)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs backdrop-blur-md cursor-pointer ${
+              isRotating 
+                ? 'bg-sky-600/90 text-white border border-sky-400/40 shadow-sky-950/50' 
+                : 'bg-slate-950/85 text-slate-200 hover:text-white border border-white/10'
+            }`}
+            title="Toggle Turntable Rotation"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'animate-spin' : ''}`} />
+            <span>{isRotating ? 'Auto-Orbiting' : 'Paused'}</span>
+          </button>
+
+          <button
+            onClick={() => setExplodedFactor(explodedFactor > 0.05 ? 0 : 1)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs backdrop-blur-md cursor-pointer ${
+              explodedFactor > 0.05
+                ? 'bg-amber-600/90 text-white border border-amber-400/40 shadow-amber-950/50'
+                : 'bg-slate-950/85 text-slate-200 hover:text-white border border-white/10'
+            }`}
+            title="Exploded View Toggle"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>{explodedFactor > 0.05 ? 'Collapse Parts' : 'Explode Spec'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Ergonomic Collapsible Bottom Control Dock HUD */}
-      <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl transition-all duration-300 ${
+      <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl transition-all duration-300 pointer-events-auto ${
         isControlsCollapsed ? 'translate-y-[calc(100%-36px)]' : 'translate-y-0'
       }`}>
         
@@ -865,27 +1038,31 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
         <div className="flex justify-center mb-1">
           <button
             onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
-            className="px-4 py-1 rounded-t-lg bg-white border-t border-x border-slate-300 text-[11px] font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-1 rounded-t-lg backdrop-blur-md bg-slate-950/85 border-t border-x border-white/10 text-[11px] font-semibold text-slate-200 hover:text-white flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
-            {isControlsCollapsed ? <ChevronUp className="w-3 h-3 text-sky-600" /> : <ChevronDown className="w-3 h-3 text-sky-600" />}
-            <span>{isControlsCollapsed ? 'Expand 3D Controls' : 'Cinema Mode (Hide)'}</span>
+            {isControlsCollapsed ? <ChevronUp className="w-3 h-3 text-sky-400" /> : <ChevronDown className="w-3 h-3 text-sky-400" />}
+            <span>{isControlsCollapsed ? 'Expand 3D CAD Controls' : 'Cinema Mode (Hide)'}</span>
           </button>
         </div>
 
         {/* Main Dock Container */}
-        <div className="bg-white/95 border border-slate-300 rounded-2xl p-3 shadow-lg space-y-2.5 text-slate-900">
+        <div className="relative backdrop-blur-md bg-slate-950/85 border border-white/10 rounded-2xl p-3 shadow-2xl space-y-2.5 text-white">
+          <span className="absolute top-0 left-0 w-2 h-2 border-t border-l border-sky-400/60 pointer-events-none" />
+          <span className="absolute top-0 right-0 w-2 h-2 border-t border-r border-sky-400/60 pointer-events-none" />
+          <span className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-sky-400/60 pointer-events-none" />
+          <span className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-sky-400/60 pointer-events-none" />
           
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             
             {/* Subject Selector Buttons */}
             <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <span className="text-[10px] font-mono text-slate-500 uppercase font-bold mr-1">Subject:</span>
+              <span className="text-[10px] font-mono text-slate-400 uppercase font-bold mr-1">Apparatus:</span>
               <button
-                onClick={() => setApparatusType('ambulance')}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all ${
+                onClick={() => { setApparatusType('ambulance'); setActiveHotspotId(null); }}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
                   apparatusType === 'ambulance'
-                    ? 'bg-sky-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    ? 'bg-sky-600 text-white shadow-md border border-sky-400/50'
+                    : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
                 }`}
               >
                 <Siren className="w-3.5 h-3.5" />
@@ -893,11 +1070,11 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
               </button>
 
               <button
-                onClick={() => setApparatusType('engine')}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all ${
+                onClick={() => { setApparatusType('engine'); setActiveHotspotId(null); }}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
                   apparatusType === 'engine'
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    ? 'bg-rose-600 text-white shadow-md border border-rose-400/50'
+                    : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
                 }`}
               >
                 <Flame className="w-3.5 h-3.5" />
@@ -905,11 +1082,11 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
               </button>
 
               <button
-                onClick={() => setApparatusType('defib')}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all ${
+                onClick={() => { setApparatusType('defib'); setActiveHotspotId(null); }}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
                   apparatusType === 'defib'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    ? 'bg-amber-600 text-white shadow-md border border-amber-400/50'
+                    : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
                 }`}
               >
                 <Activity className="w-3.5 h-3.5" />
@@ -918,8 +1095,8 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
             </div>
 
             {/* Exploded View Slider */}
-            <div className="flex items-center gap-2 w-full sm:w-64">
-              <span className="text-[10px] font-mono text-slate-500 uppercase font-bold whitespace-nowrap">Explode:</span>
+            <div className="flex items-center gap-2 w-full sm:w-64 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10">
+              <span className="text-[10px] font-mono text-slate-400 uppercase font-bold whitespace-nowrap">Explode:</span>
               <input
                 type="range"
                 min="0"
@@ -927,17 +1104,91 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
                 step="0.02"
                 value={explodedFactor}
                 onChange={(e) => setExplodedFactor(parseFloat(e.target.value))}
-                className="w-full accent-sky-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                className="w-full accent-sky-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
-              <span className="text-[10px] font-mono text-sky-700 font-bold w-9 text-right">
+              <span className="text-[10px] font-mono text-sky-400 font-bold tabular-nums w-9 text-right">
                 {Math.round(explodedFactor * 100)}%
               </span>
             </div>
 
           </div>
 
+          {/* Interactive 3D Subsystem Callout Hotspots Bar */}
+          <div className="pt-2 border-t border-white/10 space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-mono uppercase font-bold text-slate-400 mr-1 flex items-center gap-1">
+                <Crosshair className="w-3 h-3 text-sky-400" />
+                CAD Reticle Hotspots:
+              </span>
+              {APPARATUS_HOTSPOTS[apparatusType].map((spot, idx) => {
+                const isSelected = activeHotspotId === spot.id;
+                return (
+                  <button
+                    key={spot.id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setActiveHotspotId(null);
+                        setIsRotating(true);
+                      } else {
+                        setActiveHotspotId(spot.id);
+                        setIsRotating(false);
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all border cursor-pointer ${
+                      isSelected
+                        ? 'bg-sky-500/20 text-sky-200 border-sky-400/60 shadow-xs'
+                        : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border-white/10'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded-full font-mono text-[9px] font-bold flex items-center justify-center ${
+                      isSelected ? 'bg-sky-400 text-slate-950' : 'bg-slate-800 text-slate-300 border border-white/10'
+                    }`}>
+                      {idx + 1}
+                    </span>
+                    <span>{spot.label}</span>
+                  </button>
+                );
+              })}
+              {activeHotspot && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveHotspotId(null);
+                    setIsRotating(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-white/10 transition-colors cursor-pointer ml-auto"
+                >
+                  Reset Orbit
+                </button>
+              )}
+            </div>
+
+            {/* Active Subsystem Clinical vs. Competitor Callout Banner */}
+            {activeHotspot && (
+              <div className="p-2.5 rounded-xl bg-slate-900/90 text-white border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs relative">
+                <span className="absolute top-1 right-2 text-[8px] font-mono text-sky-400 uppercase">RETICLE LOCKED</span>
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold">
+                    {activeHotspot.label} &bull; {activeHotspot.subsystem}
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-200 leading-relaxed">
+                    <strong className="text-emerald-400">ZOLL Engineering Advantage: </strong>
+                    {activeHotspot.zollAdvantage}
+                  </div>
+                </div>
+                <div className="md:border-l md:border-white/10 md:pl-3 flex flex-col justify-center">
+                  <div className="text-[11px] text-slate-300 leading-relaxed">
+                    <strong className="text-rose-400">Competitor Vulnerability: </strong>
+                    {activeHotspot.competitorGap}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Secondary Controls Bar: Material Finishes & Specs */}
-          <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-mono">
+          <div className="pt-1.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-mono">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase font-bold text-slate-600">PBR Environment:</span>
               <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">

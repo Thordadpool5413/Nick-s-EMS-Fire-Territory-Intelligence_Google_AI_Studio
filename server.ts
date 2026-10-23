@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import http from 'http';
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -16,8 +17,29 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function getCliArg(flag: string): string | undefined {
+  const index = process.argv.indexOf(flag);
+  if (index !== -1 && process.argv[index + 1]) {
+    return process.argv[index + 1];
+  }
+  const prefix = flag + '=';
+  const match = process.argv.find((arg) => arg.startsWith(prefix));
+  if (match) {
+    return match.slice(prefix.length);
+  }
+  return undefined;
+}
+
+const cliPort = getCliArg('--port');
+const cliHost = getCliArg('--host');
+
+// Prioritize CLI argument, then PORT env in production, defaulting to 3000 for AI Studio environment
+const PORT = cliPort
+  ? parseInt(cliPort, 10)
+  : (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
+const HOST = cliHost || process.env.HOST || '0.0.0.0';
+
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -536,10 +558,14 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
+  const httpServer = http.createServer(app);
 
   if (!isProd) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -550,10 +576,72 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`> ZOLL Territory Intelligence Server running at http://0.0.0.0:${PORT}`);
+  let retries = 0;
+  const maxRetries = 10;
+
+  function tryListen() {
+    httpServer.listen(PORT, HOST, () => {
+      console.log(`> ZOLL Territory Intelligence Server running at http://${HOST}:${PORT}`);
+    });
+  }
+
+  httpServer.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`Port ${PORT} in use, waiting to retry... (${retries + 1}/${maxRetries})`);
+      if (retries < maxRetries) {
+        retries++;
+        setTimeout(() => {
+          try {
+            httpServer.close();
+          } catch {
+            // Ignore error on close
+          }
+          tryListen();
+        }, 500);
+      } else {
+        console.error(`Port ${PORT} failed to bind after ${maxRetries} retries.`);
+        process.exit(1);
+      }
+    } else {
+      console.error('HTTP server encountered error:', err);
+      process.exit(1);
+    }
   });
+
+  tryListen();
+
+  const shutdown = () => {
+    try {
+      if (typeof (httpServer as any).closeAllConnections === 'function') {
+        (httpServer as any).closeAllConnections();
+      }
+      httpServer.close(() => {
+        process.exit(0);
+      });
+      // Safety timeout guard
+      setTimeout(() => {
+        process.exit(0);
+      }, 1500).unref();
+    } catch {
+      process.exit(0);
+    }
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err: any) => {
+  if (err?.code === 'EADDRINUSE') {
+    console.warn('Caught EADDRINUSE in uncaughtException, handled by server listener.');
+    return;
+  }
+  console.error('Uncaught Exception:', err);
+});
 
 startServer().catch((err) => {
   console.error('Failed to start server:', err);

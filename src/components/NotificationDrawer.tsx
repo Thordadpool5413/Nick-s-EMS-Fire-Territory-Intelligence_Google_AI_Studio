@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { PushAlert } from '../types';
 import { 
   X, 
@@ -44,17 +45,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   );
   const [simIndex, setSimIndex] = useState<number>(0);
 
-  // Support closing with Escape key
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Close drawer on click-away or Escape
+  useClickOutside(drawerRef, onClose, { enabled: isOpen, closeOnEscape: true });
 
   if (!isOpen) return null;
 
@@ -67,10 +61,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-100"
-      onClick={onClose}
+      className="fixed inset-0 z-60 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-100"
     >
       <div 
+        ref={drawerRef}
         className="w-full max-w-md bg-white border-l border-slate-300 h-full shadow-2xl flex flex-col justify-between text-slate-900 animate-slideInRight"
         onClick={(e) => e.stopPropagation()}
       >
@@ -81,7 +75,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
             <Bell className="w-4 h-4 text-sky-600" />
             <h2 className="text-sm font-bold text-slate-900">Territory Push Alerts</h2>
             {alerts.filter(a => !a.isRead).length > 0 && (
-              <span className="font-mono text-xs bg-sky-100 text-sky-800 font-bold px-1.5 py-0.5 rounded-full border border-sky-300">
+              <span className="font-mono text-xs bg-sky-100 text-sky-800 font-bold px-1.5 py-0.5 rounded-md border border-sky-300 tabular-nums">
                 {alerts.filter(a => !a.isRead).length} new
               </span>
             )}
@@ -150,10 +144,15 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
           {alerts.length > 0 ? (
             <div className="space-y-2.5">
               {alerts.map((alert) => {
-                const priorityBorder = 
-                  alert.priority === 'critical' ? 'border-l-4 border-l-rose-500' :
-                  alert.priority === 'high' ? 'border-l-4 border-l-amber-500' :
-                  'border-l-4 border-l-sky-500';
+                const priorityStyles = 
+                  alert.priority === 'critical' ? 'border-rose-200/90 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10' :
+                  alert.priority === 'high' ? 'border-amber-200/90 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10' :
+                  'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900';
+
+                const dotColor =
+                  alert.priority === 'critical' ? 'bg-rose-500' :
+                  alert.priority === 'high' ? 'bg-amber-500' :
+                  'bg-sky-500';
 
                 return (
                   <div
@@ -161,8 +160,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                     onClick={() => {
                       if (alert.agencyId) onSelectAlertAgency(alert.agencyId);
                     }}
-                    className={`bg-white border border-slate-200 rounded-xl p-3.5 hover:border-slate-300 shadow-2xs transition-colors cursor-pointer ${priorityBorder} ${
-                      !alert.isRead ? 'ring-1 ring-sky-300/60' : 'opacity-85'
+                    className={`rounded-xl p-3.5 border hover:border-slate-400 dark:hover:border-slate-700 shadow-2xs transition-colors cursor-pointer ${priorityStyles} ${
+                      !alert.isRead ? 'ring-1 ring-sky-400/40' : 'opacity-85'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">

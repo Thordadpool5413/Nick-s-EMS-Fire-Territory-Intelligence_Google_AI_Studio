@@ -24,6 +24,7 @@ import {
   Calculator,
   Search
 } from 'lucide-react';
+import { QualityScorecard } from './QualityScorecard';
 
 interface ClinicalCompetitiveKnowledgeHubProps {
   agencies: Agency[];
@@ -134,34 +135,34 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
   return (
     <div className="workspace-section-grid">
       {/* Top Executive Header & Benchmark Account Bar */}
-      <section className="bg-white border border-slate-200 rounded-xl p-4 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)] grid grid-cols-1 gap-5 min-w-0">
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] items-start xl:items-center justify-between gap-4 border-b border-slate-100 pb-4 min-w-0">
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)] grid grid-cols-1 gap-5 min-w-0">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] items-start xl:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4 min-w-0">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#1E3A8A]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#1E3A8A] dark:text-blue-400">
               <span>Clinical, Regulatory &amp; Financial Reference Center</span>
               <span aria-hidden="true">·</span>
-              <span className="font-mono text-slate-500">FDA MAUDE · CMS HCPCS · Sourcewell / NPPGov</span>
+              <span className="font-mono text-slate-500 dark:text-slate-400">FDA MAUDE · CMS HCPCS · Sourcewell / NPPGov</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] dark:text-white mt-1">
               Clinical &amp; Competitive Knowledge Hub
             </h1>
-            <p className="text-xs text-slate-600 mt-1 max-w-3xl">
-              Authoritative 5-year competitor TCO &amp; preventative maintenance modeling, verified FDA recall intelligence, pre-competed cooperative purchasing vehicles, and procedure-level HCPCS / GADCS billing analytics.
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-3xl">
+              Authoritative 5-year competitor TCO &amp; preventative maintenance modeling, verified FDA recall intelligence, pre-competed cooperative purchasing vehicles, and procedure-level HCPCS / NEMSQA clinical quality analytics.
             </p>
           </div>
 
           {/* Active Benchmark Agency Picker */}
           {referenceAgency && (
-            <div className="flex flex-wrap items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg p-2.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 shrink-0">
               <div className="text-xs">
-                <label htmlFor="hub-agency-select" className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                <label htmlFor="hub-agency-select" className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Benchmark Agency Account
                 </label>
                 <select
                   id="hub-agency-select"
                   value={referenceAgency.id}
                   onChange={(e) => handleAgencyChange(e.target.value)}
-                  className="mt-0.5 h-8 bg-white border border-slate-200 rounded px-2.5 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#1E3A8A] max-w-[260px]"
+                  className="mt-0.5 h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2.5 text-xs font-semibold text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1E3A8A] max-w-[260px]"
                 >
                   {agencies.slice(0, 80).map(a => (
                     <option key={a.id} value={a.id}>
@@ -173,7 +174,7 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
 
               <button
                 onClick={() => onSelectAgency(referenceAgency)}
-                className="h-8 px-3 rounded-lg bg-white border border-slate-200 hover:border-[#1E3A8A] text-xs font-semibold text-[#0F172A] transition-colors cursor-pointer"
+                className="h-8 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#0F172A] dark:text-white transition-colors cursor-pointer"
               >
                 Open Dossier
               </button>
@@ -181,7 +182,7 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
               {onOpenRfpGenerator && (
                 <button
                   onClick={() => onOpenRfpGenerator(referenceAgency)}
-                  className="h-8 px-3 rounded-lg bg-[#0F172A] hover:bg-[#1E3A8A] text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="h-8 px-3 rounded-lg bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E3A8A] dark:hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>RFP + TCO Spec</span>
@@ -197,7 +198,7 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
             { id: 'tco', label: '1. 5-Year Cost & Maintenance Savings Calculator', icon: Calculator },
             { id: 'recalls', label: '2. Competitor FDA Safety Recalls & Talk Tracks', icon: ShieldAlert },
             { id: 'coop', label: '3. Fast-Track Cooperative Contracts (Skip RFP)', icon: FileCheck2 },
-            { id: 'hcpcs_protocols', label: '4. Medicare Billing Codes & Hospital Protocols', icon: Stethoscope }
+            { id: 'hcpcs_protocols', label: '4. NEMSQA Quality Simulator & Medicare HCPCS Codes', icon: Stethoscope }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
@@ -207,8 +208,8 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
                 onClick={() => setActiveSection(tab.id as HubSection)}
                 className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-[#111827] text-white shadow-2xs'
-                    : 'bg-[#F8F7F4] text-[#374151] hover:text-[#111827] hover:bg-[#F1EFEA] border border-[#E5E4DF]'
+                    ? 'bg-[#111827] dark:bg-blue-600 text-white shadow-2xs'
+                    : 'bg-[#F8F7F4] dark:bg-slate-800 text-[#374151] dark:text-slate-300 hover:text-[#111827] dark:hover:text-white hover:bg-[#F1EFEA] dark:hover:bg-slate-700 border border-[#E5E4DF] dark:border-slate-700'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -654,9 +655,12 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
         </section>
       )}
 
-      {/* TAB 4: HCPCS FEE SCHEDULE, CMS GADCS 10% PENALTY & REGIONAL CLINICAL PROTOCOLS */}
+      {/* TAB 4: NEMSQA QUALITY SCORECARD, HCPCS FEE SCHEDULE, CMS GADCS 10% PENALTY & REGIONAL CLINICAL PROTOCOLS */}
       {activeSection === 'hcpcs_protocols' && hcpcsModel && protocolModel && referenceAgency && (
         <div className="space-y-6">
+          {/* Interactive NEMSQA / AHA Mission: Lifeline / CARES Clinical Quality Uplift Simulator */}
+          <QualityScorecard agency={referenceAgency} onOpenRfpGenerator={onOpenRfpGenerator} />
+
           {/* HCPCS & GADCS Table */}
           <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
             <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">

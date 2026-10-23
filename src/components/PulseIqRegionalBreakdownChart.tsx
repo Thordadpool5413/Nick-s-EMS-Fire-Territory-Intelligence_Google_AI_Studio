@@ -55,7 +55,7 @@ interface PulseIqRegionalBreakdownChartProps {
   onSelectState?: (stateCode: string) => void;
   onSelectAgency?: (agency: Agency) => void;
   globalCategory?: 'all' | 'ems' | 'fire';
-  onOpenWeightTuner?: () => void;
+  onOpenWeightsModal?: () => void;
 }
 
 type ChartMode = 'stacked_breakdown' | 'benchmark' | 'radar' | 'pipeline';
@@ -68,7 +68,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
   onSelectState,
   onSelectAgency,
   globalCategory = 'all',
-  onOpenWeightTuner
+  onOpenWeightsModal
 }) => {
   const [chartMode, setChartMode] = useState<ChartMode>('stacked_breakdown');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'ems' | 'fire'>(globalCategory);
@@ -575,52 +575,52 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
     }
   };
 
-  // Custom high-contrast tooltip adhering strictly to light theme
+  // Custom high-contrast tooltip adhering strictly to unified light/dark theme & institutional palette
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const item = payload[0].payload;
       return (
-        <div className="bg-white border border-slate-300 rounded-xl p-3 shadow-lg text-xs space-y-1.5 max-w-xs pointer-events-none select-none">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-            <span className="font-bold text-slate-900 text-sm">{item.fullName || label}</span>
-            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-sky-50 border border-sky-300 text-sky-800">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-xl text-xs space-y-1.5 max-w-xs pointer-events-none select-none">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1.5">
+            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-[-0.02em]">{item.fullName || label}</span>
+            <span className="font-mono tabular-nums text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#1E3A8A] dark:text-blue-400">
               Score: {item.score}
             </span>
           </div>
 
-          <div className="text-[11px] text-slate-600">
+          <div className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed tabular-nums">
             {item.city && <div><strong>City:</strong> {item.city}, {item.stateCode}</div>}
             {item.county && <div><strong>County:</strong> {item.county}</div>}
             {item.topAccountName && <div><strong>Top Lead:</strong> {item.topAccountName}</div>}
-            {item.fleetBrand && <div><strong>Installed Fleet:</strong> {item.fleetBrand} ({item.fleetAge} yrs)</div>}
-            {item.pipelineFormatted && <div><strong>Projected Pipeline:</strong> <span className="font-mono font-bold text-emerald-700">{item.pipelineFormatted}</span></div>}
+            {item.fleetBrand && <div><strong>Installed Fleet:</strong> {item.fleetBrand} (<span className="font-mono tabular-nums">{item.fleetAge} yrs</span>)</div>}
+            {item.pipelineFormatted && <div><strong>Projected Pipeline:</strong> <span className="font-mono tabular-nums font-bold text-emerald-700 dark:text-emerald-400">{item.pipelineFormatted}</span></div>}
           </div>
 
           {/* 5-Pillar Score Breakdown Details */}
-          <div className="pt-1.5 border-t border-slate-100 space-y-1 font-mono text-[10px]">
-            <div className="flex items-center justify-between text-sky-700">
-              <span>Clinical Acuity:</span>
-              <span className="font-bold">{item.clinicalAcuity} / 25 pts</span>
+          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1 font-mono tabular-nums text-[10px]">
+            <div className="flex items-center justify-between text-slate-900 dark:text-slate-100">
+              <span>● Clinical Acuity (NEMSIS):</span>
+              <span className="font-bold tabular-nums">{item.clinicalAcuity} / 25 pts</span>
             </div>
-            <div className="flex items-center justify-between text-rose-700">
-              <span>Fleet Obsolescence:</span>
-              <span className="font-bold">{item.fleetObsolescence} / 25 pts</span>
+            <div className="flex items-center justify-between text-[#1E3A8A] dark:text-blue-400">
+              <span>◐ Fleet Obsolescence (Cycle):</span>
+              <span className="font-bold tabular-nums">{item.fleetObsolescence} / 25 pts</span>
             </div>
-            <div className="flex items-center justify-between text-emerald-700">
-              <span>CMS Billing Recovery:</span>
-              <span className="font-bold">{item.cmsRecovery} / 20 pts</span>
+            <div className="flex items-center justify-between text-blue-600 dark:text-blue-300">
+              <span>● CMS Billing Recovery (PUF):</span>
+              <span className="font-bold tabular-nums">{item.cmsRecovery} / 20 pts</span>
             </div>
-            <div className="flex items-center justify-between text-amber-700">
-              <span>Demographic Deficit:</span>
-              <span className="font-bold">{item.demographics} / 15 pts</span>
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+              <span>● Demographic Deficit (FIPS):</span>
+              <span className="font-bold tabular-nums">{item.demographics} / 15 pts</span>
             </div>
-            <div className="flex items-center justify-between text-purple-700">
-              <span>FEMA Grant Readiness:</span>
-              <span className="font-bold">{item.budgetGrant} / 15 pts</span>
+            <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400">
+              <span>● FEMA Grant Readiness (AFG):</span>
+              <span className="font-bold tabular-nums">{item.budgetGrant} / 15 pts</span>
             </div>
           </div>
 
-          <div className="text-[9px] text-slate-400 font-mono italic pt-1">
+          <div className="text-[9px] text-slate-500 dark:text-slate-400 font-mono pt-1">
             Click bar to drill down into this {normalizedCounty !== 'all' ? 'agency' : normalizedState !== 'all' ? 'county' : 'state'}
           </div>
         </div>
@@ -644,30 +644,30 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
   };
 
   return (
-    <div className="bg-white border border-slate-300 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5 transition-colors w-full max-w-full overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5 transition-colors w-full max-w-full overflow-hidden">
       
       {/* Header & Quick Filter Strip */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-sky-50 border border-sky-300 text-sky-700 flex items-center justify-center font-bold shadow-2xs">
+            <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/60 border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-400 flex items-center justify-center font-bold shadow-2xs">
               <BarChart3 className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono uppercase font-bold text-sky-700 tracking-wider bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-mono uppercase font-bold text-sky-700 dark:text-sky-400 tracking-wider bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 px-2 py-0.5 rounded">
                   Recharts Analytics
                 </span>
-                <span className="text-[11px] font-mono text-slate-500">
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                   {normalizedCounty !== 'all' ? `County Scope: ${normalizedCounty}` : normalizedState !== 'all' ? `State Scope: ${ALL_50_STATES_SUMMARIES[normalizedState.toUpperCase()]?.state || normalizedState}` : 'National Scope (50 States + DC)'}
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5 tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-0.5 tracking-[-0.02em]">
                 {scopeTitle}
               </h2>
             </div>
           </div>
-          <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
             {scopeSubtitle}. Visualizing algorithmic ranking across Clinical Acuity, Rival Fleet Age, CMS Denials, Demographics, and FEMA Grants.
           </p>
         </div>
@@ -676,13 +676,13 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Mode Switcher */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-semibold">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
             <button
               onClick={() => setChartMode('stacked_breakdown')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 chartMode === 'stacked_breakdown'
-                  ? 'bg-sky-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Stacked 5-Pillar Score Breakdown"
             >
@@ -692,10 +692,10 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
 
             <button
               onClick={() => setChartMode('benchmark')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 chartMode === 'benchmark'
-                  ? 'bg-sky-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="PulseIQ Score vs Territory Benchmark"
             >
@@ -705,10 +705,10 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
 
             <button
               onClick={() => setChartMode('radar')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 chartMode === 'radar'
-                  ? 'bg-sky-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="5-Axis Radar Diagnostic Profile"
             >
@@ -718,10 +718,10 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
 
             <button
               onClick={() => setChartMode('pipeline')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 chartMode === 'pipeline'
-                  ? 'bg-sky-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
               title="Pipeline Value vs PulseIQ"
             >
@@ -730,82 +730,80 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
             </button>
           </div>
 
-          {onOpenWeightTuner && (
+          {onOpenWeightsModal && (
             <button
-              type="button"
-              onClick={onOpenWeightTuner}
-              className="px-3 py-1.5 rounded-xl border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-              title="Open PulseIQ Score Formula & Algorithm Weights Adjustment Screen"
+              onClick={onOpenWeightsModal}
+              className="px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Calibrate 5-Pillar PulseIQ Scoring Weights"
             >
-              <Sliders className="w-3.5 h-3.5 text-sky-700" />
-              <span>Adjust Algorithm Weights</span>
+              <Sliders className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <span>Calibrate Weights</span>
             </button>
           )}
 
         </div>
       </div>
 
-      {/* KPI Highlight Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+      {/* KPI Highlight Strip (1px Hairline Institutional Ledger Grid) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
         
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 font-mono">Mean Regional PulseIQ</div>
+        <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Mean Regional PulseIQ</div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 tabular-nums">
+            <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 dark:text-white tabular-nums">
               {regionalStats.avgScore}
             </span>
-            <span className="text-[10px] font-mono text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.2 rounded font-semibold">
+            <span className="text-[10px] font-mono tabular-nums text-[#1E3A8A] dark:text-blue-400 font-semibold">
               / 100 pts
             </span>
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">
-            Across {regionalStats.totalAccounts.toLocaleString()} prioritized providers
+          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 leading-relaxed tabular-nums">
+            ● {regionalStats.totalAccounts.toLocaleString()} USFA / NPI providers
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 font-mono">Top Priority Opportunity</div>
-          <div className="text-sm font-bold text-slate-900 truncate" title={regionalStats.topLeadName}>
+        <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Top Priority Opportunity</div>
+          <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums truncate" title={regionalStats.topLeadName}>
             {regionalStats.topLeadName}
           </div>
-          <div className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
-            <Award className="w-3 h-3 text-emerald-600" />
-            <span>Highest conversion readiness</span>
+          <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed flex items-center gap-1">
+            <span>● Tier-1 Conversion Readiness</span>
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 font-mono">Addressable Pipeline</div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-700 tabular-nums">
+        <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Addressable Pipeline</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400 tabular-nums">
             {regionalStats.totalPipeline >= 1000000000
               ? `$${(regionalStats.totalPipeline / 1000000000).toFixed(2)}B`
               : `$${(regionalStats.totalPipeline / 1000000).toFixed(1)}M`}
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">
-            Estimated capital hardware replacement
+          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 leading-relaxed">
+            ● Sourcewell / NPPGov Schedule
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 font-mono">Primary Displacement Target</div>
-          <div className="text-sm font-bold text-rose-700 truncate">
+        <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
+          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Primary Displacement Target</div>
+          <div className="text-sm font-bold text-amber-700 dark:text-amber-400 tabular-nums truncate">
             {regionalStats.primaryCompetitor}
           </div>
-          <div className="text-[10px] text-slate-500 font-medium">
-            Aging legacy monitors (&gt;7 yrs old)
+          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 leading-relaxed tabular-nums">
+            ◐ Legacy Fleet Cycle (&gt;7 yrs)
           </div>
         </div>
 
       </div>
 
       {/* Interactive Geography Selector & Filters Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 pb-1 border-y border-slate-100">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 pb-1 border-y border-slate-100 dark:border-slate-800">
         
         {/* Left: State & County Selectors + Breadcrumb Reset */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-            <span className="text-[11px] font-mono font-bold text-slate-600 uppercase">State:</span>
+            <MapPin className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+            <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 uppercase">State:</span>
             <select
               value={normalizedState}
               onChange={(e) => {
@@ -813,7 +811,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                 if (onSelectState) onSelectState(val);
                 if (onSelectCounty) onSelectCounty('all');
               }}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
             >
               <option value="all">All 50 States (National Comparison)</option>
               {allStatesList.map(st => (
@@ -825,14 +823,14 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
           {/* County Selector (Visible when a State is chosen) */}
           {normalizedState !== 'all' && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-mono font-bold text-slate-600 uppercase">County:</span>
+              <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 uppercase">County:</span>
               <select
                 value={normalizedCounty}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (onSelectCounty) onSelectCounty(val);
                 }}
-                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer max-w-[180px]"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer max-w-[180px]"
               >
                 <option value="all">All Counties in {ALL_50_STATES_SUMMARIES[normalizedState.toUpperCase()]?.state || normalizedState}</option>
                 {inStateCountiesList.map(c => (
@@ -849,7 +847,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                 if (onSelectState) onSelectState('all');
                 if (onSelectCounty) onSelectCounty('all');
               }}
-              className="px-2 py-1 text-[11px] text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              className="px-2 py-1 text-[11px] text-sky-700 dark:text-sky-300 hover:text-sky-900 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 border border-sky-200 dark:border-sky-800 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition-colors"
               title="Reset to Nationwide comparison"
             >
               <RotateCcw className="w-3 h-3" />
@@ -862,13 +860,13 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Category Pill Filters */}
-          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
             <button
               onClick={() => setCategoryFilter('all')}
               className={`px-2 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 categoryFilter === 'all'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               All
@@ -879,7 +877,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
               className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                 categoryFilter === 'ems'
                   ? 'bg-sky-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Siren className="w-3 h-3" />
@@ -891,7 +889,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
               className={`px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                 categoryFilter === 'fire'
                   ? 'bg-rose-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Flame className="w-3 h-3" />
@@ -905,7 +903,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-white font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
             >
               <option value="score">PulseIQ Score (Highest)</option>
               <option value="value">Pipeline Value ($)</option>
@@ -916,11 +914,11 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
 
           {/* Quantity Limit Selector */}
           <div className="flex items-center gap-1">
-            <span className="text-[11px] text-slate-500 font-medium">Show:</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Show:</span>
             <select
               value={limitCount}
               onChange={(e) => setLimitCount(Number(e.target.value))}
-              className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-white font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
             >
               <option value={8}>Top 8</option>
               <option value={12}>Top 12</option>
@@ -974,14 +972,14 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                 iconType="circle"
                 iconSize={8}
               />
-              <ReferenceLine y={85} stroke="#0284c7" strokeDasharray="4 4" label={{ value: 'Priority Tier (85 pts)', position: 'insideTopRight', fill: '#0284c7', fontSize: 10, fontWeight: 'bold' }} />
+              <ReferenceLine y={85} stroke="#1E3A8A" strokeDasharray="4 4" label={{ value: 'Priority Tier (85 pts)', position: 'insideTopRight', fill: '#1E3A8A', fontSize: 10, fontWeight: 'bold' }} />
               
-              {/* 5 Stacked Pillars */}
-              <Bar dataKey="clinicalAcuity" name="Clinical Acuity (25 pts)" stackId="a" fill="#0284c7" radius={[0, 0, 0, 0]} cursor="pointer" />
-              <Bar dataKey="fleetObsolescence" name="Fleet Obsolescence (25 pts)" stackId="a" fill="#e11d48" radius={[0, 0, 0, 0]} cursor="pointer" />
-              <Bar dataKey="cmsRecovery" name="CMS Billing Recovery (20 pts)" stackId="a" fill="#059669" radius={[0, 0, 0, 0]} cursor="pointer" />
-              <Bar dataKey="demographics" name="Demographic Need (15 pts)" stackId="a" fill="#d97706" radius={[0, 0, 0, 0]} cursor="pointer" />
-              <Bar dataKey="budgetGrant" name="FEMA Grant / Budget (15 pts)" stackId="a" fill="#7c3aed" radius={[4, 4, 0, 0]} cursor="pointer" />
+              {/* 5 Stacked Pillars with Harmonious Clinical Palette */}
+              <Bar dataKey="clinicalAcuity" name="Clinical Acuity (25 pts)" stackId="a" fill="#1E3A8A" radius={[0, 0, 0, 0]} cursor="pointer" />
+              <Bar dataKey="fleetObsolescence" name="Fleet Obsolescence (25 pts)" stackId="a" fill="#2563EB" radius={[0, 0, 0, 0]} cursor="pointer" />
+              <Bar dataKey="cmsRecovery" name="CMS Billing Recovery (20 pts)" stackId="a" fill="#60A5FA" radius={[0, 0, 0, 0]} cursor="pointer" />
+              <Bar dataKey="demographics" name="Demographic Need (15 pts)" stackId="a" fill="#93C5FD" radius={[0, 0, 0, 0]} cursor="pointer" />
+              <Bar dataKey="budgetGrant" name="FEMA Grant / Budget (15 pts)" stackId="a" fill="#059669" radius={[4, 4, 0, 0]} cursor="pointer" />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -1022,11 +1020,11 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
               <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }} iconType="circle" iconSize={8} />
               <ReferenceLine y={regionalStats.avgScore} stroke="#d97706" strokeWidth={1.5} label={{ value: `Territory Mean (${regionalStats.avgScore} pts)`, position: 'insideTopLeft', fill: '#d97706', fontSize: 10, fontWeight: 'bold' }} />
               
-              <Bar dataKey="score" name="PulseIQ Score (Average / Account)" fill="#0284c7" radius={[4, 4, 0, 0]} cursor="pointer">
+              <Bar dataKey="score" name="PulseIQ Score (Average / Account)" fill="#1E3A8A" radius={[4, 4, 0, 0]} cursor="pointer">
                 {chartData.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={entry.score >= 82 ? '#0284c7' : entry.score >= 74 ? '#059669' : '#d97706'} 
+                    fill={entry.score >= 82 ? '#1E3A8A' : entry.score >= 74 ? '#2563EB' : '#64748B'} 
                   />
                 ))}
               </Bar>
@@ -1036,9 +1034,9 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                   type="monotone"
                   dataKey="peakScore"
                   name="Top Account Score in Region"
-                  stroke="#e11d48"
+                  stroke="#059669"
                   strokeWidth={2}
-                  dot={{ r: 4, fill: '#e11d48' }}
+                  dot={{ r: 4, fill: '#059669' }}
                 />
               )}
             </ComposedChart>
@@ -1057,10 +1055,10 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                   if (active && payload && payload.length) {
                     const d = payload[0].payload;
                     return (
-                      <div className="bg-white border border-slate-300 rounded-xl p-2.5 shadow-md text-xs font-mono">
-                        <div className="font-bold text-slate-900">{d.pillar}</div>
-                        <div className="text-sky-700 font-bold mt-1">Regional Average: {d.score} / {d.fullMark} pts</div>
-                        <div className="text-slate-500">National Baseline: {d.benchmark} / {d.fullMark} pts</div>
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 shadow-md text-xs font-mono tabular-nums">
+                        <div className="font-bold text-slate-900 dark:text-white">{d.pillar}</div>
+                        <div className="text-[#1E3A8A] dark:text-blue-400 font-bold mt-1 tabular-nums">Regional Average: {d.score} / {d.fullMark} pts</div>
+                        <div className="text-slate-600 dark:text-slate-400 tabular-nums">National Baseline: {d.benchmark} / {d.fullMark} pts</div>
                       </div>
                     );
                   }
@@ -1071,16 +1069,16 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
               <Radar
                 name="Current Region Score Profile"
                 dataKey="score"
-                stroke="#0284c7"
-                fill="#0284c7"
+                stroke="#1E3A8A"
+                fill="#1E3A8A"
                 fillOpacity={0.35}
                 strokeWidth={2}
               />
               <Radar
                 name="National Clinical Baseline"
                 dataKey="benchmark"
-                stroke="#94a3b8"
-                fill="#94a3b8"
+                stroke="#64748B"
+                fill="#64748B"
                 fillOpacity={0.15}
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
@@ -1116,7 +1114,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
               {/* Left Y Axis: PulseIQ Score */}
               <YAxis
                 yAxisId="left"
-                stroke="#0284c7"
+                stroke="#1E3A8A"
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
@@ -1133,14 +1131,14 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                 axisLine={false}
                 tickFormatter={(val) => `$${val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : (val / 1000).toFixed(0) + 'K'}`}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(2, 132, 199, 0.06)' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(30, 58, 138, 0.06)' }} />
               <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }} iconType="circle" iconSize={8} />
               
               <Bar
                 yAxisId="left"
                 dataKey="score"
                 name="PulseIQ Score (0–100)"
-                fill="#0284c7"
+                fill="#1E3A8A"
                 radius={[4, 4, 0, 0]}
                 cursor="pointer"
               />
@@ -1161,14 +1159,14 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
       </div>
 
       {/* Chart Footer with Interactive Drill-Down Breadcrumb Action */}
-      <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+      <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-800">Direct Navigation:</span>
+          <span className="font-semibold text-slate-800 dark:text-slate-200">Direct Navigation:</span>
           {normalizedCounty !== 'all' ? (
             <div className="flex items-center gap-1.5 font-mono text-[11px]">
               <button
                 onClick={() => onSelectCounty && onSelectCounty('all')}
-                className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-sky-700 font-bold border border-slate-200 transition-colors"
+                className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[#1E3A8A] dark:text-blue-400 font-bold border border-slate-200 dark:border-slate-700 transition-colors"
               >
                 &larr; Return to {normalizedState !== 'all' ? normalizedState : 'State'} County Overview
               </button>
@@ -1178,7 +1176,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
               <span className="text-slate-500">Click any county bar above or</span>
               <button
                 onClick={() => onSelectState && onSelectState('all')}
-                className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-sky-700 font-bold border border-slate-200 transition-colors"
+                className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[#1E3A8A] dark:text-blue-400 font-bold border border-slate-200 dark:border-slate-700 transition-colors"
               >
                 &larr; View All 50 States
               </button>
@@ -1190,26 +1188,26 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
           )}
         </div>
 
-        <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
+        <div className="flex flex-wrap items-center gap-3 font-mono tabular-nums text-[10px] text-slate-600 dark:text-slate-400">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-sky-600"></span>
+            <span className="w-2 h-2 rounded-full bg-[#1E3A8A]"></span>
             <span>Clinical Acuity (25)</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+            <span className="w-2 h-2 rounded-full bg-[#2563EB]"></span>
             <span>Fleet Obsolescence (25)</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+            <span className="w-2 h-2 rounded-full bg-[#60A5FA]"></span>
             <span>CMS Recovery (20)</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+            <span className="w-2 h-2 rounded-full bg-[#93C5FD]"></span>
             <span>Demographics (15)</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-            <span>Grants (15)</span>
+            <span className="w-2 h-2 rounded-full bg-[#059669]"></span>
+            <span>FEMA Grants (15)</span>
           </span>
         </div>
       </div>

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { Agency, FieldNote } from '../types';
 import { X, Send, Calendar, Building2, User, Search, CheckCircle2 } from 'lucide-react';
 
@@ -39,17 +40,10 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
     }
   }, [isOpen, agencies, selectedAgencyId]);
 
-  // Support closing with Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const modalCardRef = useRef<HTMLDivElement>(null);
+
+  // Close modal when clicking outside the card or pressing Escape
+  useClickOutside(modalCardRef, onClose, { enabled: isOpen, closeOnEscape: true });
 
   // Fast search filter with hard limit of 25 items so DOM never freezes or locks up
   const filteredAgencies = useMemo(() => {
@@ -99,10 +93,10 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-100"
-      onClick={onClose}
+      className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-100"
     >
       <div 
+        ref={modalCardRef}
         className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl p-5 sm:p-6 space-y-4 text-slate-900 dark:text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >

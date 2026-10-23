@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { Agency } from '../types';
 import { calculateAgencyFleetTco } from '../data/clinicalAndCompetitiveIntelligence';
 import { X, Copy, Check, Download, FileText, ShieldCheck } from 'lucide-react';
@@ -27,6 +28,10 @@ export const RfpSpecGeneratorModal: React.FC<RfpSpecGeneratorModalProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
 
   const tcoModel = useMemo(() => calculateAgencyFleetTco(agency, 5), [agency]);
+  const modalCardRef = useRef<HTMLDivElement>(null);
+
+  // Close modal on click-away or Escape key
+  useClickOutside(modalCardRef, onClose, { enabled: isOpen, closeOnEscape: true });
 
   if (!isOpen) return null;
 
@@ -98,10 +103,10 @@ Bidders must provide two (2) complete operational test evaluation units for a ma
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/45 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
-      onClick={onClose}
+      className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/45 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
     >
       <div 
+        ref={modalCardRef}
         className="bg-white border border-slate-200 rounded-xl w-full max-w-4xl shadow-2xl p-5 sm:p-6 space-y-4 max-h-[92vh] flex flex-col text-[#0F172A]"
         onClick={(e) => e.stopPropagation()}
       >

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { Agency, PredictiveWeights } from '../types';
 import { explainAgencyScore, DEFAULT_WEIGHTS } from '../utils/syncStore';
 import { HelpCircle, X, ShieldAlert, Sparkles, Activity, FileCheck2, Cpu, ArrowUpRight } from 'lucide-react';
@@ -32,29 +33,11 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
 
   const score = agency.zollOpportunity?.pulseIqScore ?? explanation.totalScore;
 
-  // Close on Escape or click outside
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
+  // Robust click-outside & Escape dismissal
+  useClickOutside(containerRef, () => setIsOpen(false), {
+    enabled: isOpen,
+    closeOnEscape: true
+  });
 
   const getScoreColor = (val: number) => {
     if (val >= 88) return 'text-[#1E3A8A]';
@@ -80,7 +63,7 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
           aria-expanded={isOpen}
         >
           <div className="flex items-center gap-2">
-            <div className="text-3xl font-black font-mono tabular-nums text-[#111827] group-hover/trigger:text-[#1E3A8A] transition-colors">
+            <div className="text-3xl font-bold font-mono tabular-nums text-[#111827] group-hover/trigger:text-[#1E3A8A] transition-colors">
               {score}
               <span className="text-sm font-medium text-[#6B7280]"> / 100</span>
             </div>

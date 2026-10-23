@@ -18,10 +18,10 @@ import {
   Cloud,
   Layers,
   Globe,
-  BarChart3,
-  Sliders
+  BarChart3
 } from 'lucide-react';
 import { Agency } from '../types';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 interface CommandPaletteModalProps {
   isOpen: boolean;
@@ -29,7 +29,6 @@ interface CommandPaletteModalProps {
   agencies: Agency[];
   onSelectAgency: (agency: Agency) => void;
   onNavigateTab: (tab: string) => void;
-  onOpenWeightTuner?: () => void;
 }
 
 export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
@@ -37,12 +36,15 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onClose,
   agencies,
   onSelectAgency,
-  onNavigateTab,
-  onOpenWeightTuner
+  onNavigateTab
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Close command palette on click-away or Escape
+  useClickOutside(modalRef, onClose, { enabled: isOpen, closeOnEscape: true });
 
   useEffect(() => {
     if (isOpen) {
@@ -82,7 +84,6 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
   const quickNavTabs = [
     { id: 'knowledge', title: 'Go to Clinical & Competitive Knowledge Hub (5-Yr TCO & FDA Recalls)', subtitle: 'Competitor TCO calculator, FDA MAUDE recalls, Sourcewell/NPPGov contracts & HCPCS/GADCS', icon: FileText },
-    { id: 'pulseiq_adjust', title: 'Tune PulseIQ Predictive Algorithm & Score Adjustment', subtitle: 'Adjust 5-pillar weights (Fleet Age, Denials, Cardiac, AFG Grants, Software Whitespace)', icon: Sliders },
     { id: 'queue', title: 'Go to Territory Lead Queue', subtitle: 'View ranked predictive opportunities across 50 states', icon: Layers },
     { id: 'geo', title: 'Go to 50 States & Zips Directory', subtitle: 'Drill down all states, counties, cities and zip codes', icon: Globe },
     { id: 'gis', title: 'Go to GIS Hotspots & Risk Maps', subtitle: 'Explore cardiac clusters & transport latency', icon: MapPin },
@@ -99,13 +100,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   ];
 
   const handleSelectNavTab = (tabId: string) => {
-    if (tabId === 'pulseiq_adjust') {
-      if (onOpenWeightTuner) {
-        onOpenWeightTuner();
-      }
-    } else {
-      onNavigateTab(tabId);
-    }
+    onNavigateTab(tabId);
     onClose();
   };
 
@@ -133,10 +128,10 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-100" onClick={onClose}>
+    <div className="fixed inset-0 z-60 flex items-start justify-center pt-20 p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-100">
       <div 
+        ref={modalRef}
         className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
       >
         
         {/* Search Input Bar */}

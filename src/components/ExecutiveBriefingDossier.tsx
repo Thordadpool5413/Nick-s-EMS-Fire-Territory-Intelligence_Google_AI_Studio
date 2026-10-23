@@ -369,11 +369,11 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             
             {/* Top Dossier Header Banner */}
             <div className="flex items-start justify-between border-b-2 border-slate-900 pb-5 gap-4">
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-5">
                 <img
                   src={brandLogoAsset || '/logo.jpg'}
                   alt="Nick's EMS & Fire Territory Intelligence"
-                  className="w-16 h-16 rounded-xl object-contain border border-slate-300 p-1 shrink-0 bg-white"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-contain border-2 border-slate-300 p-1.5 shrink-0 bg-white shadow-sm"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = '/logo.jpg';
                   }}
@@ -389,7 +389,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                       {agency.agencyType} · {agency.jurisdictionLevel} Jurisdiction
                     </span>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1 leading-tight">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-1 leading-tight">
                     {agency.name}
                   </h1>
                   <p className="text-xs font-semibold text-slate-600 mt-1 flex flex-wrap items-center gap-2">
@@ -504,7 +504,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">911 Transports</div>
-                  <div className="text-xl font-black font-mono text-slate-900 mt-1">
+                  <div className="text-xl font-bold font-mono text-slate-900 mt-1">
                     {(agency.annual911Transports || 3200).toLocaleString()}
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -514,7 +514,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">Installed Defib Fleet</div>
-                  <div className="text-sm font-black text-slate-900 mt-1 truncate" title={agency.installedFleet?.defibBrand}>
+                  <div className="text-sm font-bold text-slate-900 mt-1 truncate" title={agency.installedFleet?.defibBrand}>
                     {agency.installedFleet?.defibBrand || 'Stryker LIFEPAK 15'}
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -524,7 +524,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
                 <div className="p-3 rounded-lg border border-emerald-300 bg-emerald-50/50">
                   <div className="text-[10px] font-bold uppercase text-emerald-800">Billing Recovery Gap</div>
-                  <div className="text-xl font-black font-mono text-emerald-700 mt-1">
+                  <div className="text-xl font-bold font-mono text-emerald-700 mt-1">
                     +${Math.round((agency.cmsData?.estimatedRecoverableRevenue || 145000) / 1000)}K<span className="text-xs font-semibold">/yr</span>
                   </div>
                   <div className="text-[10px] text-emerald-800 mt-0.5">
@@ -534,7 +534,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">Cardiac Survival &amp; Acuity</div>
-                  <div className="text-xl font-black font-mono text-blue-900 mt-1">
+                  <div className="text-xl font-bold font-mono text-blue-900 mt-1">
                     {agency.utsteinSurvivalRate || 14.2}%
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -559,7 +559,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black font-mono text-[#1E3A8A]">
+                  <span className="text-2xl font-bold font-mono text-[#1E3A8A]">
                     {agency.zollOpportunity?.pulseIqScore || 92}
                   </span>
                   <span className="text-xs font-bold text-slate-500">/ 100</span>
@@ -571,7 +571,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 {scoreExplanation?.factors.map((f) => (
                   <div key={f.id} className="text-center p-2 rounded bg-white border border-blue-100">
                     <div className="text-slate-500 text-[10px] truncate">{f.name.split(' ')[0]} {f.name.split(' ')[1]}</div>
-                    <div className="font-mono font-black text-slate-900 text-sm mt-0.5">
+                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
                       +{f.pointsContributed} pts
                     </div>
                     <div className="text-[9px] text-blue-700 font-medium">
@@ -607,7 +607,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                   <tbody className="divide-y divide-slate-200 text-slate-800">
                     <tr>
                       <td className="py-2 px-3 font-bold text-slate-900">Frontline ALS Ambulances (Type I/III)</td>
-                      <td className="py-2 px-3 text-center font-mono font-black text-blue-900">{fleet.alsAmbulances}</td>
+                      <td className="py-2 px-3 text-center font-mono font-bold text-blue-900">{fleet.alsAmbulances}</td>
                       <td className="py-2 px-3 text-slate-600">Advanced 12-Lead Monitor, Mechanical CPR, Transport Vent</td>
                       <td className="py-2 px-3 text-slate-700">7-Year High-Mileage Replacement Cycle</td>
                     </tr>
@@ -683,7 +683,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   {agency.name} · Executive Briefing (Page 2)
                 </span>
-                <h3 className="text-lg font-black text-slate-900">Clinical Resuscitation Quality, CMS Denials &amp; Contract Expiration</h3>
+                <h3 className="text-lg font-bold text-slate-900">Clinical Resuscitation Quality, CMS Denials &amp; Contract Expiration</h3>
               </div>
               <div className="text-xs font-mono font-semibold text-slate-600">
                 CMS NPI #{agency.npiNumber || '1043298711'} · FDID: {agency.fdid || 'Verified'}
@@ -702,7 +702,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">STEMI 12-Lead Acquisition</div>
-                  <div className="text-xl font-black font-mono text-blue-900 mt-1">
+                  <div className="text-xl font-bold font-mono text-blue-900 mt-1">
                     {agency.qualityMetrics?.nemsqaStemi12LeadAcquisitionPct || 89}%
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -712,7 +712,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">Chest Compression Fraction</div>
-                  <div className="text-xl font-black font-mono text-emerald-800 mt-1">
+                  <div className="text-xl font-bold font-mono text-emerald-800 mt-1">
                     {agency.qualityMetrics?.nemsqaChestCompressionFractionPct || 81}%
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -722,7 +722,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">ETCO2 Ventilation Compliance</div>
-                  <div className="text-xl font-black font-mono text-amber-800 mt-1">
+                  <div className="text-xl font-bold font-mono text-amber-800 mt-1">
                     {agency.qualityMetrics?.nemsqaEtco2VentilationCompliancePct || 68}%
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -732,7 +732,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
                 <div className="p-3 rounded-lg border border-slate-200 bg-white">
                   <div className="text-[10px] font-bold uppercase text-slate-500">Pediatric Respiratory Support</div>
-                  <div className="text-xl font-black font-mono text-purple-900 mt-1">
+                  <div className="text-xl font-bold font-mono text-purple-900 mt-1">
                     {agency.qualityMetrics?.nemsqaPediatricRespiratorySupportPct || 74}%
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
@@ -755,7 +755,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-bold text-slate-600">Annual Recoverable Cash:</span>
-                  <div className="text-xl font-black font-mono text-emerald-700">
+                  <div className="text-xl font-bold font-mono text-emerald-700">
                     +${Math.round((agency.cmsData?.estimatedRecoverableRevenue || 145000)).toLocaleString()}/yr
                   </div>
                 </div>
@@ -884,7 +884,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   {agency.name} · Executive Briefing (Page 3)
                 </span>
-                <h3 className="text-lg font-black text-slate-900">Commercial TCO, Medicare HCPCS &amp; Cooperative Purchasing</h3>
+                <h3 className="text-lg font-bold text-slate-900">Commercial TCO, Medicare HCPCS &amp; Cooperative Purchasing</h3>
               </div>
               <div className="text-xs font-mono font-semibold text-slate-600">
                 Federal CMS NPI #{agency.npiNumber || '1043298711'}
@@ -945,10 +945,10 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                       </td>
                     </tr>
                     <tr className="bg-emerald-50/60 font-bold border-t-2 border-emerald-300">
-                      <td className="py-3 px-3 text-emerald-950 font-black">Net 5-Year Financial Advantage</td>
+                      <td className="py-3 px-3 text-emerald-950 font-bold">Net 5-Year Financial Advantage</td>
                       <td className="py-3 px-3 text-slate-700 font-mono">${tcoModel?.incumbentOperatingTotal.toLocaleString()}</td>
                       <td className="py-3 px-3 text-emerald-900 font-mono">${tcoModel?.zollNetOperatingTotal.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-emerald-700 text-sm">
+                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-700 text-sm">
                         +${tcoModel?.totalSavingsIncludingTradeIn.toLocaleString()} Net Savings
                       </td>
                     </tr>

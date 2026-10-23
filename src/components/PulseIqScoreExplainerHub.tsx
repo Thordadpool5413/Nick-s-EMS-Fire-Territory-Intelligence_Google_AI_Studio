@@ -175,7 +175,7 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total PulseIQ
             </div>
-            <div className="text-2xl font-black font-mono text-indigo-900 dark:text-indigo-200 tabular-nums">
+            <div className="text-2xl font-bold font-mono text-indigo-900 dark:text-indigo-200 tabular-nums">
               {score}<span className="text-sm font-normal text-slate-400">/100</span>
             </div>
           </div>

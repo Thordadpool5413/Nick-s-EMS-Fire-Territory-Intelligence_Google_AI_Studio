@@ -230,34 +230,22 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
           {/* Identity & Status */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1E3A8A] to-[#047857] dark:from-[#3B82F6] dark:to-[#10B981] flex items-center justify-center text-white font-bold text-base shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#0F172A] dark:bg-slate-800 flex items-center justify-center text-white font-bold text-sm tracking-tight border border-slate-700 shadow-xs">
                 ZOLL
               </div>
-              <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${
+              <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${
                 isOnline ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}>
-                {isOnline && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                )}
-              </span>
+              }`} />
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
-                  Field Territory Manager
-                </span>
-                <span className="text-xs text-[#D4D2CD] dark:text-slate-700">·</span>
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
-                  isOnline 
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60'
-                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60'
-                }`}>
-                  {isOnline ? 'CLOUD SYNC' : 'OFFLINE FIELD'}
-                </span>
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Field Territory Manager</span>
+                <span aria-hidden="true">·</span>
+                <span className="font-medium">{isOnline ? 'Cloud Synced' : 'Offline Field'}</span>
               </div>
-              <h1 className="text-lg font-bold text-[#111827] dark:text-slate-100 tracking-tight">
-                Sarah Jenkins <span className="text-xs font-normal text-[#6B7280] dark:text-slate-400">(Southwest Territory)</span>
+              <h1 className="text-lg font-bold text-[#0F172A] dark:text-slate-100 tracking-tight">
+                Sarah Jenkins <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Southwest Territory)</span>
               </h1>
             </div>
           </div>
@@ -333,54 +321,53 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
           </div>
         </div>
 
-        {/* Rapid KPI Glance Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3.5 border-t border-[#E5E4DF] dark:border-slate-800">
-          <div className="p-2.5 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800/80">
-            <span className="text-[10px] uppercase font-mono font-bold text-[#6B7280] dark:text-slate-400 block">
+        {/* Executive KPI Overview Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3.5 border-t border-slate-200/80 dark:border-slate-800">
+          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
               Active Accounts
             </span>
-            <span className="text-lg font-bold text-[#111827] dark:text-slate-100 font-mono tabular-nums">
+            <span className="text-xl font-bold text-[#0F172A] dark:text-slate-100 font-mono tabular-nums block mt-0.5">
               {territoryStats.total}
             </span>
-            <span className="text-[11px] text-[#047857] dark:text-emerald-400 block font-medium">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-medium mt-0.5">
               100% Verified CRM
             </span>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50">
-            <span className="text-[10px] uppercase font-mono font-bold text-rose-700 dark:text-rose-400 block flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-              Critical (&le;90d)
+          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
+              Critical (&le;90d Expiry)
             </span>
-            <span className="text-lg font-bold text-rose-900 dark:text-rose-200 font-mono tabular-nums">
+            <span className="text-xl font-bold text-rose-700 dark:text-rose-400 font-mono tabular-nums block mt-0.5">
               {territoryStats.criticalCount} Leads
             </span>
-            <span className="text-[11px] text-rose-700 dark:text-rose-400 block">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
               Contract cliff urgent
             </span>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50">
-            <span className="text-[10px] uppercase font-mono font-bold text-[#1E3A8A] dark:text-blue-400 block">
+          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
               Conversion Pipeline
             </span>
-            <span className="text-lg font-bold text-[#1E3A8A] dark:text-blue-200 font-mono tabular-nums">
+            <span className="text-xl font-bold text-[#1D4ED8] dark:text-blue-400 font-mono tabular-nums block mt-0.5">
               ${(territoryStats.totalPipelineValue / 1000000).toFixed(1)}M
             </span>
-            <span className="text-[11px] text-[#1E3A8A] dark:text-blue-400 block">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
               {territoryStats.competitorUnits} defib units
             </span>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50">
-            <span className="text-[10px] uppercase font-mono font-bold text-emerald-700 dark:text-emerald-400 block">
+          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
               Today's Field Stops
             </span>
-            <span className="text-lg font-bold text-emerald-900 dark:text-emerald-200 font-mono tabular-nums">
+            <span className="text-xl font-bold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums block mt-0.5">
               {territoryStats.dayRouteCount} Stops
             </span>
-            <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block">
-              {territoryStats.dayRouteCount > 0 ? 'Ready for drive' : 'Tap car to add'}
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+              {territoryStats.dayRouteCount > 0 ? 'Ready for navigation' : 'Tap to add station'}
             </span>
           </div>
         </div>
@@ -774,53 +761,48 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                       
                       {/* Left: Score Badge & Identity */}
                       <div className="flex items-start gap-3 min-w-0">
-                        {/* Radial-Style Score Badge */}
-                        <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-mono font-bold shrink-0 border shadow-2xs ${
-                          pulseScore >= 90
-                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                            : pulseScore >= 75
-                              ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        }`}>
-                          <span className="text-base leading-none">{pulseScore}</span>
-                          <span className="text-[8px] uppercase tracking-wider font-sans font-bold opacity-75">PulseIQ</span>
+                        {/* Polished Executive Score Badge */}
+                        <div className="w-11 h-11 rounded-xl bg-[#0F172A] dark:bg-slate-800 text-white flex flex-col items-center justify-center font-mono font-bold shrink-0 border border-slate-700/80 shadow-xs">
+                          <span className="text-sm font-bold tabular-nums leading-none">{pulseScore}</span>
+                          <span className="text-[7.5px] uppercase tracking-wider font-sans font-semibold text-slate-400 mt-0.5">PulseIQ</span>
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${
-                              agency.providerCategory === 'FIRE' || (agency.agencyType || '').toLowerCase().includes('fire')
-                                ? 'bg-orange-50 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
-                                : 'bg-blue-50 dark:bg-blue-950/60 text-[#1E3A8A] dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                            }`}>
-                              {agency.providerCategory === 'FIRE' || (agency.agencyType || '').toLowerCase().includes('fire') ? 'Fire Dept' : 'EMS 3rd Service'}
+                          {/* Clean unboxed metadata with typographic dot separators */}
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">
+                              {agency.providerCategory === 'FIRE' || (agency.agencyType || '').toLowerCase().includes('fire') ? 'Fire Department' : 'EMS Agency'}
                             </span>
-
+                            <span aria-hidden="true" className="text-slate-300">·</span>
+                            <span>{agency.city || ''}, {agency.stateCode || ''}</span>
                             {isUrgent && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
-                                <span>Expiring in {agency.competitorContract?.renewalWindowDays ?? 90}d</span>
-                              </span>
+                              <>
+                                <span aria-hidden="true" className="text-slate-300">·</span>
+                                <span className="font-semibold text-amber-700 dark:text-amber-400">
+                                  Contract ends in {agency.competitorContract?.renewalWindowDays ?? 90}d
+                                </span>
+                              </>
                             )}
-
                             {agency.inDayRoute && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                                <Car className="w-3 h-3" />
-                                <span>Today's Stop</span>
-                              </span>
+                              <>
+                                <span aria-hidden="true" className="text-slate-300">·</span>
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                  Today's Stop
+                                </span>
+                              </>
                             )}
                           </div>
 
                           <h3 
                             onClick={() => onSelectAgency(agency)}
-                            className="text-base font-bold text-[#111827] dark:text-slate-100 hover:text-[#1E3A8A] dark:hover:text-blue-400 cursor-pointer transition-colors leading-snug"
+                            className="text-base font-bold text-[#0F172A] dark:text-slate-100 hover:text-[#1D4ED8] dark:hover:text-blue-400 cursor-pointer transition-colors leading-snug"
                           >
                             {agency.name || 'Unnamed Agency'}
                           </h3>
 
-                          <div className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-slate-400 mt-0.5">
-                            <MapPin className="w-3 h-3 shrink-0 text-[#9CA3AF]" />
-                            <span className="truncate">{agency.city || ''}, {agency.stateCode || ''} ({agency.county || ''} County)</span>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                            <span className="truncate">{agency.address ? `${agency.address} · ` : ''}{agency.county || ''} County</span>
                           </div>
                         </div>
                       </div>

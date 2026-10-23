@@ -79,11 +79,11 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
 
   if (variant === 'compact') {
     return (
-      <div className={`p-4 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-slate-900/90 text-left transition-all ${className}`}>
+      <div className={`p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 text-left transition-all ${className}`}>
         {/* Header / Hook */}
         <div className="flex items-start justify-between gap-3 mb-2.5">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0 shadow-sm">
+            <span className="p-1.5 rounded-lg bg-[#0F172A] dark:bg-slate-800 text-white shrink-0 shadow-xs">
               <Sparkles className="w-3.5 h-3.5" />
             </span>
             <div>
@@ -99,7 +99,7 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
           <button
             onClick={handleCopy}
             title="Copy Elevator Pitch"
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-xs shrink-0"
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-xs shrink-0"
           >
             {copied ? (
               <>
@@ -141,7 +141,7 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
 
           {/* Pillar 3: Procurement Bypass */}
           <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
-            <div className="flex items-center gap-1.5 font-semibold text-blue-700 dark:text-blue-400 text-[11px] mb-1">
+            <div className="flex items-center gap-1.5 font-semibold text-[#1D4ED8] dark:text-blue-400 text-[11px] mb-1">
               <Award className="w-3.5 h-3.5" />
               <span>3. Fast-Track Vehicle</span>
             </div>
@@ -152,13 +152,13 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
         </div>
 
         {/* Narrative Accordion / Pitch Preview */}
-        <div className="p-2.5 rounded-lg bg-blue-100/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
-          <span className="font-semibold text-blue-900 dark:text-blue-300">TM Quick Pitch: </span>
+        <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
+          <span className="font-semibold text-slate-900 dark:text-slate-100">TM Quick Pitch: </span>
           <span>"{elevatorPitch.slice(0, 160)}..." </span>
           {onOpenFullProfile && (
             <button
               onClick={() => onOpenFullProfile(agency)}
-              className="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-400 hover:underline ml-1"
+              className="inline-flex items-center gap-1 font-semibold text-[#1D4ED8] dark:text-blue-400 hover:underline ml-1 cursor-pointer"
             >
               <span>View full strategy & objections</span>
               <ArrowRight className="w-3 h-3" />
@@ -171,19 +171,19 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
 
   // FULL-SCREEN VARIANT
   return (
-    <div className={`p-6 rounded-2xl border border-blue-200/80 dark:border-blue-900/60 bg-white dark:bg-slate-900 shadow-sm text-left ${className}`}>
+    <div className={`p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs text-left ${className}`}>
       {/* Top Banner Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 shrink-0">
+          <div className="p-2.5 rounded-lg bg-[#1E3A8A] text-white shadow-xs shrink-0">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                Executive Deal Story & Conversion Playbook
+                Executive Deal Story &amp; Conversion Playbook
               </h3>
-              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 uppercase tracking-wider">
+              <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 uppercase tracking-wider">
                 Priority Opportunity
               </span>
             </div>

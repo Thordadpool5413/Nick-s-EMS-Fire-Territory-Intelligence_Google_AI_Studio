@@ -31,12 +31,11 @@ import {
 import { TopBar } from './components/TopBar';
 import { PredictiveLeadQueue } from './components/PredictiveLeadQueue';
 import { GisTerritoryHeatmap } from './components/GisTerritoryHeatmap';
-import { TerritoryMapView } from './components/TerritoryMapView';
+import { PredictiveWeightsModal } from './components/PredictiveWeightsModal';
 import { PublicHealthcareExplorer } from './components/PublicHealthcareExplorer';
 import { AfgGrantsTracker } from './components/AfgGrantsTracker';
 import { FieldModeView } from './components/FieldModeView';
 import { NotificationDrawer } from './components/NotificationDrawer';
-import { PredictiveWeightsModal } from './components/PredictiveWeightsModal';
 import { QuickVisitModal } from './components/QuickVisitModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ContractExpirationCalendar } from './components/ContractExpirationCalendar';
@@ -52,9 +51,10 @@ import { PulseIqRegionalBreakdownChart } from './components/PulseIqRegionalBreak
 import { FocusedProviderProfile } from './components/FocusedProviderProfile';
 import { ClinicalCompetitiveKnowledgeHub } from './components/ClinicalCompetitiveKnowledgeHub';
 import { ZollMobileDashboard } from './components/ZollMobileDashboard';
+import { HomeHubView } from './components/HomeHubView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useFirestoreAgencies } from './hooks/useFirestoreAgencies';
-import { CheckCircle2, AlertCircle, Globe, ListOrdered, Scale, Car, X, Siren, Flame, LayoutDashboard } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Globe, ListOrdered, Scale, Car, X, Siren, Flame, LayoutDashboard, Sliders, ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warn' | 'error' } | null>(null);
@@ -126,16 +126,16 @@ export default function App() {
     setIsDarkMode(prev => !prev);
   }, []);
   
-  // Navigation & Modals - Open with Step 1: 50-State Territory Explorer by default
-  const [activeTab, setActiveTab] = useState<string>('states_directory');
+  // Navigation & Modals - Open with Central Home & Guided Onboarding Hub by default
+  const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
   const [rfpAgency, setRfpAgency] = useState<Agency | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
-  const [isWeightTunerOpen, setIsWeightTunerOpen] = useState<boolean>(false);
   const [isQuickVisitOpen, setIsQuickVisitOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
   const [isDataLineageOpen, setIsDataLineageOpen] = useState<boolean>(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState<boolean>(false);
+  const [isWeightsModalOpen, setIsWeightsModalOpen] = useState<boolean>(false);
 
   // Listen to browser online/offline events
   useEffect(() => {
@@ -204,6 +204,20 @@ export default function App() {
       if (refreshedActive) setActiveAccount(refreshedActive);
     }
   }, [selectedAgency, activeAccount, setAgenciesState]);
+
+  const handleSaveWeights = useCallback((newWeights: PredictiveWeights) => {
+    setWeights(newWeights);
+    saveStoredWeights(newWeights);
+    const recalculated = agencies.map(agency => ({
+      ...agency,
+      zollOpportunity: {
+        ...agency.zollOpportunity,
+        pulseIqScore: calculateScore(agency, newWeights)
+      }
+    }));
+    updateAgenciesState(recalculated);
+    showToast('PulseIQ scoring weights calibrated. All territory accounts re-ranked.', 'success');
+  }, [agencies, updateAgenciesState, showToast]);
 
   const handleAddAgency = useCallback((newAgency: Agency) => {
     addAgencyToCloud(newAgency);
@@ -296,50 +310,6 @@ export default function App() {
     }
   }, [addFieldNoteInCloud, selectedAgency, activeAccount, isOnline, agencies, showToast]);
 
-  const handleSaveWeights = useCallback((newWeights: PredictiveWeights) => {
-    setWeights(newWeights);
-    saveStoredWeights(newWeights);
-
-    setAgenciesState(prev => {
-      const updated = prev.map(a => {
-        const newScore = calculateScore(a, newWeights);
-        return {
-          ...a,
-          zollOpportunity: {
-            ...a.zollOpportunity,
-            pulseIqScore: newScore
-          }
-        };
-      });
-      saveAgencies(updated);
-      return updated;
-    });
-
-    setSelectedAgency(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        zollOpportunity: {
-          ...prev.zollOpportunity,
-          pulseIqScore: calculateScore(prev, newWeights)
-        }
-      };
-    });
-
-    setActiveAccount(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        zollOpportunity: {
-          ...prev.zollOpportunity,
-          pulseIqScore: calculateScore(prev, newWeights)
-        }
-      };
-    });
-
-    showToast('PulseIQ formula updated & recalculated across all accounts.', 'success');
-  }, [showToast, setAgenciesState, setSelectedAgency, setActiveAccount]);
-
   const handleTriggerSimulatedAlert = useCallback(() => {
     const template = ALERT_TEMPLATES[Math.floor(Math.random() * ALERT_TEMPLATES.length)];
     const newAlert: PushAlert = {
@@ -407,7 +377,6 @@ export default function App() {
     setSelectedAgency(null);
     setActiveAccount(null);
     setRfpAgency(null);
-    setIsWeightTunerOpen(false);
     setIsQuickVisitOpen(false);
     setIsCommandPaletteOpen(false);
     setIsDataLineageOpen(false);
@@ -417,14 +386,14 @@ export default function App() {
     setGlobalCounty('all');
     setGlobalCity('all');
     setGlobalCategory('all');
-    setActiveTab('tm_dashboard');
+    setActiveTab('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleNavigateTab = useCallback((tab: string) => {
     setSelectedAgency(null);
     setActiveAccount(null);
-    if (tab === 'states_directory' || tab === 'tm_dashboard') {
+    if (tab === 'states_directory' || tab === 'tm_dashboard' || tab === 'home') {
       setGlobalState('all');
       setGlobalCounty('all');
       setGlobalCity('all');
@@ -435,12 +404,12 @@ export default function App() {
 
   const workflowSteps = [
     {
-      step: '★ Field',
-      title: 'TM Field Cockpit',
-      subtitle: 'Mobile dashboard & telemetry',
-      tabId: 'tm_dashboard',
-      icon: LayoutDashboard,
-      isActive: activeTab === 'tm_dashboard'
+      step: '★ Home',
+      title: 'Mission & Onboarding',
+      subtitle: 'Central hub & guided tour',
+      tabId: 'home',
+      icon: ShieldCheck,
+      isActive: activeTab === 'home'
     },
     {
       step: 'Step 1',
@@ -472,12 +441,12 @@ export default function App() {
       subtitle: 'Plan route & demo 3D hardware',
       tabId: 'field',
       icon: Car,
-      isActive: ['field', '3d_studio'].includes(activeTab)
+      isActive: ['field', '3d_studio', 'tm_dashboard'].includes(activeTab)
     }
   ];
 
   return (
-    <div className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDarkMode ? 'dark bg-[#090D16] text-slate-100' : 'bg-[#F8F7F4] text-[#111827]'} flex flex-col font-sans pb-16 md:pb-0 transition-colors duration-150`}>
+    <div className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDarkMode ? 'dark bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'} flex flex-col font-sans pb-16 md:pb-0 transition-colors duration-150`}>
       
       {/* Top Navigation Bar */}
       <TopBar
@@ -498,7 +467,6 @@ export default function App() {
           setCurrentRole(r);
           showToast(`Switched active view role to: ${r}`, 'info');
         }}
-        openWeightTuner={() => setIsWeightTunerOpen(true)}
         openQuickVisitModal={() => setIsQuickVisitOpen(true)}
         openCommandPalette={() => setIsCommandPaletteOpen(true)}
         openDataLineageModal={() => setIsDataLineageOpen(true)}
@@ -518,21 +486,21 @@ export default function App() {
         {showWorkflowGuide && (
           <section
             aria-label="Quick-Start Workflow Guide"
-            className="bg-white dark:bg-slate-900 border border-[#E5E4DF] dark:border-slate-800 rounded-xl p-3.5 sm:px-5 shadow-[0_1px_2px_rgba(17,24,39,0.03)]"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:px-5 shadow-xs"
           >
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <div className="flex items-center gap-2 text-xs">
-                <span className="font-bold text-[#1E3A8A] dark:text-blue-400 uppercase tracking-wider text-[11px]">
+                <span className="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider text-[11px]">
                   Guided Workflow
                 </span>
-                <span className="text-[#D4D2CD] dark:text-slate-700" aria-hidden="true">·</span>
-                <span className="text-[#374151] dark:text-slate-300">
+                <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+                <span className="text-slate-600 dark:text-slate-300">
                   Follow these steps to explore territory accounts, manage priority opportunities, build savings proposals, and navigate field visits:
                 </span>
               </div>
               <button
                 onClick={() => setShowWorkflowGuide(false)}
-                className="text-xs text-[#6B7280] dark:text-slate-400 hover:text-[#111827] dark:hover:white flex items-center gap-1 shrink-0 cursor-pointer"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 shrink-0 cursor-pointer"
                 title="Hide workflow guide"
               >
                 <span className="hidden sm:inline">Dismiss</span>
@@ -549,13 +517,13 @@ export default function App() {
                     onClick={() => handleNavigateTab(ws.tabId)}
                     className={`text-left p-3 rounded-lg border transition-all flex items-start gap-3 cursor-pointer ${
                       ws.isActive
-                        ? 'bg-[#1E3A8A]/[0.06] dark:bg-blue-950/40 border-[#1E3A8A] dark:border-blue-500 shadow-2xs'
-                        : 'bg-[#F8F7F4]/70 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border-[#E5E4DF] dark:border-slate-800'
+                        ? 'bg-blue-50/60 dark:bg-blue-950/40 border-[#1E3A8A] dark:border-blue-500 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800'
                     }`}
                   >
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                        ws.isActive ? 'bg-[#1E3A8A] dark:bg-blue-600 text-white' : 'bg-white dark:bg-slate-700 text-[#374151] dark:text-slate-300 border border-[#E5E4DF] dark:border-slate-600'
+                        ws.isActive ? 'bg-[#1E3A8A] text-white' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -578,7 +546,31 @@ export default function App() {
           </section>
         )}
 
-        <ErrorBoundary onReset={() => setActiveTab('states_directory')}>
+        <ErrorBoundary onReset={() => setActiveTab('home')}>
+        {/* Executive Home & Guided Onboarding Hub */}
+        {activeTab === 'home' && (
+          <HomeHubView
+            agencies={agencies}
+            onNavigateTab={handleNavigateTab}
+            onSelectAgency={(a) => {
+              setSelectedAgency(a);
+              setActiveAccount(a);
+            }}
+            onOpenRfpGenerator={(a) => setRfpAgency(a)}
+            onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            onOpenDataLineageModal={() => setIsDataLineageOpen(true)}
+            isOnline={isOnline}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={toggleDarkMode}
+            alerts={alerts}
+            isCloudConnected={isCloudConnected}
+            cloudSyncCount={cloudSyncCount}
+            globalCategory={globalCategory}
+            setGlobalCategory={setGlobalCategory}
+          />
+        )}
+
         {/* TM Mobile Dashboard (Field Cockpit) */}
         {activeTab === 'tm_dashboard' && (
           <ZollMobileDashboard
@@ -628,15 +620,24 @@ export default function App() {
             globalCity={globalCity}
             globalCategory={globalCategory}
             activeAccount={currentActive}
+            weights={weights}
+            onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
           />
         )}
 
-        {activeTab === 'gis' && (
+        {(activeTab === 'gis' || activeTab === 'map') && (
           <GisTerritoryHeatmap
             agencies={agencies}
             onSelectAgency={(a) => {
               setSelectedAgency(a);
               setActiveAccount(a);
+            }}
+            onToggleRoute={handleToggleRoute}
+            onOpenRfpGenerator={(a) => setRfpAgency(a)}
+            onOpenDataLineage={(a) => {
+              setSelectedAgency(a);
+              setActiveAccount(a);
+              setIsDataLineageOpen(true);
             }}
             onFilterByCluster={() => {}}
             globalState={globalState}
@@ -664,24 +665,31 @@ export default function App() {
 
         {activeTab === 'pulseiq' && (
           <div className="workspace-section-grid">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-3 bg-white border border-[#E5E4DF] rounded-xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.03)] min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs min-w-0">
               <div>
-                <div className="text-[11px] font-bold text-[#1E3A8A] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A8A] inline-block" />
+                <div className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-700 dark:bg-blue-400 inline-block" />
                   Regional Priority Score Comparison
                 </div>
-                <h1 className="text-xl font-bold text-[#111827] mt-0.5 tracking-tight">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5 tracking-tight">
                   Regional Priority Score Breakdown
                 </h1>
-                <p className="text-xs text-[#374151] mt-1 max-w-2xl leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
                   Compare average department priority scores, fleet age, and Medicare claim recovery potential across {globalCounty !== 'all' ? globalCounty : globalState !== 'all' ? globalState : 'all 50 states'}.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setIsWeightsModalOpen(true)}
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172554] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Calibrate Scoring Weights</span>
+                </button>
+                <button
                   onClick={() => setActiveTab('states_directory')}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#111827] bg-[#F1EFEA] hover:bg-[#E5E4DF] transition-colors flex items-center gap-1.5 border border-[#E5E4DF] cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
                 >
                   <span>&larr; Back to Territory Explorer</span>
                 </button>
@@ -706,7 +714,7 @@ export default function App() {
                 setActiveAccount(a);
               }}
               globalCategory={globalCategory}
-              onOpenWeightTuner={() => setIsWeightTunerOpen(true)}
+              onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
             />
           </div>
         )}
@@ -739,6 +747,13 @@ export default function App() {
               handleNavigateTab('queue');
             }}
             onOpenRfpGenerator={(a) => setRfpAgency(a)}
+            onOpenDataLineage={(a) => {
+              if (a) {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }
+              setIsDataLineageOpen(true);
+            }}
             onAddAgency={handleAddAgency}
             globalState={globalState}
             globalCounty={globalCounty}
@@ -781,21 +796,6 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'map' && (
-          <TerritoryMapView
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onToggleRoute={handleToggleRoute}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-          />
-        )}
 
         {activeTab === 'claims' && (
           <PublicHealthcareExplorer
@@ -866,29 +866,29 @@ export default function App() {
 
         {activeTab === '3d_studio' && (
           <div className="workspace-section-grid">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-3 bg-white border border-[#E5E4DF] rounded-xl p-5 shadow-[0_1px_3px_rgba(17,24,39,0.03)] min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs min-w-0">
               <div>
-                <div className="text-[11px] font-bold text-[#1E3A8A] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A8A] inline-block" />
+                <div className="text-[11px] font-bold text-[#1E3A8A] dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A8A] dark:bg-blue-400 inline-block" />
                   Interactive 3D Equipment &amp; Fleet Demonstration
                 </div>
-                <h1 className="text-xl font-bold text-[#111827] mt-0.5 tracking-tight">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5 tracking-tight">
                   3D Ambulance, Fire Apparatus &amp; ZOLL Monitor Studio
                 </h1>
-                <p className="text-xs text-[#374151] mt-1 max-w-2xl leading-relaxed">
-                  Rotate, zoom, and inspect 3D models of ALS ambulances, fire rescue engines, and the ZOLL X Series Advanced cardiac monitor during on-site department demonstrations.
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                  Rotate, zoom, and inspect 3D models of ALS ambulances, fire rescue engines, and the ZOLL X Series Advanced cardiac monitor with interactive clinical subsystem hotspots.
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActiveTab('field')}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#111827] bg-[#F1EFEA] hover:bg-[#E5E4DF] transition-colors flex items-center gap-1.5 border border-[#E5E4DF] cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
                 >
                   <span>&larr; Back to Route Itinerary</span>
                 </button>
                 <button
                   onClick={() => setIsChatbotOpen(true)}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#111827] hover:bg-[#1E3A8A] transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
                 >
                   <span>Ask Sales Assistant</span>
                 </button>
@@ -901,6 +901,43 @@ export default function App() {
         </ErrorBoundary>
 
       </main>
+
+      {/* Institutional Trust, Data Provenance & Compliance Footer Bar */}
+      <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 text-slate-600 dark:text-slate-400 text-[11px] py-3 px-3 sm:px-6 lg:px-8 mt-auto transition-colors">
+        <div className="max-w-[1720px] mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] sm:text-[11px]">
+            <span className="inline-flex items-center gap-1.5 font-sans font-bold text-slate-900 dark:text-white">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span>VERIFIED PUBLIC-RECORD PROVENANCE</span>
+            </span>
+            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+            <span>NEMSIS v3.5 Compliant Schema</span>
+            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+            <span>CMS Part B Public Use File FY2025</span>
+            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+            <span>USFA National Fire Dept Registry</span>
+            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+            <span>FEMA AFG Obligation Ledger</span>
+            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">HIPAA §164.514(b) Non-PHI Boundary Verified</span>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="hidden xl:inline font-mono text-[10px] text-slate-400 dark:text-slate-500">
+              Cross-Walked by FDID + CMS NPI + Census FIPS
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsDataLineageOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-[#1E3A8A] hover:text-white dark:hover:bg-blue-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold transition-colors cursor-pointer"
+              title="Open Institutional Data Lineage, Federal Registry Sync Ledger & Mathematical Proof"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Data Freshness &amp; Sync Ledger</span>
+            </button>
+          </div>
+        </div>
+      </footer>
 
       {/* Slide-Over Department Profile Drawer (Preserves user's place in the workspace) */}
       {currentActive && (
@@ -955,14 +992,6 @@ export default function App() {
         onTriggerSimulatedAlert={handleTriggerSimulatedAlert}
       />
 
-      {/* Predictive Weights Tuner Modal */}
-      <PredictiveWeightsModal
-        isOpen={isWeightTunerOpen}
-        onClose={() => setIsWeightTunerOpen(false)}
-        weights={weights}
-        onSaveWeights={handleSaveWeights}
-      />
-
       {/* Quick Field Visit Entry Modal */}
       <QuickVisitModal
         isOpen={isQuickVisitOpen}
@@ -1004,7 +1033,14 @@ export default function App() {
           setActiveAccount(agency);
         }}
         onNavigateTab={(tab) => setActiveTab(tab)}
-        onOpenWeightTuner={() => setIsWeightTunerOpen(true)}
+      />
+
+      {/* Interactive 5-Pillar Scoring Weights Calibration Modal */}
+      <PredictiveWeightsModal
+        isOpen={isWeightsModalOpen}
+        onClose={() => setIsWeightsModalOpen(false)}
+        weights={weights}
+        onSaveWeights={handleSaveWeights}
       />
 
       {/* Territory Strategy & RFP Desk */}
@@ -1021,12 +1057,12 @@ export default function App() {
 
       {/* Toast Notification Pill */}
       {toast && (
-        <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50">
+        <div className="fixed bottom-20 md:bottom-12 right-4 sm:right-6 z-50">
           <div className={`px-4 py-3 rounded-xl border shadow-sm flex items-center gap-2.5 text-xs font-semibold ${
-            toast.type === 'success' ? 'bg-white text-[#111827] border-[#E5E4DF]' :
-            toast.type === 'warn' ? 'bg-white text-amber-950 border-amber-200' :
-            toast.type === 'error' ? 'bg-white text-rose-950 border-rose-200' :
-            'bg-white text-[#111827] border-[#E5E4DF]'
+            toast.type === 'success' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800' :
+            toast.type === 'warn' ? 'bg-white dark:bg-slate-900 text-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
+            toast.type === 'error' ? 'bg-white dark:bg-slate-900 text-rose-950 dark:text-rose-300 border-rose-200 dark:border-rose-800' :
+            'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800'
           }`}>
             {toast.type === 'success' ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

@@ -47,56 +47,52 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
   const maxCost = yearlyData[4].incumbentTotal;
 
   return (
-    <div className={`bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5 ${className}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-2xs space-y-5 ${className}`}>
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-              TOTAL COST OF OWNERSHIP (TCO) PROJECTION
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <span className="font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              CFO FINANCIAL LEDGER · 5-YEAR TCO
             </span>
-            <span className="text-xs font-mono text-slate-500">
-              {units} Monitor/Defibrillator Fleet
-            </span>
+            <span aria-hidden="true">·</span>
+            <span>{units}-Unit Monitor/Defibrillator Fleet</span>
           </div>
-          <h3 className="text-base font-bold text-slate-900 mt-1 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
-            <span>5-Year Cumulative Operating Burden &amp; Savings Wedge</span>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>5-Year Cumulative Operating Burden &amp; Net Cash Savings Ledger</span>
           </h3>
         </div>
 
-        {/* Total 5-Year Net Savings Chip */}
-        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center gap-3">
-          <div>
-            <span className="text-[10px] font-mono uppercase text-emerald-800 font-bold block">5-Yr Total Savings</span>
-            <span className="font-mono font-bold text-emerald-700 text-lg tabular-nums">
-              +${tco.totalSavingsIncludingTradeIn.toLocaleString()}
-            </span>
-          </div>
-          <span className="text-[10px] text-emerald-800 font-semibold bg-white border border-emerald-300 px-2 py-1 rounded">
-            Includes ${tco.totalTradeInCredit.toLocaleString()} Trade-In
+        {/* Unboxed Tabular Total 5-Year Net Savings Readout */}
+        <div className="text-left sm:text-right border-l-2 sm:border-l-0 sm:border-r-2 border-emerald-600 pl-3 sm:pl-0 sm:pr-3">
+          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 font-semibold block">
+            5-Yr Net Cash Savings (Incl. ${tco.totalTradeInCredit.toLocaleString()} Trade-In)
+          </span>
+          <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-xl tabular-nums">
+            +${tco.totalSavingsIncludingTradeIn.toLocaleString()}
           </span>
         </div>
       </div>
 
-      {/* Year-by-Year Interactive Visual Comparison Matrix */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1">
-          <span>Cumulative Cost Trajectory by Fiscal Year</span>
+      {/* Flush 1px Hairline 5-Year Trajectory Matrix */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold">
+          <span>Cumulative Operating Trajectory by Fiscal Year</span>
           <div className="flex items-center gap-4 text-[11px] font-mono">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
-              <span>{tco.incumbentModel} Maintenance</span>
+              <span className="w-2.5 h-2.5 bg-rose-500"></span>
+              <span>{tco.incumbentModel}</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
-              <span>{tco.zollModel} Contracted Cost</span>
+              <span className="w-2.5 h-2.5 bg-emerald-500"></span>
+              <span>{tco.zollModel}</span>
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
           {yearlyData.map((d) => {
             const isSelected = hoverYear === d.year;
             const incumbentHeightPct = Math.round((d.incumbentTotal / maxCost) * 100);
@@ -107,47 +103,49 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
                 key={`year-${d.year}`}
                 onClick={() => setHoverYear(d.year)}
                 onMouseEnter={() => setHoverYear(d.year)}
-                className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                className={`p-3 transition-colors cursor-pointer flex flex-col justify-between ${
                   isSelected 
-                    ? 'bg-emerald-50/50 border-emerald-400 ring-1 ring-emerald-300 shadow-xs' 
-                    : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/70'
+                    ? 'bg-slate-50 dark:bg-slate-800/90' 
+                    : 'bg-white dark:bg-slate-900 hover:bg-slate-50/70 dark:hover:bg-slate-800/50'
                 }`}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-xs text-slate-900">Year {d.year}</span>
-                    <span className="text-[10px] font-mono font-bold text-emerald-700">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className={`font-mono font-bold text-xs ${isSelected ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
+                      FY0{d.year}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
                       +${(d.cumulativeSavings / 1000).toFixed(0)}K
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 block font-mono">Cumulative</span>
+                  <div className={`h-[2px] w-full ${isSelected ? 'bg-[#1E3A8A] dark:bg-blue-400' : 'bg-transparent'}`} />
                 </div>
 
                 {/* Vertical Comparison Bar Tower */}
-                <div className="h-28 flex items-end justify-center gap-2 my-2 pt-2 border-b border-slate-200">
+                <div className="h-24 flex items-end justify-center gap-2 my-2 pt-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-5 flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-mono text-rose-700 font-bold block">
+                    <span className="text-[9px] font-mono text-rose-700 dark:text-rose-400 font-bold block tabular-nums">
                       ${(d.incumbentTotal / 1000).toFixed(0)}K
                     </span>
                     <div 
-                      className="w-full bg-rose-500 rounded-t-sm transition-all duration-300"
+                      className="w-full bg-rose-500 transition-all duration-300"
                       style={{ height: `${Math.max(10, incumbentHeightPct)}%` }}
                     />
                   </div>
                   <div className="w-5 flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-mono text-emerald-700 font-bold block">
+                    <span className="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 font-bold block tabular-nums">
                       ${(d.zollTotal / 1000).toFixed(0)}K
                     </span>
                     <div 
-                      className="w-full bg-emerald-500 rounded-t-sm transition-all duration-300"
+                      className="w-full bg-emerald-500 transition-all duration-300"
                       style={{ height: `${Math.max(10, zollHeightPct)}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="text-center">
-                  <span className="text-[10px] font-mono text-slate-600 block">
-                    Save ${(d.cumulativeSavings).toLocaleString()}
+                <div className="text-right">
+                  <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block tabular-nums">
+                    Δ ${(d.cumulativeSavings).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -156,21 +154,40 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
         </div>
       </div>
 
-      {/* Selected Year Inspection Callout */}
-      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="space-y-0.5">
-          <span className="font-bold text-slate-900 text-xs">
-            Year {activeData.year} Fiscal Breakdown for {agency.name}:
-          </span>
-          <p className="text-[11px] text-slate-500 leading-snug">
-            Maintaining {units} units of {tco.incumbentModel} costs an estimated <strong className="text-rose-700 font-mono">${activeData.incumbentTotal.toLocaleString()}</strong> vs. <strong className="text-emerald-700 font-mono">${activeData.zollTotal.toLocaleString()}</strong> under ZOLL Master Cooperative Agreement.
-          </p>
+      {/* Institutional CFO Line-Item Ledger with Dotted Leader Lines & Right-Aligned Monospace Columns */}
+      <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+        <div className="bg-slate-50 dark:bg-slate-800/70 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <span>Fiscal Year {activeData.year} Cumulative Cost Schedule ({units} Units)</span>
+          <span>Incumbent vs. ZOLL · Variance</span>
         </div>
-        <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg shrink-0 text-center shadow-xs">
-          <span className="text-[10px] text-slate-400 block font-semibold">Net Cash Divergence</span>
-          <span className="font-mono font-bold text-emerald-700 text-sm">
-            +${activeData.cumulativeSavings.toLocaleString()}
-          </span>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs bg-white dark:bg-slate-900 p-3 space-y-2">
+          <div className="flex items-baseline justify-between gap-2 pt-1">
+            <span className="text-slate-700 dark:text-slate-300 font-medium shrink-0">
+              {tco.incumbentModel} Cumulative Operating Burden
+            </span>
+            <span className="flex-1 border-b border-dotted border-slate-300 dark:border-slate-700 mx-2" />
+            <span className="font-mono font-semibold text-rose-700 dark:text-rose-400 tabular-nums text-right shrink-0">
+              ${activeData.incumbentTotal.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-2 pt-2">
+            <span className="text-slate-700 dark:text-slate-300 font-medium shrink-0">
+              {tco.zollModel} Contracted Burden (Net of ${tco.totalTradeInCredit.toLocaleString()} Trade-In)
+            </span>
+            <span className="flex-1 border-b border-dotted border-slate-300 dark:border-slate-700 mx-2" />
+            <span className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums text-right shrink-0">
+              ${activeData.zollTotal.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <span className="font-bold text-slate-900 dark:text-white shrink-0">
+              Year {activeData.year} Cumulative Net Budget Variance
+            </span>
+            <span className="flex-1 border-b border-dotted border-slate-300 dark:border-slate-700 mx-2" />
+            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums text-sm text-right shrink-0">
+              +${activeData.cumulativeSavings.toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
 

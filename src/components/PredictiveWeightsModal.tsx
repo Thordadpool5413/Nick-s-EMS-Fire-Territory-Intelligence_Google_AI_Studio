@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { PredictiveWeights } from '../types';
 import { DEFAULT_WEIGHTS } from '../utils/syncStore';
 import { X, Sliders, RotateCcw, Check, Sparkles, Scale, Info } from 'lucide-react';
@@ -46,17 +47,10 @@ export const PredictiveWeightsModal: React.FC<PredictiveWeightsModalProps> = ({
     }
   }, [isOpen, weights]);
 
-  // Support closing with Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const modalCardRef = useRef<HTMLDivElement>(null);
+
+  // Close modal when clicking outside or pressing Escape
+  useClickOutside(modalCardRef, onClose, { enabled: isOpen, closeOnEscape: true });
 
   // Derived total sum of weights
   const totalWeight = useMemo(() => {
@@ -109,10 +103,10 @@ export const PredictiveWeightsModal: React.FC<PredictiveWeightsModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-100"
-      onClick={onClose}
+      className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-100"
     >
       <div 
+        ref={modalCardRef}
         className="bg-white border border-slate-300 rounded-2xl w-full max-w-xl shadow-2xl p-5 sm:p-6 space-y-4 animate-fadeIn text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >

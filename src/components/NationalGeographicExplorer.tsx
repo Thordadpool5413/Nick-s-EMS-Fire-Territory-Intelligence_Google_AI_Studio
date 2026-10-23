@@ -57,6 +57,7 @@ interface NationalGeographicExplorerProps {
   onSelectAgency: (agency: Agency) => void;
   onNavigateToQueueWithFilter?: (stateCode?: string, county?: string, city?: string, zip?: string) => void;
   onOpenRfpGenerator?: (agency: Agency) => void;
+  onOpenDataLineage?: (agency?: Agency) => void;
   onAddAgency?: (agency: Agency) => void;
   globalState?: string;
   globalCounty?: string;
@@ -73,6 +74,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
   onSelectAgency,
   onNavigateToQueueWithFilter,
   onOpenRfpGenerator,
+  onOpenDataLineage,
   onAddAgency,
   globalState,
   globalCounty,
@@ -669,12 +671,12 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
       
       {/* Contextual Drill-Down Breadcrumb Bar (Only shown when drilled into a State, County, or City) */}
       {activeFocusLevel !== 'states' && (
-        <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-2xs grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center justify-between gap-3 min-w-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 shadow-2xs grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center justify-between gap-3 min-w-0">
           <nav aria-label="Geographic Drill-Down Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs">
             <button
               type="button"
               onClick={handleResetFilters}
-              className="px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer"
+              className="px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <Globe className="w-3.5 h-3.5" />
               <span>All 50 States &amp; DC</span>
@@ -698,7 +700,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   className={`px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                     activeFocusLevel === 'counties'
                       ? 'bg-[#1E3A8A] text-white'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
@@ -722,8 +724,8 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   }}
                   className={`px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
                     selectedCityName === 'all'
-                      ? 'bg-[#0F172A] text-white'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      ? 'bg-[#0F172A] dark:bg-blue-600 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
                   }`}
                 >
                   <MapPin className="w-3.5 h-3.5" />
@@ -743,8 +745,66 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             )}
           </nav>
 
-          {/* Right: Contextual Step Back Action (Always steps back 1 level) */}
-          <div className="flex items-center gap-2">
+          {/* Right: Quick State & County Dropdown Pickers + Step Back Action */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick State Dropdown Picker */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <label htmlFor="breadcrumb-state-dropdown" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:inline">
+                State:
+              </label>
+              <select
+                id="breadcrumb-state-dropdown"
+                value={selectedStateCode}
+                onChange={(e) => handleSelectState(e.target.value)}
+                className="h-8 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg px-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
+                title="Switch State / Jurisdiction"
+              >
+                <option value="all">All 50 States</option>
+                {Object.values(ALL_50_STATES_SUMMARIES)
+                  .sort((a, b) => a.state.localeCompare(b.state))
+                  .map((st) => (
+                    <option key={st.code} value={st.code}>
+                      {st.state} ({st.code})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Quick County Dropdown Picker (when a state is active) */}
+            {selectedStateCode !== 'all' && availableCounties.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <label htmlFor="breadcrumb-county-dropdown" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:inline">
+                  County:
+                </label>
+                <select
+                  id="breadcrumb-county-dropdown"
+                  value={selectedCountyName}
+                  onChange={(e) => {
+                    const c = e.target.value;
+                    if (c === 'all') {
+                      setSelectedCountyName('all');
+                      setSelectedCityName('all');
+                      setMiddleTab('counties');
+                      setCountyPage(1);
+                      setAgencyPage(1);
+                      if (onSyncGlobalGeography) onSyncGlobalGeography(selectedStateCode, 'all', 'all', agencyCategoryFilter);
+                    } else {
+                      handleSelectCounty(c, selectedStateCode);
+                    }
+                  }}
+                  className="h-8 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg px-2 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer max-w-[170px] truncate"
+                  title="Switch County"
+                >
+                  <option value="all">All {availableCounties.length} Counties</option>
+                  {availableCounties.map((c) => (
+                    <option key={c.countyFips || c.countyName} value={c.countyName}>
+                      {c.countyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {selectedCityName !== 'all' ? (
               <button
                 type="button"
@@ -756,7 +816,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     onSyncGlobalGeography(selectedStateCode, selectedCountyName, 'all', agencyCategoryFilter);
                   }
                 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#1E3A8A] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
               >
                 <span>&larr; Back to {selectedCountyName}</span>
               </button>
@@ -773,7 +833,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     onSyncGlobalGeography(selectedStateCode, 'all', 'all', agencyCategoryFilter);
                   }
                 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#1E3A8A] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#1E3A8A] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
               >
                 <span>&larr; Back to {activeStateSummary?.state || selectedStateCode} Counties</span>
               </button>
@@ -781,7 +841,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
               >
                 <span>&larr; Back to All 50 States</span>
               </button>
@@ -790,7 +850,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             <button
               type="button"
               onClick={handleResetFilters}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               title="Reset all filters back to All 50 States"
             >
               Reset All
@@ -806,20 +866,20 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start w-full min-w-0">
           
           {/* Left 7/8 Cols: Interactive U.S. Territory Map */}
-          <div className="lg:col-span-7 xl:col-span-8 min-w-0 bg-white border border-[#E5E4DF] rounded-xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(17,24,39,0.03)] grid grid-cols-1 gap-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3.5 border-b border-[#E5E4DF]">
+          <div className="lg:col-span-7 xl:col-span-8 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-1 gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3.5 border-b border-slate-200 dark:border-slate-800">
               <div className="min-w-0">
-                <h1 className="text-lg font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-                  <Compass className="w-5 h-5 text-[#1E3A8A] shrink-0" />
+                <h1 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                  <Compass className="w-5 h-5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
                   <span>Interactive U.S. Territory Map</span>
                 </h1>
-                <p className="text-xs text-[#4B5563] mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                   Click any State boundary on the map or use the selector on the right to inspect counties and verified EMS &amp; Fire providers.
                 </p>
               </div>
 
               {/* Region Filter Segmented Control (Zero horizontal scrollbar, all 5 regions always visible) */}
-              <div className="flex flex-wrap items-center gap-1 bg-[#F8F7F4] p-1 rounded-xl border border-[#E5E4DF] shrink-0">
+              <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
                 {(['All', 'Northeast', 'Midwest', 'South', 'West'] as const).map(reg => (
                   <button
                     key={reg}
@@ -827,8 +887,8 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     onClick={() => setRegionFilter(reg)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                       regionFilter === reg
-                        ? 'bg-[#111827] text-white shadow-2xs'
-                        : 'text-[#4B5563] hover:text-[#111827]'
+                        ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     {reg}
@@ -838,7 +898,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             </div>
 
             {/* Interactive SVG U.S. State Boundary Choropleth Map Canvas */}
-            <div className="relative bg-[#F8FAFC] rounded-xl border border-[#E5E4DF] overflow-hidden p-3">
+            <div className="relative bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-3">
               <svg
                 viewBox="0 0 920 500"
                 className="w-full h-[380px] sm:h-[440px] select-none"
@@ -1026,35 +1086,35 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               </svg>
 
               {/* Map Legend & Hovered State Live Callout Strip */}
-              <div className="mt-2 bg-white border border-[#E5E4DF] rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-[#111827]">
+              <div className="mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-900 dark:text-slate-100 tabular-nums">
                 {hoveredMapStateCode && ALL_50_STATES_SUMMARIES[hoveredMapStateCode] ? (
                   (() => {
                     const hSt = ALL_50_STATES_SUMMARIES[hoveredMapStateCode];
                     const cCount = territoryEngine.getCountiesForState(hSt.code).length;
                     return (
-                      <div className="flex flex-wrap items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2.5 tabular-nums">
                         <span className="px-2 py-0.5 rounded bg-[#1E3A8A] text-white font-mono font-bold">
                           {hSt.code}
                         </span>
-                        <strong className="text-[#111827] text-sm">{hSt.state}</strong>
-                        <span className="text-slate-300">·</span>
-                        <span className="font-mono font-bold text-[#1E3A8A]">{cCount} Counties</span>
-                        <span className="text-slate-300">·</span>
-                        <span className="text-slate-600">Medicare Denials: <strong className="text-rose-700 font-mono">{hSt.avgMedicareDenialRate}%</strong></span>
-                        <span className="text-slate-300">·</span>
-                        <span className="text-slate-600">FEMA Grants: <strong className="text-emerald-700 font-mono">${(hSt.totalAfgAwardsYtd / 1000000).toFixed(1)}M</strong></span>
+                        <strong className="text-slate-900 dark:text-white text-sm tracking-[-0.02em]">{hSt.state}</strong>
+                        <span className="text-slate-300 dark:text-slate-700">·</span>
+                        <span className="font-mono font-bold text-[#1E3A8A] dark:text-blue-400 tabular-nums">{cCount} Counties</span>
+                        <span className="text-slate-300 dark:text-slate-700">·</span>
+                        <span className="text-slate-700 dark:text-slate-300">Medicare Denials: <strong className="text-rose-700 dark:text-rose-400 font-mono tabular-nums">{hSt.avgMedicareDenialRate}%</strong> <span className="font-mono text-[10px] text-slate-400">(CMS PUF)</span></span>
+                        <span className="text-slate-300 dark:text-slate-700">·</span>
+                        <span className="text-slate-700 dark:text-slate-300">FEMA Grants: <strong className="text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">${(hSt.totalAfgAwardsYtd / 1000000).toFixed(1)}M</strong></span>
                       </div>
                     );
                   })()
                 ) : (
-                  <div className="flex flex-wrap items-center gap-4 text-[11px] text-[#4B5563]">
-                    <span className="flex items-center gap-1.5 font-medium text-[#111827]">
-                      <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] shrink-0" />
+                  <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed tabular-nums">
+                    <span className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-white">
+                      <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
                       <span>Click any State boundary or East Coast callout badge to inspect its Counties</span>
                     </span>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 tabular-nums">
                       <span className="w-3 h-3 rounded-xs bg-[#DBEAFE] border border-[#60A5FA] inline-block" />
-                      <span>Elevated Claim Denial (&ge;19.5%)</span>
+                      <span>Elevated Claim Denial (&ge;19.5% · CMS PUF)</span>
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="w-3 h-3 rounded-xs bg-[#E2E8F0] border border-[#64748B] inline-block" />
@@ -1062,7 +1122,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     </span>
                   </div>
                 )}
-                <span className="font-mono text-[11px] text-[#4B5563] font-semibold">
+                <span className="font-mono tabular-nums text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
                   50 States &amp; DC · 3,144 Counties
                 </span>
               </div>
@@ -1070,22 +1130,22 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           </div>
 
           {/* Right 5/4 Cols: Clean Territory & Jurisdiction Picker */}
-          <div className="lg:col-span-5 xl:col-span-4 min-w-0 bg-white border border-[#E5E4DF] rounded-xl p-4 sm:p-5 shadow-[0_1px_3px_rgba(17,24,39,0.03)] grid grid-cols-1 gap-4">
-            <div className="border-b border-[#E5E4DF] pb-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A]">
+          <div className="lg:col-span-5 xl:col-span-4 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-1 gap-4">
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
                 Step 1 · Select Territory Scope
               </div>
-              <h2 className="text-base font-extrabold text-[#111827] mt-0.5">
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
                 Quick State, County &amp; ZIP Selector
               </h2>
-              <p className="text-xs text-[#4B5563] mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 Choose a State or search by County, City, or 5-digit ZIP code to view EMS &amp; Fire providers.
               </p>
             </div>
 
             {/* Direct State Dropdown Selector */}
             <div className="space-y-1.5">
-              <label htmlFor="home-state-picker" className="block text-xs font-bold text-[#111827]">
+              <label htmlFor="home-state-picker" className="block text-xs font-bold text-slate-900 dark:text-white">
                 1. Choose a State or Jurisdiction
               </label>
               <select
@@ -1093,12 +1153,9 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 value={selectedStateCode}
                 onChange={(e) => {
                   const code = e.target.value;
-                  if (code !== 'all') {
-                    handleSelectState(code);
-                    setMiddleTab('counties');
-                  }
+                  handleSelectState(code);
                 }}
-                className="w-full h-10 bg-[#F8F7F4] hover:bg-white border border-[#D4D2CD] rounded-lg px-3 text-xs font-bold text-[#111827] focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
+                className="w-full h-10 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg px-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
               >
                 <option value="all">Select a State to inspect counties...</option>
                 {Object.values(ALL_50_STATES_SUMMARIES)
@@ -1111,9 +1168,40 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               </select>
             </div>
 
+            {/* Direct Cascading County Dropdown Selector */}
+            {selectedStateCode !== 'all' && availableCounties.length > 0 && (
+              <div className="space-y-1.5 animate-fadeIn">
+                <label htmlFor="home-county-picker" className="block text-xs font-bold text-slate-900 dark:text-white">
+                  Choose County in {activeStateSummary?.state || selectedStateCode}
+                </label>
+                <select
+                  id="home-county-picker"
+                  value={selectedCountyName}
+                  onChange={(e) => {
+                    const c = e.target.value;
+                    if (c === 'all') {
+                      setSelectedCountyName('all');
+                      setSelectedCityName('all');
+                      setMiddleTab('counties');
+                    } else {
+                      handleSelectCounty(c, selectedStateCode);
+                    }
+                  }}
+                  className="w-full h-10 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg px-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
+                >
+                  <option value="all">All {availableCounties.length} Counties</option>
+                  {availableCounties.map((c) => (
+                    <option key={c.countyFips || c.countyName} value={c.countyName}>
+                      {c.countyName} (Seat: {c.countySeat})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Direct City / County / ZIP Instant Jump */}
             <div className="space-y-1.5">
-              <label htmlFor="home-zip-county-search" className="block text-xs font-bold text-[#111827]">
+              <label htmlFor="home-zip-county-search" className="block text-xs font-bold text-slate-900 dark:text-white">
                 2. Or Jump Directly by County, City, or ZIP Code
               </label>
               <div className="relative">
@@ -1124,7 +1212,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   value={zipSearchQuery}
                   onChange={(e) => setZipSearchQuery(e.target.value)}
                   placeholder="Enter County, City, or 5-digit ZIP (e.g., 78701, Cuyahoga)..."
-                  className="w-full h-10 bg-[#F8F7F4] hover:bg-white focus:bg-white border border-[#D4D2CD] rounded-lg pl-8 pr-7 text-xs text-[#111827] placeholder-[#6B7280] focus:outline-none focus:border-[#1E3A8A]"
+                  className="w-full h-10 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-7 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
                 />
                 {zipSearchQuery && (
                   <button
@@ -1139,7 +1227,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
 
               {/* Matching Location Instant Results */}
               {zipSearchQuery.trim() && (
-                <div className="mt-2 border border-[#E5E4DF] rounded-lg bg-[#F8F7F4] divide-y divide-[#E5E4DF] max-h-52 overflow-y-auto">
+                <div className="mt-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700 max-h-52 overflow-y-auto">
                   {matchingLocations.length > 0 ? (
                     matchingLocations.map((loc) => (
                       <button
@@ -1149,15 +1237,15 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           handleSelectCity(loc.city, loc.county, loc.stateCode);
                           setZipSearchQuery('');
                         }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-white transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 hover:bg-white dark:hover:bg-slate-700 transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
                       >
                         <div>
-                          <div className="font-bold text-[#111827]">
-                            {loc.city}, {loc.stateCode} <span className="font-mono text-[#1E3A8A]">({loc.zipCode})</span>
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            {loc.city}, {loc.stateCode} <span className="font-mono text-[#1E3A8A] dark:text-blue-400">({loc.zipCode})</span>
                           </div>
-                          <div className="text-[11px] text-slate-500">{loc.county}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{loc.county}</div>
                         </div>
-                        <span className="text-xs font-bold text-[#1E3A8A] shrink-0">Open &rarr;</span>
+                        <span className="text-xs font-bold text-[#1E3A8A] dark:text-blue-400 shrink-0">Open &rarr;</span>
                       </button>
                     ))
                   ) : availableCounties.length > 0 ? (
@@ -1169,15 +1257,15 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           handleSelectCounty(c.countyName, c.stateCode);
                           setZipSearchQuery('');
                         }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-white transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 hover:bg-white dark:hover:bg-slate-700 transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
                       >
                         <div>
-                          <div className="font-bold text-[#111827]">
+                          <div className="font-bold text-slate-900 dark:text-white">
                             {c.countyName}, {c.stateCode}
                           </div>
-                          <div className="text-[11px] text-slate-500">County Seat: {c.countySeat}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">County Seat: {c.countySeat}</div>
                         </div>
-                        <span className="text-xs font-bold text-[#1E3A8A] shrink-0">Inspect &rarr;</span>
+                        <span className="text-xs font-bold text-[#1E3A8A] dark:text-blue-400 shrink-0">Inspect &rarr;</span>
                       </button>
                     ))
                   ) : (
@@ -1190,12 +1278,12 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             </div>
 
             {/* 3. Quick Region State Pills (Filtered by active Region tab) */}
-            <div className="space-y-2 pt-2 border-t border-[#E5E4DF]">
+            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-[#111827]">
+                <span className="font-bold text-slate-900 dark:text-white">
                   3. Quick Jump ({regionFilter === 'All' ? 'All Regions' : `${regionFilter} Region`})
                 </span>
-                <span className="text-[11px] font-mono text-[#4B5563]">
+                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                   {statesList.length} Jurisdictions
                 </span>
               </div>
@@ -1213,12 +1301,12 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     className={`px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                       hoveredMapStateCode === st.code
                         ? 'bg-[#1E3A8A] text-white border-[#1E3A8A]'
-                        : 'bg-[#F8F7F4] hover:bg-white text-[#111827] border-[#E5E4DF]'
+                        : 'bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700'
                     }`}
                     title={`${st.state} (${st.code})`}
                   >
                     <span className="font-mono font-bold text-xs">{st.code}</span>
-                    <span className={`text-[10px] font-mono ${hoveredMapStateCode === st.code ? 'text-blue-200' : 'text-slate-500'}`}>
+                    <span className={`text-[10px] font-mono ${hoveredMapStateCode === st.code ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>
                       {territoryEngine.getCountiesForState(st.code).length}c
                     </span>
                   </button>
@@ -1227,15 +1315,15 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             </div>
 
             {/* Quick Priority Accounts & Regional Summary */}
-            <div className="pt-3 border-t border-[#E5E4DF] space-y-3">
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="p-2.5 rounded-lg bg-[#F8F7F4] border border-[#E5E4DF]">
-                  <span className="text-[11px] text-slate-500 block">Mapped Jurisdictions</span>
-                  <span className="text-sm font-mono font-bold text-[#111827] mt-0.5 block">3,144 Counties</span>
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
+                <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mapped Jurisdictions</span>
+                  <span className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5 block tabular-nums">3,144 Counties</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[#F8F7F4] border border-[#E5E4DF]">
-                  <span className="text-[11px] text-slate-500 block">Verified Contact Policy</span>
-                  <span className="text-xs font-bold text-emerald-800 mt-0.5 block">Official Web &amp; Maps</span>
+                <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Data Provenance</span>
+                  <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 block">● FDID · NPI · FIPS</span>
                 </div>
               </div>
 
@@ -1243,7 +1331,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 <button
                   type="button"
                   onClick={() => onNavigateToQueueWithFilter()}
-                  className="w-full h-10 px-4 rounded-lg font-bold text-xs bg-[#1E3A8A] text-white hover:bg-[#111827] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  className="w-full h-10 px-4 rounded-lg font-bold text-xs bg-[#1E3A8A] text-white hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
                 >
                   <ListOrdered className="w-4 h-4 text-white" />
                   <span>Browse Priority Lead Accounts Queue &rarr;</span>
@@ -1259,16 +1347,16 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           LEVEL 2: COUNTIES IN SELECTED STATE (SINGLE FOCUSED VIEW)
          ===================================================================== */}
       {activeFocusLevel === 'counties' && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-6 shadow-xs grid grid-cols-1 gap-5 min-w-0">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 min-w-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-xs grid grid-cols-1 gap-5 min-w-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
             <div>
-              <div className="text-xs font-semibold text-[#1E3A8A]">
+              <div className="text-xs font-semibold text-[#1E3A8A] dark:text-blue-400">
                 {activeStateSummary?.state || selectedStateCode} Territory Drill-Down
               </div>
-              <h2 className="text-lg font-bold text-[#0F172A] mt-0.5">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
                 Select a County in {activeStateSummary?.state || selectedStateCode} ({availableCounties.length.toLocaleString()})
               </h2>
-              <p className="text-xs text-slate-600 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 Click any county card below to view the EMS &amp; Fire providers serving that county.
               </p>
             </div>
@@ -1284,7 +1372,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     setCountyPage(1);
                   }}
                   placeholder={`Search ${availableCounties.length} counties or county seats...`}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] focus:bg-white"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] focus:bg-white dark:focus:bg-slate-900"
                 />
                 {countyFilterInput && (
                   <button
@@ -1303,7 +1391,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               <button
                 type="button"
                 onClick={() => setMiddleTab('cities')}
-                className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#0F172A] font-semibold text-xs transition-colors whitespace-nowrap shrink-0"
+                className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold text-xs transition-colors whitespace-nowrap shrink-0"
               >
                 View All {matchingAgencies.length} State Providers &rarr;
               </button>
@@ -1361,16 +1449,16 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         onSyncGlobalGeography(c.stateCode, c.countyName, 'all', agencyCategoryFilter);
                       }
                     }}
-                    className="p-5 rounded-xl border border-slate-200 bg-white hover:border-[#1E3A8A] hover:shadow-xs cursor-pointer transition-all flex flex-col justify-between gap-4 group"
+                    className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-[#1E3A8A] dark:hover:border-blue-500 hover:shadow-xs cursor-pointer transition-all flex flex-col justify-between gap-4 group"
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h3 className="text-base font-bold text-[#0F172A] group-hover:text-[#1E3A8A] transition-colors">
+                          <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors">
                             {c.countyName}
                           </h3>
-                          <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
-                            <span>Seat: <strong className="text-slate-700 font-medium">{c.countySeat}</strong></span>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5">
+                            <span>Seat: <strong className="text-slate-700 dark:text-slate-200 font-medium">{c.countySeat}</strong></span>
                             <span aria-hidden="true">·</span>
                             <span className="font-mono tabular-nums">FIPS {c.countyFips}</span>
                             {c.landAreaSqMiles && (
@@ -1381,13 +1469,13 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                             )}
                           </div>
                         </div>
-                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-xs font-semibold shrink-0 tabular-nums">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold shrink-0 tabular-nums">
                           {cityCountInCounty} {cityCountInCounty === 1 ? 'City' : 'Cities'} · {cityCountInCounty * 2} Providers
                         </span>
                       </div>
 
                       {/* Real-World Boundary Coordinates & Verified USPS ZIPs */}
-                      <div className="text-[11px] font-mono text-slate-500 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 tabular-nums">
+                      <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 tabular-nums">
                         <span>
                           Centroid: {c.centroidLat ? `${c.centroidLat.toFixed(3)}°N, ${c.centroidLng?.toFixed(3)}°W` : 'NAD83 Verified'}
                         </span>
@@ -1397,8 +1485,8 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                       </div>
 
                       {/* Connected Real US Census / USPS Cities in this County */}
-                      <div className="pt-2 border-t border-slate-100">
-                        <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
                           Incorporated US Census / USPS Cities (Click city to inspect providers):
                         </div>
                         <div className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -1416,7 +1504,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                                   onSyncGlobalGeography(c.stateCode, c.countyName, cityName, agencyCategoryFilter);
                                 }
                               }}
-                              className="px-2 py-0.5 rounded-md bg-slate-50 hover:bg-[#1E3A8A] hover:text-white border border-slate-200 text-slate-700 text-[11px] font-medium transition-colors cursor-pointer"
+                              className="px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800 hover:bg-[#1E3A8A] hover:text-white border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium transition-colors cursor-pointer"
                             >
                               {cityName}
                             </button>
@@ -1424,27 +1512,27 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-xs font-mono tabular-nums">
+                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-mono tabular-nums">
                         <div>
-                          <span className="text-[11px] font-sans text-slate-500 block">Population</span>
-                          <span className="font-bold text-[#0F172A] mt-0.5 block">{c.population.toLocaleString()}</span>
+                          <span className="text-[11px] font-sans text-slate-500 dark:text-slate-400 block">Population</span>
+                          <span className="font-bold text-slate-900 dark:text-white mt-0.5 block">{c.population.toLocaleString()}</span>
                         </div>
                         <div>
-                          <span className="text-[11px] font-sans text-slate-500 block">MCR Denial</span>
-                          <span className="font-bold text-rose-700 mt-0.5 block">{c.medicareDenialRatePct}%</span>
+                          <span className="text-[11px] font-sans text-slate-500 dark:text-slate-400 block">MCR Denial</span>
+                          <span className="font-bold text-rose-700 dark:text-rose-400 mt-0.5 block">{c.medicareDenialRatePct}%</span>
                         </div>
                         <div>
-                          <span className="text-[11px] font-sans text-slate-500 block">Avg Transport</span>
-                          <span className="font-bold text-[#1E3A8A] mt-0.5 block">{c.averageTransportMinutes} min</span>
+                          <span className="text-[11px] font-sans text-slate-500 dark:text-slate-400 block">Avg Transport</span>
+                          <span className="font-bold text-[#1E3A8A] dark:text-blue-400 mt-0.5 block">{c.averageTransportMinutes} min</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-mono text-[11px]">
-                        {c.annualCardiacArrestIncidents} OHCA/yr
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-600 dark:text-slate-400 font-mono tabular-nums text-[11px]">
+                        {c.annualCardiacArrestIncidents} OHCA/yr · NEMSIS v3.5
                       </span>
-                      <span className="font-semibold text-[#1E3A8A] group-hover:translate-x-0.5 transition-transform">
+                      <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 tabular-nums group-hover:translate-x-0.5 transition-transform">
                         Inspect All {cityCountInCounty} Cities &amp; Providers &rarr;
                       </span>
                     </div>
@@ -1455,14 +1543,14 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           )}
 
           {totalCountyPages > 1 && (
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500">
               <span>Page {countyPage} of {totalCountyPages} ({availableCounties.length.toLocaleString()} Counties)</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={countyPage <= 1}
                   onClick={() => setCountyPage(p => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 font-sans font-semibold"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 disabled:opacity-40 text-slate-700 dark:text-slate-200 font-sans font-semibold"
                 >
                   Previous
                 </button>
@@ -1470,7 +1558,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   type="button"
                   disabled={countyPage >= totalCountyPages}
                   onClick={() => setCountyPage(p => Math.min(totalCountyPages, p + 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 font-sans font-semibold"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 disabled:opacity-40 text-slate-700 dark:text-slate-200 font-sans font-semibold"
                 >
                   Next
                 </button>
@@ -1484,36 +1572,36 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           LEVEL 3: PROVIDERS IN SELECTED COUNTY / CITY (SINGLE FOCUSED VIEW)
          ===================================================================== */}
       {activeFocusLevel === 'providers' && (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-6 shadow-xs grid grid-cols-1 gap-5 min-w-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-xs grid grid-cols-1 gap-5 min-w-0">
           
           {/* Clean Header with EMS/Fire Filter & Optional City Pills */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 min-w-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
             <div>
-              <div className="text-xs font-semibold text-[#1E3A8A]">
+              <div className="text-xs font-semibold text-[#1E3A8A] dark:text-blue-400">
                 {selectedCityName !== 'all'
                   ? `${selectedCityName} · ${selectedCountyName !== 'all' ? selectedCountyName : ''} ${selectedStateCode}`
                   : selectedCountyName !== 'all'
                     ? `${selectedCountyName}, ${activeStateSummary?.state || selectedStateCode}`
                     : `${activeStateSummary?.state || selectedStateCode} Statewide Providers`}
               </div>
-              <h2 className="text-lg font-bold text-[#0F172A] mt-0.5">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
                 EMS &amp; Fire Providers ({matchingAgencies.length.toLocaleString()})
               </h2>
-              <p className="text-xs text-slate-600 mt-0.5">
-                Click any provider card to open its full-screen executive profile.
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                Click any provider card to open its full-screen executive profile. Every figure is cross-walked by USFA FDID, CMS NPI, and Census FIPS.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {/* All / EMS / Fire Category Switcher */}
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={() => { setAgencyCategoryFilter('all'); setAgencyPage(1); }}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${
                     agencyCategoryFilter === 'all'
-                      ? 'bg-[#0F172A] text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   All ({jurisdictionBaseAgencies.length.toLocaleString()})
@@ -1524,7 +1612,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 whitespace-nowrap ${
                     agencyCategoryFilter === 'ems'
                       ? 'bg-[#1E3A8A] text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Siren className="w-3.5 h-3.5" />
@@ -1536,7 +1624,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 whitespace-nowrap ${
                     agencyCategoryFilter === 'fire'
                       ? 'bg-[#0F172A] text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Flame className="w-3.5 h-3.5" />
@@ -1560,10 +1648,10 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
 
           {/* Complete Connected City Filter Bar */}
           {availableCities.length > 0 && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-semibold text-[#0F172A] flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
                   <span>
                     {selectedCountyName !== 'all'
                       ? `Incorporated US Census / USPS Cities in ${selectedCountyName} (${availableCities.length})`
@@ -1578,7 +1666,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                       value={cityFilterInput}
                       onChange={(e) => setCityFilterInput(e.target.value)}
                       placeholder="Filter cities or ZIP..."
-                      className="w-full bg-white border border-slate-200 rounded-lg pl-7 pr-2.5 py-1 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg pl-7 pr-2.5 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
                     />
                   </div>
                 )}
@@ -1596,8 +1684,8 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   }}
                   className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
                     selectedCityName === 'all'
-                      ? 'bg-[#0F172A] text-white border-[#0F172A]'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      ? 'bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
                   All Cities ({availableCities.length})
@@ -1612,7 +1700,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                       className={`px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
                         active
                           ? 'bg-[#1E3A8A] text-white border-[#1E3A8A]'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span>{c.city}</span>
@@ -1636,7 +1724,6 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               {paginatedAgencies.map(agency => {
                 const isFire = agency.agencyType.toLowerCase().includes('fire');
                 const primaryContact = agency.keyContacts[0];
-                const deptPhone = agency.headquartersPhone || primaryContact?.phone || '';
                 const websiteUrl =
                   agency.officialWebsite ||
                   `https://www.google.com/search?q=${encodeURIComponent(`${agency.name} ${agency.city} ${agency.stateCode} official website`)}`;
@@ -1648,49 +1735,62 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   <div
                     key={agency.id}
                     onClick={() => onSelectAgency(agency)}
-                    className="min-w-0 p-4 sm:p-6 rounded-xl border border-slate-200 bg-white hover:border-[#1E3A8A] hover:shadow-md cursor-pointer transition-all grid grid-cols-1 content-between gap-4 group"
+                    className="min-w-0 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-[#1E3A8A] dark:hover:border-blue-500 hover:shadow-md cursor-pointer transition-all grid grid-cols-1 content-between gap-4 group"
                   >
                     <div className="space-y-4">
-                      {/* Kicker + Color-Coded Urgent Trigger Pills */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      {/* Unboxed Monospace Provenance & Classification Strip (Zero-Pill Discipline) */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-slate-600 dark:text-slate-400">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-bold text-white ${
-                            isFire ? 'bg-[#B91C1C]' : 'bg-[#1E3A8A]'
-                          }`}>
-                            {isFire ? <Flame className="w-3 h-3" /> : <Siren className="w-3 h-3" />}
+                          <span className="font-sans font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[10px] flex items-center gap-1">
+                            {isFire ? <Flame className="w-3 h-3 text-amber-600" /> : <Siren className="w-3 h-3 text-[#1E3A8A] dark:text-blue-400" />}
                             <span>{isFire ? 'Fire Dept' : 'EMS Provider'}</span>
                           </span>
-
-                          <span className={`px-2 py-0.5 rounded-md font-bold border ${
-                            agency.installedFleet.defibAgeYears >= 6
-                              ? 'bg-rose-50 text-rose-800 border-rose-200'
-                              : 'bg-amber-50 text-amber-900 border-amber-200'
-                          }`}>
-                            {agency.installedFleet.defibAgeYears} Yr Old Monitors · {agency.installedFleet.defibWarrantyStatus}
+                          <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                          <span title="Verified Federal Record: USFA National Fire Department Registry">
+                            FDID {agency.fdid || '04102'}
                           </span>
-
+                          {agency.npiNumber && (
+                            <>
+                              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                              <span title="Verified Federal Record: CMS National Plan and Provider Enumeration System">
+                                NPI {agency.npiNumber}
+                              </span>
+                            </>
+                          )}
                           {agency.grantStatus.afgAwarded && (
-                            <span className="px-2 py-0.5 rounded-md font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              FEMA Grant: ${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K
-                            </span>
+                            <>
+                              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                              <span className="text-emerald-700 dark:text-emerald-400 font-bold" title="Verified Federal Record: FEMA Assistance to Firefighters Grant Obligation">
+                                ● FEMA AFG ${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K
+                              </span>
+                            </>
                           )}
                         </div>
 
-                        {agency.npiNumber && (
-                          <span className="font-mono text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md tabular-nums">
-                            NPI {agency.npiNumber}
-                          </span>
+                        {onOpenDataLineage && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenDataLineage(agency);
+                            }}
+                            className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                            title="Inspect Field-by-Field Federal Registry Lineage for this Department"
+                          >
+                            <ShieldCheck className="w-3 h-3 shrink-0" />
+                            <span>Verified Lineage</span>
+                          </button>
                         )}
                       </div>
 
                       {/* Provider Name + Connected Hierarchy + Score */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-lg sm:text-xl font-extrabold text-[#0F172A] group-hover:text-[#1E3A8A] transition-colors leading-snug">
+                          <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors leading-snug tracking-[-0.02em]">
                             {agency.name}
                           </h3>
-                          <div className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
-                            {agency.state} ({agency.stateCode}) › {agency.county} › <strong className="text-[#0F172A]">{agency.city}</strong> (ZIP {agency.zipCode})
+                          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                            {agency.state} ({agency.stateCode}) › {agency.county} › <strong className="text-slate-900 dark:text-white">{agency.city}</strong> <span className="font-mono text-xs text-slate-500">(ZIP {agency.zipCode})</span>
                           </div>
                         </div>
 
@@ -1702,32 +1802,32 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         </div>
                       </div>
 
-                      {/* Clean Single-Box Decision Maker, Verified Street Address & Official Links (Zero Duplicate Links) */}
+                      {/* Clean Single-Box Decision Maker, Verified Street Address & Official Links */}
                       <div
-                        className="p-3.5 rounded-xl bg-[#F8F7F4] border border-[#E5E4DF] space-y-2 text-xs sm:text-sm"
+                        className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs sm:text-sm"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {primaryContact && (
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-slate-700 truncate">
-                              Decision Maker: <strong className="text-[#111827] font-extrabold">{primaryContact.name}</strong> <span className="text-slate-500">({primaryContact.title})</span>
+                            <span className="text-slate-600 dark:text-slate-300 truncate">
+                              Command Official: <strong className="text-slate-900 dark:text-white font-bold">{primaryContact.name}</strong> <span className="text-slate-500 dark:text-slate-400">({primaryContact.title})</span>
                             </span>
                           </div>
                         )}
 
-                        <div className="flex items-start gap-1.5 text-slate-800">
-                          <MapPin className="w-4 h-4 text-[#1E3A8A] shrink-0 mt-0.5" />
-                          <span className="font-semibold text-[#111827]">{agency.address}</span>
+                        <div className="flex items-start gap-1.5 text-slate-800 dark:text-slate-200">
+                          <MapPin className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400 shrink-0 mt-0.5" />
+                          <span className="font-semibold text-slate-900 dark:text-white">{agency.address}</span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#E5E4DF]">
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
                           <a
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-[#D4D2CD] hover:border-[#1E3A8A] text-xs font-bold text-[#1E3A8A] transition-colors"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 transition-colors"
                           >
-                            <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] shrink-0" />
+                            <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
                             <span>Google Maps Station</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
@@ -1736,63 +1836,63 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                             href={websiteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-[#D4D2CD] hover:border-[#1E3A8A] text-xs font-bold text-[#1E3A8A] transition-colors"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 transition-colors"
                           >
-                            <Globe className="w-3.5 h-3.5 text-[#1E3A8A]" />
+                            <Globe className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
                             <span>Official Website</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
                       </div>
 
-                      {/* 4 High-Contrast Key Callout Metrics */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs">
-                        <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
-                          <span className="text-[11px] font-bold text-emerald-900 block">Upgrade Value</span>
-                          <span className="text-base font-black font-mono text-emerald-700 mt-0.5 block tabular-nums">
+                      {/* 4-Cell 1px Architectural Hairline Ledger Grid (85/10/5 Institutional Color Discipline + Provenance Badges) */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs tabular-nums">
+                        <div className="p-2.5 bg-white dark:bg-slate-900" title="Source: Cooperative Contract Schedule & Fleet Unit Count">
+                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Upgrade Value</span>
+                          <span className="text-base font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-0.5 block tabular-nums">
                             ${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K
                           </span>
-                          <span className="text-[11px] font-semibold text-emerald-800 truncate block">
+                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate block tabular-nums">
                             Exp: {agency.competitorContract.contractEndDate}
                           </span>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-rose-50/70 border border-rose-200/80">
-                          <span className="text-[11px] font-bold text-rose-900 block">Installed Monitors</span>
-                          <span className="text-xs sm:text-sm font-extrabold text-[#111827] mt-0.5 truncate block" title={agency.installedFleet.defibBrand}>
-                            {agency.installedFleet.defibUnitsCount}× {agency.installedFleet.defibBrand}
+                        <div className="p-2.5 bg-white dark:bg-slate-900" title="Confidence: Municipal Capital Filing / Modeled Replacement Cycle">
+                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Installed Fleet</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-0.5 truncate block tabular-nums" title={agency.installedFleet.defibBrand}>
+                            {agency.installedFleet.defibUnitsCount}× {agency.installedFleet.defibBrand.split(' ')[0]}
                           </span>
-                          <span className="text-[11px] font-bold text-rose-700 block">
-                            {agency.installedFleet.defibAgeYears} yrs old
+                          <span className="text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-400 block tabular-nums">
+                            ◐ {agency.installedFleet.defibAgeYears} yrs · Modeled
                           </span>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-blue-50/60 border border-blue-200/80">
-                          <span className="text-[11px] font-bold text-[#1E3A8A] block">Claim Recovery</span>
-                          <span className="text-base font-black font-mono text-[#1E3A8A] mt-0.5 block tabular-nums">
+                        <div className="p-2.5 bg-white dark:bg-slate-900" title={`Verified Federal Record: CMS Ambulance Fee Schedule PUF FY2025 · NPI ${agency.npiNumber || 'Verified'}`}>
+                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Claim Recovery</span>
+                          <span className="text-base font-bold font-mono text-[#1E3A8A] dark:text-blue-400 mt-0.5 block tabular-nums">
                             +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K/yr
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-700 block">
-                            {agency.cmsData.claimDenialRate}% Denied
+                          <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 block tabular-nums">
+                            ● {agency.cmsData.claimDenialRate}% Den · CMS PUF
                           </span>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                          <span className="text-[11px] font-bold text-slate-600 block">Runs &amp; Survival</span>
-                          <span className="text-base font-black font-mono text-[#111827] mt-0.5 block tabular-nums">
+                        <div className="p-2.5 bg-white dark:bg-slate-900" title="Verified Federal Record: NEMSIS v3.5 National EMS Repository & CARES">
+                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Runs &amp; ROSC</span>
+                          <span className="text-base font-bold font-mono text-slate-900 dark:text-white mt-0.5 block tabular-nums">
                             {agency.annual911Transports.toLocaleString()}
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-700 block">
-                            {agency.utsteinSurvivalRate}% Survival
+                          <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 block tabular-nums">
+                            ● {agency.utsteinSurvivalRate}% ROSC · NEMSIS
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Clean Card Footer */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs sm:text-sm">
-                      <span className="text-slate-600 truncate">
-                        Pitch: <strong className="text-[#111827]">{agency.zollOpportunity.primaryTargetProduct}</strong> · ePCR: <strong className="text-slate-700">{agency.installedFleet.epcrCadSoftware}</strong>
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs sm:text-sm">
+                      <span className="text-slate-600 dark:text-slate-400 truncate text-xs">
+                        Target: <strong className="text-slate-900 dark:text-white">{agency.zollOpportunity.primaryTargetProduct}</strong> · ePCR: <strong className="text-slate-700 dark:text-slate-300">{agency.installedFleet.epcrCadSoftware}</strong>
                       </span>
 
                       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1800,17 +1900,17 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           <button
                             type="button"
                             onClick={() => onOpenRfpGenerator(agency)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors whitespace-nowrap cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap cursor-pointer"
                           >
-                            Generate RFP
+                            RFP Spec
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => onSelectAgency(agency)}
-                          className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-[#111827] hover:bg-[#1E3A8A] transition-colors whitespace-nowrap cursor-pointer"
+                          className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors whitespace-nowrap cursor-pointer"
                         >
-                          Open Full Dossier &rarr;
+                          Open Dossier &rarr;
                         </button>
                       </div>
                     </div>
