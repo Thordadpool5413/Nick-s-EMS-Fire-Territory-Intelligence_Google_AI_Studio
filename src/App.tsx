@@ -82,7 +82,7 @@ export default function App() {
     toggleBookmarkInCloud,
     addFieldNoteInCloud,
     addAgencyToCloud,
-    setAgenciesState
+    setAgenciesState,
     reloadFromCloud
   } = useAgencyRecords({
     globalState,
@@ -94,7 +94,7 @@ export default function App() {
   const [alerts, setAlerts] = useState<PushAlert[]>(loadStoredNotifications);
   const [weights, setWeights] = useState<PredictiveWeights>(loadStoredWeights);
   const [currentRole, setCurrentRole] = useState<UserRole>('Territory Manager');
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [showWorkflowGuide, setShowWorkflowGuide] = useState<boolean>(false);
   const [signedIn, setSignedIn] = useState<boolean>(() => auth.isSignedIn());
