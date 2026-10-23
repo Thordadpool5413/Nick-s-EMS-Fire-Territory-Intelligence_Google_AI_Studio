@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { api } from '@appdeploy/client';
 import { Agency, LeadStage, FieldNote, KeyContact } from '../types';
 import {
   ArrowLeft,
@@ -83,232 +84,33 @@ import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
  * without ever injecting synthetic (555) phone numbers or fabricated staff emails.
  */
 function ensureCompleteAgencyData(raw: Agency): Agency {
-  const existingContacts = raw.keyContacts || [];
-  const isFire = raw.providerCategory === 'FIRE' || raw.agencyType.toLowerCase().includes('fire');
-
-  // Deterministic seed for consistency across sessions
-  let hash = 0;
-  const seed = `${raw.id}:${raw.name}:${raw.stateCode}:${raw.city}:${raw.county}`;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) & 0xffffffff;
-  }
-  const posHash = Math.abs(hash);
-
-  // 1. Federal CMS NPI & Taxonomy Data
-  const defaultNpi = `1${(100000000 + (posHash % 899999999)).toString().padStart(9, '0')}`;
-  const npiNumber = raw.npiNumber || defaultNpi;
-  const taxonomyCode = raw.taxonomyCode || (isFire ? '3416L0300X' : '341600000X');
-  const taxonomyDescription =
-    raw.taxonomyDescription ||
-    (isFire
-      ? '3416L0300X - Land Transport / Municipal Fire Rescue'
-      : '341600000X - Ambulance Service Provider / Advanced Life Support');
-  const nppesRegistryUrl = raw.nppesRegistryUrl || `https://npiregistry.cms.hhs.gov/provider-view/${npiNumber}`;
-  const fdid = raw.fdid || `${raw.stateCode}-${isFire ? 'FD' : 'EMS'}-${(posHash % 9000 + 1000)}`;
-
-  const officialWebsite =
-    raw.officialWebsite ||
-    `https://www.google.com/search?q=${encodeURIComponent(`${raw.name} ${raw.city} ${raw.stateCode} official government website`)}`;
-  const googleMapsUri =
-    raw.googleMapsUri ||
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${raw.name}, ${raw.address}`)}`;
-
-  const defaultOfficialName = isFire ? 'Chief Robert Vance' : 'Director Michael Harris';
-  const defaultOfficialTitle = isFire ? 'Fire Chief & Authorized Official' : 'Executive Director & Authorized Official';
-  const nppesOfficialName = raw.nppesOfficialName || existingContacts[0]?.name || defaultOfficialName;
-  const nppesOfficialTitle = raw.nppesOfficialTitle || existingContacts[0]?.title || defaultOfficialTitle;
-
-  const normalizedContacts: KeyContact[] =
-    existingContacts.length > 0
-      ? existingContacts.map((c) => ({
-          ...c,
-          name: c.name || nppesOfficialName,
-          title: c.title || nppesOfficialTitle,
-          email: '',
-          phone: '',
-          officialWebsite: c.officialWebsite || officialWebsite,
-          headquartersAddress: c.headquartersAddress || raw.address,
-          isVerifiedOfficial: true,
-          verificationSource: c.verificationSource || 'CMS NPPES Federal Provider Registry',
-          notes:
-            'Use Official Department Website or Google Maps Station Lookup for verified contact details.'
-        }))
-      : [
-          {
-            id: `kc-${raw.id}-hq`,
-            name: nppesOfficialName,
-            title: nppesOfficialTitle,
-            role: isFire ? 'Fire Chief' : 'EMS Chief',
-            email: '',
-            phone: '',
-            officialWebsite,
-            headquartersAddress: raw.address,
-            isVerifiedOfficial: true,
-            verificationSource: 'Federal CMS NPPES NPI Registry',
-            notes: 'Use Official Department Website or Google Maps Station Lookup for verified contact details.'
-          }
-        ];
-
-  // 2. Granular Apparatus Fleet Breakdown
-  const totalAmbulances = raw.totalAmbulances || Math.max(2, Math.round((raw.populationServed || 25000) / (isFire ? 22000 : 11000)));
-  const totalEngines = raw.totalFireEngines || (isFire ? Math.max(2, Math.round((raw.populationServed || 25000) / 14000)) : 0);
-  const stationsCount = raw.stationsCount || Math.max(1, Math.round((raw.populationServed || 25000) / 18000));
-
-  const alsAmbulances = isFire ? Math.max(1, Math.round(totalAmbulances * 0.75)) : Math.max(2, Math.round(totalAmbulances * 0.8));
-  const blsAmbulances = Math.max(0, totalAmbulances - alsAmbulances);
-  const fireEngines = isFire ? Math.max(2, totalEngines) : 0;
-  const ladderTrucks = isFire ? Math.max(1, Math.round(stationsCount * 0.4)) : 0;
-  const heavyRescueUnits = isFire ? Math.max(1, Math.round(stationsCount * 0.3)) : Math.max(1, Math.round(stationsCount * 0.25));
-  const commandVehicles = Math.max(1, Math.round(stationsCount * 0.5));
-  const totalActiveUnits = alsAmbulances + blsAmbulances + fireEngines + ladderTrucks + heavyRescueUnits + commandVehicles;
-  const avgVehicleAgeYears = +(5.2 + (posHash % 48) / 10).toFixed(1);
-  const replacementCycleYears = (raw.annual911Transports || 3000) > 6000 ? 7 : 10;
-
-  const apparatusFleet = raw.apparatusFleet || {
-    alsAmbulances,
-    blsAmbulances,
-    fireEngines,
-    ladderTrucks,
-    heavyRescueUnits,
-    commandVehicles,
-    totalActiveUnits,
-    avgVehicleAgeYears,
-    replacementCycleYears
-  };
-
-  // 3. Hospital Trauma & STEMI Transport Logistics
-  const traumaHospitalName = `${raw.city} Regional Medical Center (${raw.gisData?.traumaCenterLevel || 'Level 1 Trauma'} & Comprehensive Stroke)`;
-  const cathLabHospitalName = `${raw.city} Heart & Vascular Pavilion (24/7 STEMI PCI Cath Lab)`;
-  const distTrauma = +(raw.gisData?.avgTransportDistanceToTraumaMiles ?? (4.5 + (posHash % 120) / 10)).toFixed(1);
-  const latencyTrauma = Math.round(raw.gisData?.avgTransportTimeMinutes ?? (9 + (posHash % 16)));
-  const distCath = +(distTrauma * 0.85).toFixed(1);
-  const latencyCath = Math.round(latencyTrauma * 0.9);
-  const annualTransports = raw.annual911Transports || 2500;
-  const annualEdTransports = Math.round(annualTransports * 0.88);
-  const avgEdOffloadLatencyMinutes = 18 + (posHash % 14);
-
-  const hospitalLogistics = raw.hospitalLogistics || {
-    primaryTraumaHospital: traumaHospitalName,
-    traumaLevel: raw.gisData?.traumaCenterLevel || 'Level 1 Regional Trauma',
-    distanceToTraumaMiles: distTrauma,
-    transportTimeMinutes: latencyTrauma,
-    primaryCathLabHospital: cathLabHospitalName,
-    cathLabDistanceMiles: distCath,
-    cathLabTransportMinutes: latencyCath,
-    annualEdTransports,
-    avgEdOffloadLatencyMinutes
-  };
-
-  // 4. Multi-Year FEMA AFG & SAFER Federal Grant Records (5-Year Track Record)
-  const femaGrantHistory = raw.femaGrantHistory || [
-    {
-      fiscalYear: 2025,
-      programName: 'FEMA Assistance to Firefighters Grant (AFG)',
-      purpose: 'Operations & Safety — Frontline Monitor-Defibrillator & Mechanical CPR Upgrade',
-      awardAmount: 185000 + (posHash % 90000),
-      localMatchAmount: 18500,
-      federalSharePct: 90,
-      status: 'Awarded & Disbursed' as const,
-      applicationRound: 'Round 1 FY2025'
-    },
-    {
-      fiscalYear: 2024,
-      programName: 'FEMA Regional AFG Interoperability Award',
-      purpose: 'NEMSIS 3.5 12-Lead ECG Gateways & Real-Time Hospital Telemetry Gateway',
-      awardAmount: 140000 + (posHash % 60000),
-      localMatchAmount: 21000,
-      federalSharePct: 85,
-      status: 'Awarded - Active Spending' as const,
-      applicationRound: 'Round 2 FY2024'
-    },
-    {
-      fiscalYear: 2023,
-      programName: 'Staffing for Adequate Fire & Emergency Response (SAFER)',
-      purpose: 'Paramedic & Resuscitation Staffing — 24/7 ALS Emergency Coverage',
-      awardAmount: 380000 + (posHash % 120000),
-      localMatchAmount: 0,
-      federalSharePct: 100,
-      status: 'Awarded & Disbursed' as const,
-      applicationRound: 'FY2023 SAFER Cohort'
-    },
-    {
-      fiscalYear: 2022,
-      programName: 'State Homeland Security Grant Program (SHSGP)',
-      purpose: 'Mass Casualty Incident (MCI) Triage Packs & Public Access AED Placement',
-      awardAmount: 75000 + (posHash % 25000),
-      localMatchAmount: 0,
-      federalSharePct: 100,
-      status: 'Awarded & Disbursed' as const,
-      applicationRound: 'SHSGP FY2022'
-    },
-    {
-      fiscalYear: 2026,
-      programName: 'FY2026 FEMA AFG Equipment Modernization Priority',
-      purpose: 'End-of-Life Cardiac Monitor Replacement & LifePak-15 Trade-In Grant Spec',
-      awardAmount: 220000 + (posHash % 80000),
-      localMatchAmount: 22000,
-      federalSharePct: 90,
-      status: 'Eligible' as const,
-      applicationRound: 'Pre-Application Open'
-    }
-  ];
-
-  const denialCode = raw.cmsData?.topDenialReasonCode || 'CO-16';
-  const denialReasonLookup: Record<string, string> = {
-    'CO-16': 'CO-16: Claim/service lacks medical necessity documentation or prior clinical justification',
-    'CO-18': 'CO-18: Exact duplicate claim or service submission error',
-    'CO-50': 'CO-50: Non-covered service not deemed medically necessary by payer',
-    'PR-204': 'PR-204: Service not covered under current patient benefit plan or prior auth missing',
-    'CO-97': 'CO-97: Payment adjusted because benefit for this service is bundled'
-  };
-
-  const medicarePct = raw.cmsData?.medicarePayerPct ?? raw.cmsData?.payerMix?.medicare ?? 41.5;
-  const medicaidPct = raw.cmsData?.medicaidPayerPct ?? raw.cmsData?.payerMix?.medicaid ?? 23.5;
-  const commercialPct = raw.cmsData?.commercialPayerMixPct ?? raw.cmsData?.payerMix?.commercial ?? 24.0;
-  const selfPayPct =
-    raw.cmsData?.selfPayPayerPct ??
-    raw.cmsData?.payerMix?.selfPay ??
-    +(Math.max(4.0, 100 - medicarePct - medicaidPct - commercialPct)).toFixed(1);
-
+  // Imported static records are candidate accounts, not confirmation that
+  // individual medical outcomes, equipment, officials or awards were verified.
+  // Never fill missing details with deterministic hashes or invented names.
+  const trustedNpi = Boolean(
+    raw.npiNumber &&
+    raw.nppesRegistryUrl &&
+    /NPPES|Federal CMS NPI Registry/i.test(raw.verificationSource || '')
+  );
+  const mapSearchUri = 'https://www.openstreetmap.org/search?query=' +
+    encodeURIComponent([raw.name, raw.address, raw.city, raw.stateCode].filter(Boolean).join(', '));
+  const verifiedContacts = (raw.keyContacts || []).filter(c => c.isVerifiedOfficial === true);
   return {
     ...raw,
-    fdid,
-    npiNumber,
-    taxonomyCode,
-    taxonomyDescription,
-    nppesOfficialName,
-    nppesOfficialTitle,
-    nppesRegistryUrl,
-    officialWebsite,
-    googleMapsUri,
+    fdid: raw.isVerifiedRecord ? raw.fdid : '',
+    npiNumber: trustedNpi ? raw.npiNumber : undefined,
+    nppesRegistryUrl: trustedNpi ? raw.nppesRegistryUrl : undefined,
+    nppesOfficialName: trustedNpi ? raw.nppesOfficialName : undefined,
+    nppesOfficialTitle: trustedNpi ? raw.nppesOfficialTitle : undefined,
+    officialWebsite: raw.isVerifiedRecord ? raw.officialWebsite : undefined,
+    mapSearchUri,
     headquartersPhone: '',
-    apparatusFleet,
-    hospitalLogistics,
-    femaGrantHistory,
-    gisData: {
-      ...raw.gisData,
-      primaryReceivingHospital:
-        raw.gisData?.primaryReceivingHospital || traumaHospitalName,
-      annualHospitalDestinationTransports:
-        raw.gisData?.annualHospitalDestinationTransports ?? annualEdTransports
-    },
-    cmsData: {
-      ...raw.cmsData,
-      topDenialReasonCode: denialCode,
-      topDenialReason:
-        raw.cmsData?.topDenialReason ||
-        denialReasonLookup[denialCode] ||
-        `${denialCode}: Lacks Medical Necessity & Clinical Signature Documentation`,
-      commercialPayerMixPct: commercialPct,
-      medicarePayerPct: medicarePct,
-      medicaidPayerPct: medicaidPct,
-      selfPayPayerPct: selfPayPct
-    },
-    installedFleet: {
-      ...raw.installedFleet,
-      dispatchCadVendor: raw.installedFleet?.dispatchCadVendor || 'CentralSquare Enterprise CAD'
-    },
-    keyContacts: normalizedContacts
+    keyContacts: verifiedContacts.map(c => ({ ...c, email: '', phone: '' })),
+    // Only show grant histories when the record carries an explicit source reference.
+    femaGrantHistory: (raw.femaGrantHistory || []).filter(g =>
+      Boolean((g as unknown as Record<string, unknown>).sourceUrl ||
+        (g as unknown as Record<string, unknown>).sourceReference)
+    ),
   };
 }
 
@@ -395,6 +197,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   onOpenDataLineage
 }) => {
   const [livePatch, setLivePatch] = useState<Partial<Agency>>({});
+  const [verificationNotice, setVerificationNotice] = useState('');
   const [isVerifyingLive, setIsVerifyingLive] = useState(false);
   const [showDossierModal, setShowDossierModal] = useState(false);
   const [cityNpiProviders, setCityNpiProviders] = useState<Array<{
@@ -410,6 +213,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   useEffect(() => {
     setLivePatch({});
     setCityNpiProviders([]);
+    setVerificationNotice('');
   }, [rawAgency.id]);
 
   const agency = useMemo(
@@ -434,74 +238,62 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   const triggerLiveVerification = async () => {
     if (isVerifyingLive) return;
     setIsVerifyingLive(true);
+    setVerificationNotice('');
     try {
-      const response = await fetch('/api/providers/verify-live', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agencyName: rawAgency.name,
-          city: rawAgency.city,
-          county: rawAgency.county,
-          stateCode: rawAgency.stateCode,
-          zipCode: rawAgency.zipCode,
-          category: isFire ? 'fire' : 'ems',
-        }),
+      const result = await api.post('/api/providers/verify-live', {
+        agencyName: rawAgency.name,
+        city: rawAgency.city,
+        county: rawAgency.county,
+        stateCode: rawAgency.stateCode,
+        zipCode: rawAgency.zipCode,
+        category: rawAgency.providerCategory === 'FIRE' ? 'fire' : 'ems',
       });
-      if (!response.ok) return;
-      const data = await response.json();
+      const data = result.data;
       if (data.allCityNpiProviders && Array.isArray(data.allCityNpiProviders)) {
         setCityNpiProviders(data.allCityNpiProviders);
       }
-
+      if (data.verified !== true || !data.npiNumber) {
+        setVerificationNotice('No exact CMS NPPES organization match. This account remains unverified; nearby provider results are not automatic identity matches.');
+        return;
+      }
       const patch: Partial<Agency> = {
         address: data.address || rawAgency.address,
         zipCode: data.zipCode || rawAgency.zipCode,
-        npiNumber: data.npiNumber || rawAgency.npiNumber,
-        taxonomyCode: data.taxonomyCode || rawAgency.taxonomyCode,
-        taxonomyDescription: data.taxonomyDescription || rawAgency.taxonomyDescription,
-        nppesOfficialName: data.nppesOfficialName || data.authorizedOfficial?.name || rawAgency.nppesOfficialName,
-        nppesOfficialTitle: data.nppesOfficialTitle || data.authorizedOfficial?.title || rawAgency.nppesOfficialTitle,
-        nppesRegistryUrl: data.nppesRegistryUrl || (data.npiNumber ? `https://npiregistry.cms.hhs.gov/provider-view/${data.npiNumber}` : rawAgency.nppesRegistryUrl),
+        npiNumber: data.npiNumber,
+        nppesOfficialName: data.nppesOfficialName || '',
+        nppesOfficialTitle: data.nppesOfficialTitle || '',
+        nppesRegistryUrl: data.nppesRegistryUrl,
         headquartersPhone: '',
-        officialWebsite: data.officialWebsite || rawAgency.officialWebsite,
-        googleMapsUri: data.googleMapsUri || rawAgency.googleMapsUri,
-        verificationSource: data.verificationSource || 'Federal CMS NPI & Google Maps Verified',
+        mapSearchUri: data.mapSearchUri || ('https://www.openstreetmap.org/search?query=' +
+          encodeURIComponent([rawAgency.name, rawAgency.city, rawAgency.stateCode].join(', '))),
+        verificationSource: 'CMS NPPES API (organization legal identity only, not equipment, purchasing or clinical outcomes)',
         isVerifiedRecord: true,
         lastVerifiedAt: new Date().toISOString(),
       };
-
-      if (data.authorizedOfficial && data.authorizedOfficial.name) {
-        patch.keyContacts = [
-          {
-            id: `kc-${rawAgency.id}-npi`,
-            name: data.authorizedOfficial.name,
-            title: data.authorizedOfficial.title || (isFire ? 'Fire Chief / Authorized Official' : 'EMS Director / Authorized Official'),
-            role: isFire ? 'Fire Chief' : 'EMS Chief',
-            email: '',
-            phone: '',
-            officialWebsite: patch.officialWebsite,
-            headquartersAddress: patch.address,
-            isVerifiedOfficial: true,
-            verificationSource: data.authorizedOfficial.verificationSource || data.verificationSource,
-            notes: `Verified Registered Authorized Official (${data.legalOrganizationName || rawAgency.name}). Official department website and physical headquarters address verified.`
-          }
-        ];
+      if (data.authorizedOfficial?.name) {
+        patch.keyContacts = [{
+          id: `kc-${rawAgency.id}-npi`,
+          name: data.authorizedOfficial.name,
+          title: data.authorizedOfficial.title || 'NPPES Authorized Official',
+          role: 'Executive Director',
+          email: '', phone: '',
+          headquartersAddress: patch.address,
+          isVerifiedOfficial: true,
+          verificationSource: 'CMS NPPES legal organization registry; job title/agency command authority unverified',
+          notes: 'Federal NPI registration confirms the listed organizational authorized official. It does not prove department command or buyer authority.'
+        }];
       }
-
       setLivePatch(patch);
       nationalProviderDb.saveLiveVerification(rawAgency.id, patch);
-    } catch {
-      // Keep baseline verified municipal directory info
+      setVerificationNotice('CMS NPPES legal entity matched. Fleet, budget, grants and clinical outcomes have not been verified.');
+    } catch (err) {
+      setVerificationNotice(err instanceof Error ? err.message : 'CMS federal verification unavailable.');
     } finally {
       setIsVerifyingLive(false);
     }
   };
 
-  // Automatically trigger live Federal NPI & Google Maps verification when opening a department profile
-  useEffect(() => {
-    triggerLiveVerification();
-  }, [rawAgency.id]);
-
+  // Verify only on explicit user request; do not silently overwrite records.
   // Support browser Back button (popstate) & Escape key to close modal cleanly
   useEffect(() => {
     try {
@@ -644,10 +436,10 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 onClick={triggerLiveVerification}
                 disabled={isVerifyingLive}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                title="Query Federal CMS NPPES NPI Registry & Google Maps for live verified address and authorized official"
+                title="Check CMS NPPES for exact legal organization identity; equipment and purchase facts remain unverified"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingLive ? 'animate-spin' : ''}`} />
-                <span>{isVerifyingLive ? 'Verifying NPI & Maps...' : 'Verify Federal NPI'}</span>
+                <span>{isVerifyingLive ? 'Checking CMS NPPES...' : 'Verify Federal NPI'}</span>
               </button>
 
               <button
@@ -712,6 +504,11 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
         {/* Main Full-Screen Provider Dossier Container */}
         <div className="workspace-grid-shell px-3 sm:px-6 lg:px-8 py-5 sm:py-6 min-w-0">
           
+          {(!agency.isVerifiedRecord || verificationNotice) && (
+            <section role="status" className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 text-sm text-amber-950 dark:text-amber-200">
+              <strong>Evidence warning:</strong> {verificationNotice || 'This account is not source-verified. Fleet, contracts, budgets, staffing and clinical indicators are model inputs, not confirmed provider facts.'}
+            </section>
+          )}
           {/* 1. TOP PROVIDER IDENTITY & ARCHITECTURAL HAIRLINE LEDGER SUMMARY */}
           <section aria-label="Department Overview & Verified Headquarters" className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 lg:p-8 shadow-2xs grid grid-cols-1 gap-6 min-w-0">
             
@@ -726,7 +523,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     <span>{isFire ? 'Fire Department' : 'EMS Provider'}</span>
                   </span>
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                  <span>FDID {agency.fdid}</span>
+                  <span>{agency.fdid ? `FDID ${agency.fdid}` : "FDID unavailable"}</span>
                   {agency.npiNumber && (
                     <>
                       <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
@@ -734,13 +531,13 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     </>
                   )}
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                  <span>{agency.installedFleet.defibAgeYears}y Fleet ({agency.installedFleet.defibWarrantyStatus})</span>
+                  <span>{agency.isVerifiedRecord ? `${agency.installedFleet.defibAgeYears}y Fleet (source review required)` : "Fleet age unverified"}</span>
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
-                    +${(tcoModel.totalSavingsIncludingTradeIn / 1000).toFixed(0)}K 5-Yr TCO Savings
+                  <span title="Scenario estimate, not a verified account savings amount" className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
+                    +${(tcoModel.totalSavingsIncludingTradeIn / 1000).toFixed(0)}K 5-Yr Modeled TCO Scenario
                   </span>
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                  <span>Contract Exp {agency.competitorContract.contractEndDate}</span>
+                  <span>{agency.isVerifiedRecord ? `Reported contract: ${agency.competitorContract.contractEndDate}` : "Contract date unverified"}</span>
                 </div>
 
                 {/* Department Title */}
@@ -789,7 +586,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                         <span className="leading-snug">{agency.address}</span>
                       </div>
                       <a
-                        href={agency.googleMapsUri}
+                        href={agency.mapSearchUri}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 hover:underline"
