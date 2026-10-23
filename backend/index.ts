@@ -6,7 +6,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { ai, db, error, json, requireAuth, router } from '@appdeploy/sdk';
 
-type Note = { id: string; date: string; content?: string; text?: string; [key: string]: unknown };
+type Note = { id: string; date: string; notes: string; repName: string; meetingType: string; nextAction: string; dueDate: string };
 type Overlay = {
   id?: string;
   agencyId: string;
@@ -21,6 +21,8 @@ type Overlay = {
 
 const tableFor = (userId: string) =>
   'territory_' + createHash('sha256').update(userId).digest('hex').slice(0, 40);
+const customTableFor = (userId: string) =>
+  'custom_' + createHash('sha256').update(userId).digest('hex').slice(0, 40);
 const keyFor = (agencyId: string) =>
   createHash('sha256').update(agencyId).digest('hex');
 const clean = (input: unknown, max = 160) =>
@@ -65,9 +67,11 @@ const userRoutes = {
         ? b.appendNote as Record<string, unknown> : null;
       if (rawNote) {
         const noteId = clean(rawNote.id, 100);
-        const text = clean(rawNote.content || rawNote.text, 2500);
+        const text = clean(rawNote.notes || rawNote.content || rawNote.text, 2500);
         if (!noteId || !text) return error('A field note needs an ID and text', 400);
-        const note: Note = { id: noteId, date: clean(rawNote.date, 50), content: text };
+        const note: Note = { id: noteId, date: clean(rawNote.date, 50), notes: text,
+          repName: clean(rawNote.repName, 120), meetingType: clean(rawNote.meetingType, 90),
+          nextAction: clean(rawNote.nextAction, 1000), dueDate: clean(rawNote.dueDate, 50) };
         const already = existing?.fieldNotes || [];
         changes.fieldNotes = [note, ...already.filter(n => n.id !== noteId)].slice(0, 40);
         changes.lastContactDate = note.date || changes.lastContactDate;
@@ -93,8 +97,39 @@ const userRoutes = {
       }
       return json({ saved: true, record: next });
     }
+  ],
+  'GET /api/custom-agencies': [
+    requireAuth(),
+    async ({ user, query }: { user?: { userId: string }; query: Record<string, string> }) => {
+      const token = clean(query.nextToken, 4096);
+      const result = await db.list<{ agencyId: string; agency: Record<string, unknown> }>(
+        customTableFor(user!.userId), { limit: 80, ...(token ? { nextToken: token } : {}) });
+      return json({ records: result.items.map(x => x.agency), nextToken: result.nextToken || null });
+    }
+  ],
+  'POST /api/custom-agencies': [
+    requireAuth(),
+    async ({ user, body }: { user?: { userId: string }; body: unknown }) => {
+      const obj = (body || {}) as Record<string, unknown>;
+      const agency = obj.agency;
+      if (!agency || typeof agency !== 'object' || Array.isArray(agency)) return error('Agency object required', 400);
+      const a = agency as Record<string, unknown>;
+      const agencyId = clean(a.id, 200);
+      const name = clean(a.name, 180);
+      const stateCode = clean(a.stateCode, 2).toUpperCase();
+      if (!agencyId || !name || !/^[A-Z]{2}$/.test(stateCode)) return error('Valid agency ID, name and state required', 400);
+      const safeAgency = JSON.parse(JSON.stringify(a));
+      if (JSON.stringify(safeAgency).length > 100_000) return error('Agency record too large', 413);
+      const table = customTableFor(user!.userId);
+      const id = keyFor(agencyId);
+      const [existing] = await db.get<{agencyId: string}>(table, [id], {consistent: true});
+      if (existing) return error('Agency already exists. Edit its fields instead.', 409);
+      const [created] = await db.tx.add(table, [{ id, agencyId, agency: safeAgency, createdAt: new Date().toISOString() }]);
+      if (!created) return error('Concurrent agency creation. Reload first.', 409);
+      return json({ saved: true, agencyId });
+    }
   ]
-} as const;
+};
 
 async function npiLookup(params: URLSearchParams) {
   const controller = new AbortController();
@@ -129,7 +164,7 @@ const publicRoutes = {
       const exact = results.find(r => {
         const basic = r.basic as Record<string, unknown> | undefined;
         const name = clean(basic?.organization_name, 200);
-        return Boolean(name) && normalizeName(name) === normalizeName(agencyName);
+        return Boolean(name) && normalizeName(name) === normalizeName(agencyName) && (!city || ((r.addresses as Array<Record<string, unknown>> | undefined) || []).some(a => clean(a.city).toLowerCase() === city.toLowerCase()));
       });
       const matches = results.slice(0, 10).map(r => ({
         npi: String(r.number || ''),
@@ -188,7 +223,7 @@ const publicRoutes = {
       verified: false
     });
   }]
-} as const;
+};
 
 export const handler = router({
   ...userRoutes,
