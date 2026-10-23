@@ -308,7 +308,7 @@ export function loadStoredAgencies(): Agency[] {
     const baseline = nationalProviderDb.getInitialBaselineAgencies();
     getBaselineSignatures(baseline);
 
-    const rawCustom = localStorage.getItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES);
+    const rawCustom = localStorage.getItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES));
     if (!rawCustom) return baseline;
 
     const customEntries: [string, CompactAgencyDelta][] = JSON.parse(rawCustom);
@@ -372,13 +372,13 @@ export function saveAgencies(agencies: Agency[]): void {
 
     const serialized = JSON.stringify(customEntries);
     try {
-      localStorage.setItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES, serialized);
+      localStorage.setItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES), serialized);
     } catch {
       // If quota is still tight due to other keys, prune to top 40 deltas and retry safely
       purgeLegacyStorageKeys();
       const trimmed = JSON.stringify(customEntries.slice(0, 40));
       try {
-        localStorage.setItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES, trimmed);
+        localStorage.setItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES), trimmed);
       } catch {
         // Silently skip localStorage cache if browser storage is completely full
       }
@@ -390,7 +390,7 @@ export function saveAgencies(agencies: Agency[]): void {
 
 export function loadStoredOutbox(): SyncOutboxItem[] {
   try {
-    const raw = localStorage.getItem(scopedKey(STORAGE_KEY_OUTBOX);
+    const raw = localStorage.getItem(scopedKey(STORAGE_KEY_OUTBOX));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -399,7 +399,7 @@ export function loadStoredOutbox(): SyncOutboxItem[] {
 
 export function saveOutbox(items: SyncOutboxItem[]): void {
   try {
-    localStorage.setItem(scopedKey(STORAGE_KEY_OUTBOX, JSON.stringify(items.slice(0, 50)));
+    localStorage.setItem(scopedKey(STORAGE_KEY_OUTBOX), JSON.stringify(items.slice(0, 50)));
   } catch {
     // Ignore quota errors on offline outbox cache
   }
@@ -407,7 +407,7 @@ export function saveOutbox(items: SyncOutboxItem[]): void {
 
 export function loadStoredWeights(): PredictiveWeights {
   try {
-    const raw = localStorage.getItem(scopedKey(STORAGE_KEY_WEIGHTS);
+    const raw = localStorage.getItem(scopedKey(STORAGE_KEY_WEIGHTS));
     if (!raw) return DEFAULT_WEIGHTS;
     const parsed = JSON.parse(raw);
     return {
@@ -424,7 +424,7 @@ export function loadStoredWeights(): PredictiveWeights {
 
 export function saveStoredWeights(weights: PredictiveWeights): void {
   try {
-    localStorage.setItem(scopedKey(STORAGE_KEY_WEIGHTS, JSON.stringify(weights));
+    localStorage.setItem(scopedKey(STORAGE_KEY_WEIGHTS), JSON.stringify(weights));
   } catch {
     // Ignore quota errors
   }
