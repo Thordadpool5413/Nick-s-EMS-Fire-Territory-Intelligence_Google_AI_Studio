@@ -113,7 +113,20 @@ export function useAgencyRecords({ onToast }: Options = {}): UseAgencyRecordsRes
       if (nextToken) {
         throw new Error('Territory data exceeds the bounded sync window. Additional pagination required.');
       }
-      const base = loadStoredAgencies().map(sanitizeAgency);
+      const custom: Agency[] = [];
+      nextToken = null;
+      for (let page = 0; page < 10; page++) {
+        const suffix = nextToken ? '?nextToken=' + encodeURIComponent(nextToken) : '';
+        const result = await api.get('/api/custom-agencies' + suffix);
+        if (!Array.isArray(result.data.records)) throw new Error('Invalid custom agency response');
+        custom.push(...result.data.records.map(sanitizeAgency));
+        nextToken = result.data.nextToken || null;
+        if (!nextToken) break;
+      }
+      if (nextToken) throw new Error('Custom account data exceeds the bounded sync window.');
+      const baseline = loadStoredAgencies().map(sanitizeAgency);
+      const existingIds = new Set(baseline.map(a => a.id));
+      const base = [...baseline, ...custom.filter(a => !existingIds.has(a.id))];
       const byId = new Map(overlays.map(r => [r.agencyId, r] as const));
       const merged = base.map(a => mergeOverlay(a, byId.get(a.id) || {}));
       setAgencies(merged);
