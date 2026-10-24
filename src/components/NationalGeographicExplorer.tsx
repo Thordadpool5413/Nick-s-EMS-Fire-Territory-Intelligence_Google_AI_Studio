@@ -1726,10 +1726,10 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 const primaryContact = agency.keyContacts[0];
                 const websiteUrl =
                   agency.officialWebsite ||
-                  `https://www.google.com/search?q=${encodeURIComponent(`${agency.name} ${agency.city} ${agency.stateCode} official website`)}`;
+                  `https://www.bing.com/search?q=${encodeURIComponent(`${agency.name} ${agency.city} ${agency.stateCode} official website`)}`;
                 const mapsUrl =
-                  agency.googleMapsUri ||
-                  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`;
+                  agency.mapSearchUri ||
+                  `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`;
 
                 return (
                   <div
@@ -1747,7 +1747,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           </span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                           <span title="Verified Federal Record: USFA National Fire Department Registry">
-                            FDID {agency.fdid || '04102'}
+                            FDID {agency.isVerifiedRecord && agency.fdid ? agency.fdid : 'Unverified'}
                           </span>
                           {agency.npiNumber && (
                             <>
@@ -1757,7 +1757,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                               </span>
                             </>
                           )}
-                          {agency.grantStatus.afgAwarded && (
+                          {agency.isVerifiedRecord && agency.grantStatus.afgAwarded && (
                             <>
                               <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                               <span className="text-emerald-700 dark:text-emerald-400 font-bold" title="Verified Federal Record: FEMA Assistance to Firefighters Grant Obligation">
@@ -1807,7 +1807,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs sm:text-sm"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {primaryContact && (
+                        {agency.isVerifiedRecord && primaryContact?.isVerifiedOfficial && (
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-slate-600 dark:text-slate-300 truncate">
                               Command Official: <strong className="text-slate-900 dark:text-white font-bold">{primaryContact.name}</strong> <span className="text-slate-500 dark:text-slate-400">({primaryContact.title})</span>
@@ -1828,7 +1828,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 transition-colors"
                           >
                             <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
-                            <span>Google Maps Station</span>
+                            <span>Search on OpenStreetMap</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
 
@@ -1839,7 +1839,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 transition-colors"
                           >
                             <Globe className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                            <span>Official Website</span>
+                            <span>{agency.officialWebsite ? 'Agency website' : 'Find agency website'}</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
