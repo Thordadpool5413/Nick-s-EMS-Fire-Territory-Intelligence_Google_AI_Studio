@@ -26,7 +26,7 @@ for (const name of sourceFiles) {
   files.push({ filename: name, content: read(name) });
 }
 files.push({ filename: 'appdeploy.auth-login.json', content: read('appdeploy.auth-login.json') });
-files.push({ filename: 'public/data/us-counties-boundaries.json', content: read('public/data/us-counties-boundaries.json') });
+files.push({ filename: 'public/data/us-counties-boundaries.json.gz.txt', content: read('public/data/us-counties-boundaries.json.gz.txt') });
 files.push({ filename: 'tests/tests.json', content: JSON.stringify(tests, null, 2) });
 files.push({ filename: 'src/App.tsx', diffs: [{ from: 'function App() {\n    return (\n        <div className="app">APP_CONTENT</div>\n    );\n}\n\nexport default App;', to: read('src/App.tsx') }] });
 files.push({ filename: 'src/index.css', diffs: [{ from: '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n\n/* STYLES */\n', to: read('src/index.css') }] });
