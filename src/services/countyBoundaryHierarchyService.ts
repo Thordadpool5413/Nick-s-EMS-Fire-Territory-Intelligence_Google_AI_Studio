@@ -1,3 +1,4 @@
+import { gunzipSync, strFromU8 } from 'fflate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -305,9 +306,11 @@ class CountyBoundaryHierarchyService {
     // No Google geocoding, proprietary map API, or remote backend lookup.
     const requestPromise = (async () => {
       try {
-        const response = await fetch('/data/us-counties-boundaries.json');
-        if (!response.ok) throw new Error('Boundary reference asset unavailable');
-        const collection = await response.json();
+        const response = await fetch('/data/us-counties-boundaries.json.gz.txt');
+        if (!response.ok) throw new Error('Bundled Census boundary asset unavailable');
+        const encoded = (await response.text()).trim();
+        const binary = Uint8Array.from(atob(encoded), ch => ch.charCodeAt(0));
+        const collection = JSON.parse(strFromU8(gunzipSync(binary)));
         const allFeatures: CountyBoundaryGeoJsonFeature[] = Array.isArray(collection.features)
           ? collection.features : [];
         const stateFeatures = allFeatures.filter(f => f.properties?.STATE_CODE === sc);
