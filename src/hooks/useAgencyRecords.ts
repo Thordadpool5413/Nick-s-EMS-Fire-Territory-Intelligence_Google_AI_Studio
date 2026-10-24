@@ -151,6 +151,10 @@ export function useAgencyRecords({ onToast }: Options = {}): UseAgencyRecordsRes
   }, [reloadFromCloud]);
 
   const commit = useCallback(async (agencyId: string, patch: Record<string, unknown>) => {
+    if (!navigator.onLine) {
+      setIsCloudConnected(false);
+      return;
+    }
     if (!auth.isSignedIn()) {
       onToast?.('Sign in with your email to save this change. This session has not been cloud-synced.', 'warn');
       return;
