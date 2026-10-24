@@ -1,0 +1,91 @@
+[
+  {
+    "name": "Territory navigation and evidence disclosure",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "national state-county-city filtering",
+      "provider card selection",
+      "unverified-data disclosure"
+    ],
+    "description": "A user can find a state and county, inspect an EMS/fire account, and understand that imported account-level metrics may be modeled.",
+    "steps": [
+      "Open the home page and navigate to National Geographic Explorer or Territory",
+      "Choose Florida, then a county, then inspect an available EMS or fire provider account",
+      "Read the provider evidence notice and return to the geographic directory"
+    ],
+    "expected": "The directory responds to geographic filters; an account opens and displays an unverified-data warning instead of treating a model-generated fleet, buyer, grant, or outcome as confirmed evidence."
+  },
+  {
+    "name": "Federal NPI legal-identity check",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/providers/verify-live",
+      "CMS NPPES legal organization lookup",
+      "identity-only verification limits"
+    ],
+    "description": "The check presents a genuine exact-identity match or a clearly unverified result, never a fabricated NPI.",
+    "steps": [
+      "Open a provider profile through the geographic directory",
+      "Select Verify Federal NPI",
+      "Inspect the validation result and any source warning"
+    ],
+    "expected": "A match displays its CMS NPI legal-entity origin; an unmatched entity remains explicitly unverified. No NPI, procurement contact or clinical outcome is invented."
+  },
+  {
+    "name": "Research desk returns open map lookup",
+    "viewport": "mobile",
+    "covers": [
+      "POST /api/assistant/places",
+      "mobile research assistant",
+      "OpenStreetMap lookup without Google Maps"
+    ],
+    "description": "The research assistant operates on mobile and clearly identifies geographic searches as unverified links.",
+    "steps": [
+      "Open the Research desk on a mobile viewport",
+      "Choose Nearby facilities and type 'trauma center'",
+      "Submit and inspect available links"
+    ],
+    "expected": "The assistant shows an OpenStreetMap search link and a warning that the result is not a verified hospital; no Google sign-in or Google Maps window is required."
+  },
+  {
+    "name": "Authenticity and storage health dashboard",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/health",
+      "GET /api/agency-state",
+      "GET /api/custom-agencies",
+      "email-only AppDeploy authentication entry",
+      "transparent backup and source status"
+    ],
+    "description": "The data-health panel reports actual backend connection and scoped storage state, not fake cloud snapshots.",
+    "steps": [
+      "Navigate to Data Integrity or Cloud Resilience from the workspace",
+      "Refresh live backend health and read the remote records status",
+      "Inspect the email sign-in option and absence of Google sign-in"
+    ],
+    "expected": "The health panel reflects real service status; without an authenticated account it clearly says remote writes have not been verified; no fabricated restore-point history appears."
+  },
+  {
+    "name": "Authenticated field notes and territory research",
+    "viewport": "desktop",
+    "covers": [
+      "PUT /api/agency-state",
+      "POST /api/custom-agencies",
+      "POST /api/assistant/chat",
+      "signed-in user-scoped territory changes",
+      "notes and bookmarks persist through reload",
+      "research assistant with source caveats"
+    ],
+    "description": "A signed-in user can save a note and stage/bookmark changes, create a custom agency where offered, and use the AppDeploy research assistant.",
+    "setup": [
+      "Use an authenticated AppDeploy email-link test account; complete email-link verification before starting the test"
+    ],
+    "steps": [
+      "Open an EMS/fire provider, add a unique field visit note and bookmark it",
+      "Reload the page, return to the same account, and inspect the note and bookmark",
+      "Use the account research desk to request a clinical briefing; if custom-agency creation is available, create one and confirm it appears after reload"
+    ],
+    "expected": "Saved notes and bookmarks persist in the signed-in account without Google services; the briefing displays caveats about unverifiable details; a custom account, if created, is restricted to that user and labeled unverified."
+  }
+]
