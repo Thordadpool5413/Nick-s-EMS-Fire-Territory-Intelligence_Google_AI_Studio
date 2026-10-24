@@ -193,7 +193,7 @@ const publicRoutes = {
         zipCode: clean(addr.postal_code, 5) || zip,
         headquartersPhone: '',
         officialWebsite: '',
-        googleMapsUri: 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(fullAddress || agencyName),
+        mapSearchUri: 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(fullAddress || agencyName),
         nppesOfficialName: officialName,
         nppesOfficialTitle: clean(basic.authorized_official_title_or_position, 120),
         authorizedOfficial: officialName ? {
