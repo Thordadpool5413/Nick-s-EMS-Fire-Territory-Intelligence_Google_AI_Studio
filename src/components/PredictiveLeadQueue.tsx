@@ -546,7 +546,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                   'ZIP Code',
                   'Command Official',
                   'Official Website',
-                  'Google Maps Link',
+                  'OpenStreetMap Link',
                   'Installed Defib Brand',
                   'Defib Units',
                   'Fleet Age (Years)',
@@ -554,7 +554,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 ];
                 const rows = exportRows.map((a) => {
                   const chief = a.keyContacts[0];
-                  const mapsLink = a.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a.name}, ${a.address}`)}`;
+                  const mapsLink = a.mapSearchUri || `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${a.name}, ${a.address}`)}`;
                   return [
                     `"${(a.name || '').replace(/"/g, '""')}"`,
                     a.providerCategory || (a.agencyType.toLowerCase().includes('fire') ? 'FIRE' : 'EMS'),
