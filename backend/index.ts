@@ -119,6 +119,8 @@ const userRoutes = {
       const stateCode = clean(a.stateCode, 2).toUpperCase();
       if (!agencyId || !name || !/^[A-Z]{2}$/.test(stateCode)) return error('Valid agency ID, name and state required', 400);
       const safeAgency = JSON.parse(JSON.stringify(a));
+      safeAgency.isVerifiedRecord = false;
+      safeAgency.verificationSource = 'User-entered account; not independently source-verified';
       if (JSON.stringify(safeAgency).length > 100_000) return error('Agency record too large', 413);
       const table = customTableFor(user!.userId);
       const id = keyFor(agencyId);
