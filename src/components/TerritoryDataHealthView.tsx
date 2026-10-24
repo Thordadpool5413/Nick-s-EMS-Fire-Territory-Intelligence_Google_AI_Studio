@@ -62,7 +62,7 @@ export const TerritoryDataHealthView: React.FC<Props> = ({ agencies, showToast }
   };
   useEffect(() => { void refresh(); }, []);
 
-  const recognized = agencies.filter(a => a.isVerifiedRecord).length;
+  const recognized = agencies.filter(a => a.isVerifiedRecord === true).length;
   const unverified = agencies.length - recognized;
   return (
     <section className="space-y-5 max-w-5xl mx-auto" aria-label="Territory data health">
@@ -78,9 +78,9 @@ export const TerritoryDataHealthView: React.FC<Props> = ({ agencies, showToast }
           <p className="text-xs text-slate-500 mt-2">Local account directory, not evidence of validated national completeness</p>
         </div>
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-5">
-          <div className="text-slate-500 text-xs uppercase font-bold flex items-center gap-2"><ShieldCheck size={15} /> Verification status</div>
+          <div className="text-slate-500 text-xs uppercase font-bold flex items-center gap-2"><ShieldCheck size={15} /> Identity check flags</div>
           <div className="text-3xl font-bold mt-3 text-emerald-700">{recognized.toLocaleString()}</div>
-          <p className="text-xs text-slate-500 mt-2">{unverified.toLocaleString()} accounts lack a provider-level verification flag. Individual fields require source checks.</p>
+          <p className="text-xs text-slate-500 mt-2">{unverified.toLocaleString()} accounts lack an identity-level verification flag. Even matched identities do not establish equipment, grants or outcomes.</p>
         </div>
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-5">
           <div className="text-slate-500 text-xs uppercase font-bold flex items-center gap-2">{status?.serviceHealthy ? <Cloud size={15} /> : <CloudOff size={15} />} Saved change records</div>
