@@ -575,7 +575,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     </div>
                   </div>
 
-                  {/* 2. Verified Street Address & Google Maps */}
+                  {/* 2. Verified Street Address & OpenStreetMap */}
                   <div className="bg-slate-50/70 dark:bg-slate-900 p-4">
                     <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
                       Verified Headquarters Address
@@ -591,7 +591,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 hover:underline"
                       >
-                        <span>Open Station in Google Maps</span>
+                        <span>Open Station in OpenStreetMap</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
