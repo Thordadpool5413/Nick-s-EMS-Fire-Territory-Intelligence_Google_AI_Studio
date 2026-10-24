@@ -51,8 +51,7 @@ const LEGACY_VERIFIED_KEYS = [
 
 /**
  * National Provider & Fire Department Database Infrastructure
- * Connects all 50 US States + DC -> all 3,144 Counties -> all Official US Census Cities & Unincorporated Districts,
- * mapping both EMS Providers and Fire Departments with verified registry records and live Federal NPI/Maps enrichment.
+ * Provides geographic candidates across all states, counties and cities. Candidate locations and modeled equipment/clinical fields are not verification that a specific EMS or fire agency exists.
  */
 function verifiedCacheKey(): string {
   let session = 'visitor';
@@ -341,7 +340,7 @@ class NationalProviderDatabaseService {
       ? Math.max(2, Math.round(popServed / 14000))
       : 0;
 
-    // Official Municipal & OpenStreetMap Verification Links (Zero fabricated emails or 555 phone numbers)
+    // OpenStreetMap is a search link, never an official verification of agency identity.
     const headquartersAddress = `${agencyName} Headquarters, ${cleanCityDisplay}, ${sc} ${zip}`;
     const mapSearchUri = `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agencyName}, ${cleanCityDisplay}, ${sc} ${zip}`)}`;
     const officialWebsite = '';
@@ -364,7 +363,7 @@ class NationalProviderDatabaseService {
       headquartersPhone: '',
       officialWebsite,
       mapSearchUri,
-      verificationSource: 'USFA & Municipal Jurisdiction Index (Click Live Verify for NPI/Maps)',
+      verificationSource: 'Geographic prospect generator; service provider identity has not been independently checked',
       isVerifiedRecord: false,
       populationServed: popServed,
       responseAreaSqMiles: isMunicipalCity ? (28 + (posHash % 65)) : (180 + (posHash % 240)),
@@ -525,7 +524,7 @@ class NationalProviderDatabaseService {
     const savedVerifications = this.getSavedVerifications();
     const seenCityCategory = new Set<string>();
 
-    // 1. Seed with verified baseline agencies from USFA & CMS open registries (preserving 100% real contacts, phones, and addresses)
+    // 1. Seed with imported directory candidates. Do not treat bundled officials, fleets or outcomes as separately verified.
     for (const rawAgency of INITIAL_AGENCIES) {
       const denialCode = rawAgency.cmsData.topDenialReasonCode || 'CO-16';
       const denialReasonMap: Record<string, string> = {
@@ -553,7 +552,7 @@ class NationalProviderDatabaseService {
         headquartersAddress: rawAgency.address,
         isVerifiedOfficial: false,
         verificationSource: 'Imported account candidate (person not independently verified)',
-        notes: 'Use Official Department Website or OpenStreetMap location Lookup for verified contact details.'
+        notes: 'This imported contact is unverified. Check the originating public agency or government roster.'
       }));
 
       const savedPatch = savedVerifications[rawAgency.id] || {};
