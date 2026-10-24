@@ -531,13 +531,13 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     </>
                   )}
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                  <span>{agency.isVerifiedRecord ? `${agency.installedFleet.defibAgeYears}y Fleet (source review required)` : "Fleet age unverified"}</span>
+                  <span>{`Fleet model (${agency.installedFleet.defibAgeYears} years assumed)`}</span>
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
                   <span title="Scenario estimate, not a verified account savings amount" className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
                     +${(tcoModel.totalSavingsIncludingTradeIn / 1000).toFixed(0)}K 5-Yr Modeled TCO Scenario
                   </span>
                   <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
-                  <span>{agency.isVerifiedRecord ? `Reported contract: ${agency.competitorContract.contractEndDate}` : "Contract date unverified"}</span>
+                  <span>Contract timing unverified</span>
                 </div>
 
                 {/* Department Title */}
