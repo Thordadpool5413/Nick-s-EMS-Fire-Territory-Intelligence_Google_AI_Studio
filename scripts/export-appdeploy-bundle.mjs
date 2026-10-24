@@ -46,7 +46,8 @@ files.push({ filename: 'package.json', diffs: [
 ]});
 files.push({ filename: 'vite.config.ts', diffs: [
   { from: "import react from '@vitejs/plugin-react';", to: "import react from '@vitejs/plugin-react';\nimport tailwindcss from '@tailwindcss/vite';\nimport path from 'path';" },
-  { from: '    plugins: [react()],', to: "    plugins: [react(), tailwindcss()],\n    resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } }," }
+  { from: '    plugins: [react()],', to: "    plugins: [react(), tailwindcss()],\n    resolve: { alias: { '@': path.resolve(import.meta.dirname, '.') } }," },
+  { from: '        rollupOptions: {\n            maxParallelFileOps: 128,\n        },', to: '' }
 ]});
 files.push({ filename: 'tsconfig.json', diffs: [
   { from: '"strict": true', to: '"strict": false' },
