@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import brandLogoAsset from '../assets/images/nicks_ems_logo_1792367124466.jpg';
+const brandLogoAsset = 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { UserRole } from '../types';
 import { 
@@ -95,7 +95,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [openPillarId, setOpenPillarId] = useState<string | null>(null);
   const [pillarOpenMode, setPillarOpenMode] = useState<'hover' | 'click' | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [logoSrc, setLogoSrc] = useState<string>(brandLogoAsset || '/logo.jpg');
+  const [logoSrc, setLogoSrc] = useState<string>(brandLogoAsset || 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
   const [logoFailed, setLogoFailed] = useState<boolean>(false);
   
   const pillarContainerRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -307,8 +307,8 @@ export const TopBar: React.FC<TopBarProps> = ({
                   alt="Nick's EMS & Fire Crest"
                   referrerPolicy="no-referrer"
                   onError={() => {
-                    if (logoSrc !== '/logo.jpg') {
-                      setLogoSrc('/logo.jpg');
+                    if (logoSrc !== 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg') {
+                      setLogoSrc('https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
                     } else {
                       setLogoFailed(true);
                     }
@@ -856,8 +856,8 @@ export const TopBar: React.FC<TopBarProps> = ({
                     alt="Nick's EMS & Fire Crest"
                     referrerPolicy="no-referrer"
                     onError={() => {
-                      if (logoSrc !== '/logo.jpg') {
-                        setLogoSrc('/logo.jpg');
+                      if (logoSrc !== 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg') {
+                        setLogoSrc('https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
                       } else {
                         setLogoFailed(true);
                       }
