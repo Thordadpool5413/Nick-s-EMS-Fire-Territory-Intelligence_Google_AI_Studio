@@ -91,6 +91,21 @@ export default function App() {
   });
 
   const [outbox, setOutbox] = useState<SyncOutboxItem[]>(loadStoredOutbox);
+  useEffect(() => {
+    const refreshLocalQueue = () => setOutbox(loadStoredOutbox());
+    window.addEventListener('appdeploy-auth-change', refreshLocalQueue);
+    return () => window.removeEventListener('appdeploy-auth-change', refreshLocalQueue);
+  }, []);
+  const queueOfflineUpdate = useCallback((agencyId: string, actionType: SyncOutboxItem['actionType'], payload: unknown) => {
+    const matching = agencies.find(a => a.id === agencyId);
+    const entry = createOutboxItem(agencyId, matching?.name || 'Unknown agency', actionType, payload);
+    setOutbox(previous => {
+      const updated = [entry, ...previous];
+      saveOutbox(updated);
+      return updated;
+    });
+    showToast('Saved to this device for manual sync. Not yet uploaded to AppDeploy.', 'warn');
+  }, [agencies, showToast]);
   const [alerts, setAlerts] = useState<PushAlert[]>(loadStoredNotifications);
   const [weights, setWeights] = useState<PredictiveWeights>(loadStoredWeights);
   const [currentRole, setCurrentRole] = useState<UserRole>('Territory Manager');
@@ -109,7 +124,8 @@ export default function App() {
         sessionStorage.removeItem('ems_authenticated_user');
         showToast('Signed out. Local account changes will not be saved to the cloud.', 'info');
       } else {
-        await auth.signIn();
+        const login = await auth.signIn();
+        sessionStorage.setItem('ems_authenticated_user', login.user.userId);
         setSignedIn(true);
         showToast('Signed in. Loading your saved territory records.', 'success');
       }
@@ -239,27 +255,35 @@ export default function App() {
   }, [addAgencyToCloud]);
 
   const handleToggleRoute = useCallback((agencyId: string) => {
-    toggleRouteInCloud(agencyId);
+    void toggleRouteInCloud(agencyId);
+    if (!isOnline) {
+      const next = !(agencies.find(a => a.id === agencyId)?.inDayRoute ?? false);
+      queueOfflineUpdate(agencyId, 'TOGGLE_ROUTE', { inDayRoute: next });
+    }
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
     }
     if (activeAccount?.id === agencyId) {
       setActiveAccount(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
     }
-  }, [toggleRouteInCloud, selectedAgency, activeAccount]);
+  }, [toggleRouteInCloud, selectedAgency, activeAccount, isOnline, agencies, queueOfflineUpdate]);
 
   const handleToggleBookmark = useCallback((agencyId: string) => {
-    toggleBookmarkInCloud(agencyId);
+    void toggleBookmarkInCloud(agencyId);
+    if (!isOnline) {
+      const next = !(agencies.find(a => a.id === agencyId)?.isBookmarked ?? false);
+      queueOfflineUpdate(agencyId, 'TOGGLE_BOOKMARK', { isBookmarked: next });
+    }
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
     }
     if (activeAccount?.id === agencyId) {
       setActiveAccount(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
     }
-  }, [toggleBookmarkInCloud, selectedAgency, activeAccount]);
+  }, [toggleBookmarkInCloud, selectedAgency, activeAccount, isOnline, agencies, queueOfflineUpdate]);
 
   const handleUpdateStage = useCallback((agencyId: string, newStage: LeadStage) => {
-    updateStageInCloud(agencyId, newStage);
+    void updateStageInCloud(agencyId, newStage);
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? {
         ...prev,
@@ -279,24 +303,15 @@ export default function App() {
       } : null);
     }
 
-    if (!isOnline) {
-      const targetAgency = agencies.find(a => a.id === agencyId);
-      const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'UPDATE_STAGE', { stage: newStage });
-      setOutbox(prev => {
-        const next = [outboxItem, ...prev];
-        saveOutbox(next);
-        return next;
-      });
-      showToast(`Offline: Stage change queued for auto-sync.`, 'warn');
-    }
-  }, [updateStageInCloud, selectedAgency, activeAccount, isOnline, agencies, showToast]);
+    if (!isOnline) queueOfflineUpdate(agencyId, 'UPDATE_STAGE', { stage: newStage });
+  }, [updateStageInCloud, selectedAgency, activeAccount, isOnline, queueOfflineUpdate]);
 
   const handleAddFieldNote = useCallback((agencyId: string, noteData: Omit<FieldNote, 'id'>) => {
     const newNote: FieldNote = {
       ...noteData,
       id: `fn-${Date.now()}`
     };
-    addFieldNoteInCloud(agencyId, newNote);
+    void addFieldNoteInCloud(agencyId, newNote);
 
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? {
@@ -313,17 +328,8 @@ export default function App() {
       } : null);
     }
 
-    if (!isOnline) {
-      const targetAgency = agencies.find(a => a.id === agencyId);
-      const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'ADD_FIELD_NOTE', newNote);
-      setOutbox(prev => {
-        const next = [outboxItem, ...prev];
-        saveOutbox(next);
-        return next;
-      });
-      showToast(`Offline: Field log entry saved locally. Will sync when online.`, 'warn');
-    }
-  }, [addFieldNoteInCloud, selectedAgency, activeAccount, isOnline, agencies, showToast]);
+    if (!isOnline) queueOfflineUpdate(agencyId, 'ADD_FIELD_NOTE', newNote);
+  }, [addFieldNoteInCloud, selectedAgency, activeAccount, isOnline, queueOfflineUpdate]);
 
   const handleTriggerSimulatedAlert = useCallback(() => {
     const template = ALERT_TEMPLATES[Math.floor(Math.random() * ALERT_TEMPLATES.length)];
@@ -368,7 +374,8 @@ export default function App() {
       try {
         const patch = item.actionType === 'UPDATE_STAGE' ? { salesStage: item.payload?.stage } :
           item.actionType === 'ADD_FIELD_NOTE' ? { appendNote: item.payload } :
-          item.actionType === 'TOGGLE_ROUTE' ? { inDayRoute: item.payload?.inDayRoute } : null;
+          item.actionType === 'TOGGLE_ROUTE' ? { inDayRoute: item.payload?.inDayRoute } :
+          item.actionType === 'TOGGLE_BOOKMARK' ? { isBookmarked: item.payload?.isBookmarked } : null;
         if (!patch) throw new Error('Unsupported operation needs manual reconciliation');
         await api.put('/api/agency-state', { agencyId: item.agencyId, ...patch });
         successCount++;
