@@ -1746,7 +1746,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                             <span>{isFire ? 'Fire Dept' : 'EMS Provider'}</span>
                           </span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                          <span title="Verified Federal Record: USFA National Fire Department Registry">
+                          <span title="Department identifier (verify against the source registry before use)">
                             FDID {agency.isVerifiedRecord && agency.fdid ? agency.fdid : 'Unverified'}
                           </span>
                           {agency.npiNumber && (
@@ -1757,7 +1757,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                               </span>
                             </>
                           )}
-                          {agency.isVerifiedRecord && agency.grantStatus.afgAwarded && (
+                          {agency.grantStatus.afgAwarded && (agency as Agency & { grantEvidenceUrl?: string }).grantEvidenceUrl && (
                             <>
                               <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                               <span className="text-emerald-700 dark:text-emerald-400 font-bold" title="Verified Federal Record: FEMA Assistance to Firefighters Grant Obligation">
