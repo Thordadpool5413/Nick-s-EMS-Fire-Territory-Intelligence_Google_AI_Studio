@@ -382,7 +382,7 @@ export interface SyncOutboxItem {
   timestamp: string;
   agencyId: string;
   agencyName: string;
-  actionType: 'UPDATE_STAGE' | 'ADD_FIELD_NOTE' | 'TOGGLE_ROUTE' | 'UPDATE_CONTACT';
+  actionType: 'UPDATE_STAGE' | 'ADD_FIELD_NOTE' | 'TOGGLE_ROUTE' | 'TOGGLE_BOOKMARK' | 'UPDATE_CONTACT';
   payload: any;
   status: 'PENDING' | 'SYNCED' | 'FAILED';
 }
