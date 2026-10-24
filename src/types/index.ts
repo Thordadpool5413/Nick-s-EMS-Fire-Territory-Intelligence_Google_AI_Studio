@@ -277,8 +277,8 @@ export interface Agency {
   nppesRegistryUrl?: string;
   headquartersPhone?: string;
   officialWebsite?: string;
-  googleMapsUri?: string;
-  verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | 'Google Maps Verified' | string;
+  mapSearchUri?: string;
+  verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | string;
   isVerifiedRecord?: boolean;
   lastVerifiedAt?: string;
   budgetCycleEndMonth?: string;
