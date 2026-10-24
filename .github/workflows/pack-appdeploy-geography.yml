@@ -1,0 +1,35 @@
+name: Pack standalone AppDeploy national geography
+on:
+  push:
+    branches: [migration/appdeploy-google-free-2026-10]
+    paths:
+      - scripts/pack-national-geography.mjs
+      - .github/workflows/pack-appdeploy-geography.yml
+jobs:
+  pack-and-export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: migration/appdeploy-google-free-2026-10
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Losslessly pack all national geography
+        run: node scripts/pack-national-geography.mjs
+      - name: Export AppDeploy deployment bundle
+        run: node scripts/export-appdeploy-bundle.mjs
+      - name: Commit packed source and portable deployment payload
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/allCountiesDatabase.ts src/data/allCitiesDatabase.ts public/data/us-counties-boundaries.json.gz.txt appdeploy-deploy-bundle.json
+          if git diff --cached --quiet; then
+            echo "Packed geography already synchronized"
+          else
+            git commit -m "Pack geographic datasets and refresh independent AppDeploy source payload"
+            git push origin HEAD:migration/appdeploy-google-free-2026-10
+          fi

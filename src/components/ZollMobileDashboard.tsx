@@ -177,11 +177,12 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
       .sort((a, b) => (b?.zollOpportunity?.pulseIqScore ?? 50) - (a?.zollOpportunity?.pulseIqScore ?? 50));
   }, [agencies, searchQuery, filterMode]);
 
-  // Today's Day Route Multi-Stop Google Maps Launcher
+  // Today's Day Route Multi-Stop OpenStreetMap Launcher
   const dayRouteAgencies = useMemo(() => agencies.filter(a => a?.inDayRoute), [agencies]);
-  const googleMapsRouteUrl = useMemo(() => {
+  const openMapRouteUrl = useMemo(() => {
     if (dayRouteAgencies.length === 0) return '';
-    return `https://www.google.com/maps/dir/${dayRouteAgencies.map(a => encodeURIComponent(`${a.name || ''}, ${a.address || ''}, ${a.city || ''}, ${a.stateCode || ''}`)).join('/')}`;
+    const first = dayRouteAgencies[0];
+    return `https://www.openstreetmap.org/search?query=${encodeURIComponent([first.name, first.address, first.city, first.stateCode].filter(Boolean).join(', '))}`;
   }, [dayRouteAgencies]);
 
   // Urgent Critical Updates
@@ -303,18 +304,18 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               </AnimatePresence>
             </motion.button>
 
-            {/* Google Maps Multi-Stop Day Route Direct Launcher */}
+            {/* OpenStreetMap Multi-Stop Day Route Direct Launcher */}
             {dayRouteAgencies.length > 0 && (
               <motion.a
                 whileTap={{ scale: 0.95 }}
-                href={googleMapsRouteUrl}
+                href={openMapRouteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="h-9 px-3 rounded-xl bg-[#047857] hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
-                title="Launch Google Maps Multi-Stop Navigation for Today's Route"
+                title="Search first selected stop. This is not turn-by-turn navigation"
               >
                 <Navigation className="w-3.5 h-3.5 text-emerald-200" />
-                <span>Navigate Route ({dayRouteAgencies.length})</span>
+                <span>View First Stop ({dayRouteAgencies.length})</span>
                 <ArrowUpRight className="w-3.5 h-3.5 opacity-80" />
               </motion.a>
             )}
@@ -928,11 +929,11 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                       
                       {/* 1-Tap Navigate Button */}
                       <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${agency.name}, ${agency.address}, ${agency.city}, ${agency.stateCode}`)}`}
+                        href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agency.name}, ${agency.address}, ${agency.city}, ${agency.stateCode}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="h-10 px-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#1E3A8A] dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-colors cursor-pointer"
-                        title="Open driving navigation in Google Maps"
+                        title="Search this station on OpenStreetMap"
                       >
                         <Navigation className="w-4 h-4" />
                         <span>Navigate</span>

@@ -1,3 +1,4 @@
+import { gunzipSync, strFromU8 } from 'fflate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -301,35 +302,25 @@ class CountyBoundaryHierarchyService {
       return stNode.countiesList;
     }
 
+    // A bundled official-boundary GeoJSON is served as a normal public asset.
+    // No Google geocoding, proprietary map API, or remote backend lookup.
     const requestPromise = (async () => {
       try {
-        const res = await fetch(`/api/geography/county-boundaries?stateCode=${encodeURIComponent(sc)}`);
-        if (res.ok) {
-          const data = await res.json();
-          const features: CountyBoundaryGeoJsonFeature[] = data.features || [];
-          this.attachFeaturesToStateNode(stNode, features);
-          this.stateFeaturesCache.set(sc, features);
-          return features;
-        }
-      } catch {
-        // Fallback to static GeoJSON asset if API route is unreachable
+        const response = await fetch('/data/us-counties-boundaries.json.gz.txt');
+        if (!response.ok) throw new Error('Bundled Census boundary asset unavailable');
+        const encoded = (await response.text()).trim();
+        const binary = Uint8Array.from(atob(encoded), ch => ch.charCodeAt(0));
+        const collection = JSON.parse(strFromU8(gunzipSync(binary)));
+        const allFeatures: CountyBoundaryGeoJsonFeature[] = Array.isArray(collection.features)
+          ? collection.features : [];
+        const stateFeatures = allFeatures.filter(f => f.properties?.STATE_CODE === sc);
+        this.attachFeaturesToStateNode(stNode, stateFeatures);
+        this.stateFeaturesCache.set(sc, stateFeatures);
+        return stateFeatures;
+      } catch (err) {
+        console.error('Official county boundary asset could not be loaded', err);
+        return [];
       }
-
-      try {
-        const fallbackRes = await fetch('/data/us-counties-boundaries.json');
-        if (fallbackRes.ok) {
-          const fullGeoJson = await fallbackRes.json();
-          const allFeatures: CountyBoundaryGeoJsonFeature[] = fullGeoJson.features || [];
-          const stateFeatures = allFeatures.filter((f) => f.properties?.STATE_CODE === sc);
-          this.attachFeaturesToStateNode(stNode, stateFeatures);
-          this.stateFeaturesCache.set(sc, stateFeatures);
-          return stateFeatures;
-        }
-      } catch {
-        // Ignore network failure
-      }
-
-      return [];
     })();
 
     this.inFlightStateRequests.set(sc, requestPromise);

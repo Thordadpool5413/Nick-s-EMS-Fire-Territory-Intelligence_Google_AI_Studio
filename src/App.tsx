@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { api, auth } from '@appdeploy/client';
 import { 
   Agency, 
   LeadStage, 
@@ -40,20 +41,20 @@ import { QuickVisitModal } from './components/QuickVisitModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ContractExpirationCalendar } from './components/ContractExpirationCalendar';
 import { RfpSpecGeneratorModal } from './components/RfpSpecGeneratorModal';
-import { CloudBackupResilienceView } from './components/CloudBackupResilienceView';
+import { TerritoryDataHealthView } from './components/TerritoryDataHealthView';
 import { NationwideDataGatewayView } from './components/NationwideDataGatewayView';
 import { DataLineageTrustModal } from './components/DataLineageTrustModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { NationalGeographicExplorer } from './components/NationalGeographicExplorer';
 import { ThreeApparatusStudio } from './components/ThreeApparatusStudio';
-import { GeminiChatbotDrawer } from './components/GeminiChatbotDrawer';
+import { TerritoryResearchAssistant } from './components/TerritoryResearchAssistant';
 import { PulseIqRegionalBreakdownChart } from './components/PulseIqRegionalBreakdownChart';
 import { FocusedProviderProfile } from './components/FocusedProviderProfile';
 import { ClinicalCompetitiveKnowledgeHub } from './components/ClinicalCompetitiveKnowledgeHub';
 import { ZollMobileDashboard } from './components/ZollMobileDashboard';
 import { HomeHubView } from './components/HomeHubView';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useFirestoreAgencies } from './hooks/useFirestoreAgencies';
+import { useAgencyRecords } from './hooks/useAgencyRecords';
 import { CheckCircle2, AlertCircle, Globe, ListOrdered, Scale, Car, X, Siren, Flame, LayoutDashboard, Sliders, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -71,7 +72,7 @@ export default function App() {
   const [globalCategory, setGlobalCategory] = useState<'all' | 'ems' | 'fire'>('all');
   const [activeAccount, setActiveAccount] = useState<Agency | null>(null);
 
-  // Real-time synchronization hook connected to Firebase Firestore cloud backend
+  // AppDeploy authenticated state persistence, with local-only fallback
   const {
     agencies,
     isCloudConnected,
@@ -81,20 +82,63 @@ export default function App() {
     toggleBookmarkInCloud,
     addFieldNoteInCloud,
     addAgencyToCloud,
-    setAgenciesState
-  } = useFirestoreAgencies({
+    setAgenciesState,
+    reloadFromCloud
+  } = useAgencyRecords({
     globalState,
     globalCounty,
     onToast: showToast
   });
 
   const [outbox, setOutbox] = useState<SyncOutboxItem[]>(loadStoredOutbox);
+  useEffect(() => {
+    const refreshLocalQueue = () => setOutbox(loadStoredOutbox());
+    window.addEventListener('appdeploy-auth-change', refreshLocalQueue);
+    return () => window.removeEventListener('appdeploy-auth-change', refreshLocalQueue);
+  }, []);
+  const queueOfflineUpdate = useCallback((agencyId: string, actionType: SyncOutboxItem['actionType'], payload: unknown) => {
+    const matching = agencies.find(a => a.id === agencyId);
+    const entry = createOutboxItem(agencyId, matching?.name || 'Unknown agency', actionType, payload);
+    setOutbox(previous => {
+      const updated = [entry, ...previous];
+      saveOutbox(updated);
+      return updated;
+    });
+    showToast('Saved to this device for manual sync. Not yet uploaded to AppDeploy.', 'warn');
+  }, [agencies, showToast]);
   const [alerts, setAlerts] = useState<PushAlert[]>(loadStoredNotifications);
   const [weights, setWeights] = useState<PredictiveWeights>(loadStoredWeights);
   const [currentRole, setCurrentRole] = useState<UserRole>('Territory Manager');
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [showWorkflowGuide, setShowWorkflowGuide] = useState<boolean>(false);
+  const [signedIn, setSignedIn] = useState<boolean>(() => auth.isSignedIn());
+  const [authBusy, setAuthBusy] = useState(false);
+  const handleAccountAuth = useCallback(async () => {
+    if (authBusy) return;
+    setAuthBusy(true);
+    try {
+      if (signedIn) {
+        await auth.signOut();
+        setSignedIn(false);
+        sessionStorage.removeItem('ems_authenticated_user');
+        showToast('Signed out. Local account changes will not be saved to the cloud.', 'info');
+      } else {
+        const login = await auth.signIn();
+        sessionStorage.setItem('ems_authenticated_user', login.user.userId);
+        setSignedIn(true);
+        showToast('Signed in. Loading your saved territory records.', 'success');
+      }
+      window.dispatchEvent(new Event('appdeploy-auth-change'));
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code !== 'popup_closed') {
+        showToast(code === 'popup_blocked' ? 'Allow popups to sign in by email.' : 'Sign-in failed. No cloud synchronization has been confirmed.', 'error');
+      }
+    } finally {
+      setAuthBusy(false);
+    }
+  }, [signedIn, authBusy, showToast]);
 
   // Dark Mode State with LocalStorage Persistence
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -141,7 +185,7 @@ export default function App() {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      showToast('Connection restored. Auto-syncing outbox...', 'info');
+      showToast('Connection restored. Use Sync to retry pending field changes.', 'info');
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -168,20 +212,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Synchronize outbox when coming back online
-  useEffect(() => {
-    if (isOnline && outbox.length > 0 && !isSyncing) {
-      setIsSyncing(true);
-      const timer = setTimeout(() => {
-        const synced = outbox.map(item => ({ ...item, status: 'SYNCED' as const }));
-        setOutbox([]);
-        saveOutbox([]);
-        setIsSyncing(false);
-        showToast(`Successfully synced ${synced.length} pending field changes to cloud server.`, 'success');
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline, outbox, isSyncing, showToast]);
+  // Outbox entries stay pending until the backend confirms each write.
 
   // Filter passed from National Geographic Explorer to Lead Queue
   const [queueFilterState, setQueueFilterState] = useState<{
@@ -224,27 +255,35 @@ export default function App() {
   }, [addAgencyToCloud]);
 
   const handleToggleRoute = useCallback((agencyId: string) => {
-    toggleRouteInCloud(agencyId);
+    void toggleRouteInCloud(agencyId);
+    if (!isOnline) {
+      const next = !(agencies.find(a => a.id === agencyId)?.inDayRoute ?? false);
+      queueOfflineUpdate(agencyId, 'TOGGLE_ROUTE', { inDayRoute: next });
+    }
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
     }
     if (activeAccount?.id === agencyId) {
       setActiveAccount(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
     }
-  }, [toggleRouteInCloud, selectedAgency, activeAccount]);
+  }, [toggleRouteInCloud, selectedAgency, activeAccount, isOnline, agencies, queueOfflineUpdate]);
 
   const handleToggleBookmark = useCallback((agencyId: string) => {
-    toggleBookmarkInCloud(agencyId);
+    void toggleBookmarkInCloud(agencyId);
+    if (!isOnline) {
+      const next = !(agencies.find(a => a.id === agencyId)?.isBookmarked ?? false);
+      queueOfflineUpdate(agencyId, 'TOGGLE_BOOKMARK', { isBookmarked: next });
+    }
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
     }
     if (activeAccount?.id === agencyId) {
       setActiveAccount(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
     }
-  }, [toggleBookmarkInCloud, selectedAgency, activeAccount]);
+  }, [toggleBookmarkInCloud, selectedAgency, activeAccount, isOnline, agencies, queueOfflineUpdate]);
 
   const handleUpdateStage = useCallback((agencyId: string, newStage: LeadStage) => {
-    updateStageInCloud(agencyId, newStage);
+    void updateStageInCloud(agencyId, newStage);
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? {
         ...prev,
@@ -264,24 +303,15 @@ export default function App() {
       } : null);
     }
 
-    if (!isOnline) {
-      const targetAgency = agencies.find(a => a.id === agencyId);
-      const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'UPDATE_STAGE', { stage: newStage });
-      setOutbox(prev => {
-        const next = [outboxItem, ...prev];
-        saveOutbox(next);
-        return next;
-      });
-      showToast(`Offline: Stage change queued for auto-sync.`, 'warn');
-    }
-  }, [updateStageInCloud, selectedAgency, activeAccount, isOnline, agencies, showToast]);
+    if (!isOnline) queueOfflineUpdate(agencyId, 'UPDATE_STAGE', { stage: newStage });
+  }, [updateStageInCloud, selectedAgency, activeAccount, isOnline, queueOfflineUpdate]);
 
   const handleAddFieldNote = useCallback((agencyId: string, noteData: Omit<FieldNote, 'id'>) => {
     const newNote: FieldNote = {
       ...noteData,
       id: `fn-${Date.now()}`
     };
-    addFieldNoteInCloud(agencyId, newNote);
+    void addFieldNoteInCloud(agencyId, newNote);
 
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? {
@@ -298,17 +328,8 @@ export default function App() {
       } : null);
     }
 
-    if (!isOnline) {
-      const targetAgency = agencies.find(a => a.id === agencyId);
-      const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'ADD_FIELD_NOTE', newNote);
-      setOutbox(prev => {
-        const next = [outboxItem, ...prev];
-        saveOutbox(next);
-        return next;
-      });
-      showToast(`Offline: Field log entry saved locally. Will sync when online.`, 'warn');
-    }
-  }, [addFieldNoteInCloud, selectedAgency, activeAccount, isOnline, agencies, showToast]);
+    if (!isOnline) queueOfflineUpdate(agencyId, 'ADD_FIELD_NOTE', newNote);
+  }, [addFieldNoteInCloud, selectedAgency, activeAccount, isOnline, queueOfflineUpdate]);
 
   const handleTriggerSimulatedAlert = useCallback(() => {
     const template = ALERT_TEMPLATES[Math.floor(Math.random() * ALERT_TEMPLATES.length)];
@@ -337,26 +358,38 @@ export default function App() {
   }, [agencies]);
 
   const toggleNetworkSimulation = useCallback(() => {
-    setIsOnline(prev => {
-      const next = !prev;
-      showToast(next ? 'Online Mode restored. Reconnecting to cloud...' : 'Simulating field offline mode (No internet).', next ? 'success' : 'warn');
-      return next;
-    });
+    showToast('Connection state comes from the browser and verified cloud requests. Simulation is disabled.', 'info');
   }, [showToast]);
 
-  const handleManualSync = useCallback(() => {
-    if (!isOnline) {
-      showToast('Cannot sync while in offline mode. Please reconnect first.', 'warn');
+  const handleManualSync = useCallback(async () => {
+    if (!navigator.onLine || !auth.isSignedIn()) {
+      showToast('Sign in and connect to the internet before syncing field changes.', 'warn');
       return;
     }
     setIsSyncing(true);
-    setTimeout(() => {
-      setOutbox([]);
-      saveOutbox([]);
-      setIsSyncing(false);
-      showToast('All pending offline transactions synchronized with central CRM database.', 'success');
-    }, 1000);
-  }, [isOnline, showToast]);
+    const pending = [...outbox];
+    const failed: SyncOutboxItem[] = [];
+    let successCount = 0;
+    for (const item of pending) {
+      try {
+        const patch = item.actionType === 'UPDATE_STAGE' ? { salesStage: item.payload?.stage } :
+          item.actionType === 'ADD_FIELD_NOTE' ? { appendNote: item.payload } :
+          item.actionType === 'TOGGLE_ROUTE' ? { inDayRoute: item.payload?.inDayRoute } :
+          item.actionType === 'TOGGLE_BOOKMARK' ? { isBookmarked: item.payload?.isBookmarked } : null;
+        if (!patch) throw new Error('Unsupported operation needs manual reconciliation');
+        await api.put('/api/agency-state', { agencyId: item.agencyId, ...patch });
+        successCount++;
+      } catch {
+        failed.push({ ...item, status: 'FAILED' });
+      }
+    }
+    setOutbox(failed);
+    saveOutbox(failed);
+    setIsSyncing(false);
+    await reloadFromCloud();
+    showToast(failed.length ? `${successCount} saved, ${failed.length} still pending. No changes discarded.` :
+      `${successCount} pending field changes confirmed by AppDeploy.`, failed.length ? 'warn' : 'success');
+  }, [outbox, showToast, reloadFromCloud]);
 
   const handleSelectAccountUnified = useCallback((account: Agency | null) => {
     setActiveAccount(account);
@@ -449,6 +482,21 @@ export default function App() {
     <div className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDarkMode ? 'dark bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'} flex flex-col font-sans pb-16 md:pb-0 transition-colors duration-150`}>
       
       {/* Top Navigation Bar */}
+      <div className="flex flex-wrap gap-3 items-center justify-between bg-[#0f172a] text-white px-4 sm:px-7 py-2 text-xs border-b border-blue-900">
+        <span className="inline-flex gap-2 items-center">
+          <ShieldCheck size={15} className="text-blue-300" />
+          Google-independent AppDeploy workspace
+          <span className="text-slate-400">|</span>
+          {isCloudConnected ? 'Account sync verified' : signedIn ? 'Sync unverified' : 'Sign in to save account changes'}
+        </span>
+        <button type="button" onClick={() => { void handleAccountAuth(); }} disabled={authBusy}
+          className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50">
+          {authBusy ? 'Connecting...' : signedIn ? 'Sign out' : 'Sign in with email'}
+        </button>
+      </div>
+      <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-amber-950 dark:text-amber-200 px-4 sm:px-7 py-2 text-xs leading-relaxed">
+        <strong>Evidence quality:</strong> Imported account names, equipment, buyer details, outcome metrics and opportunity scores may include illustrative or modeled data. Confirm each fact against an original source before using it as sales intelligence.
+      </div>
       <TopBar
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
@@ -828,7 +876,7 @@ export default function App() {
         )}
 
         {activeTab === 'resilience' && (
-          <CloudBackupResilienceView
+          <TerritoryDataHealthView
             agencies={agencies}
             onRestoreAgencies={updateAgenciesState}
             showToast={showToast}
@@ -1044,7 +1092,7 @@ export default function App() {
       />
 
       {/* Territory Strategy & RFP Desk */}
-      <GeminiChatbotDrawer
+      <TerritoryResearchAssistant
         isOpen={isChatbotOpen}
         onOpen={() => setIsChatbotOpen(true)}
         onClose={() => setIsChatbotOpen(false)}

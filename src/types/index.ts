@@ -277,8 +277,8 @@ export interface Agency {
   nppesRegistryUrl?: string;
   headquartersPhone?: string;
   officialWebsite?: string;
-  googleMapsUri?: string;
-  verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | 'Google Maps Verified' | string;
+  mapSearchUri?: string;
+  verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | string;
   isVerifiedRecord?: boolean;
   lastVerifiedAt?: string;
   budgetCycleEndMonth?: string;
@@ -382,7 +382,7 @@ export interface SyncOutboxItem {
   timestamp: string;
   agencyId: string;
   agencyName: string;
-  actionType: 'UPDATE_STAGE' | 'ADD_FIELD_NOTE' | 'TOGGLE_ROUTE' | 'UPDATE_CONTACT';
+  actionType: 'UPDATE_STAGE' | 'ADD_FIELD_NOTE' | 'TOGGLE_ROUTE' | 'TOGGLE_BOOKMARK' | 'UPDATE_CONTACT';
   payload: any;
   status: 'PENDING' | 'SYNCED' | 'FAILED';
 }

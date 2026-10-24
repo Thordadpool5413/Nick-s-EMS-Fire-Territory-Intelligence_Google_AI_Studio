@@ -1,0 +1,58 @@
+name: AppDeploy migration source QA
+on:
+  push:
+    branches: [migration/appdeploy-google-free-2026-10]
+  pull_request:
+    branches: [main]
+jobs:
+  static-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Supply CI-only AppDeploy SDK import shims
+        run: |
+          mkdir -p node_modules/@appdeploy/client node_modules/@appdeploy/sdk
+          cat > node_modules/@appdeploy/client/package.json <<'EOF'
+          {"name":"@appdeploy/client","version":"0.0.0-ci-shim","type":"module","main":"index.js","types":"index.d.ts"}
+          EOF
+          cat > node_modules/@appdeploy/client/index.js <<'EOF'
+          export const api = {get(){throw Error('CI shim')},post(){throw Error('CI shim')},put(){throw Error('CI shim')},delete(){throw Error('CI shim')}};
+          export const auth = {isSignedIn(){return false},getUser(){return Promise.resolve(null)},signIn(){throw Error('CI shim')},signOut(){throw Error('CI shim')}};
+          EOF
+          cat > node_modules/@appdeploy/client/index.d.ts <<'EOF'
+          export declare const api: {get(url:string,data?:unknown):Promise<{data:any}>;post(url:string,data?:unknown):Promise<{data:any}>;put(url:string,data?:unknown):Promise<{data:any}>;delete(url:string,data?:unknown):Promise<{data:any}>};
+          export interface AuthUser {userId:string;email?:string;name?:string;scope:string}
+          export declare const auth: {signIn(options?:{scope?:string}):Promise<{user:AuthUser;accessToken:string;expiresIn:number}>;signOut():Promise<void>;isSignedIn():boolean;getUser():Promise<AuthUser|null>};
+          EOF
+          cat > node_modules/@appdeploy/sdk/package.json <<'EOF'
+          {"name":"@appdeploy/sdk","version":"0.0.0-ci-shim","type":"module","main":"index.js","types":"index.d.ts"}
+          EOF
+          cat > node_modules/@appdeploy/sdk/index.js <<'EOF'
+          throw Error('CI-only backend SDK placeholder');
+          EOF
+          cat > node_modules/@appdeploy/sdk/index.d.ts <<'EOF'
+          export interface AuthUser {userId:string;email?:string;name?:string;scope:string}
+          export interface Response {statusCode:number;headers:Record<string,string>;body:string}
+          export interface Context {body:unknown;query:Record<string,string>;params:Record<string,string>;event:any;user?:AuthUser}
+          export type Middleware=(ctx:Context)=>Promise<Response|void>|Response|void;
+          export declare function router(routes:Record<string,Middleware[]>):(event:unknown)=>Promise<Response>;
+          export declare function json(data:unknown,status?:number):Response;
+          export declare function error(message:string,status?:number):Response;
+          export declare function requireAuth():Middleware;
+          export declare const db:{get<T=Record<string,any>>(table:string,ids:string[],options?:{consistent?:boolean}):Promise<Array<T|null>>;list<T=Record<string,any>>(table:string,options?:{nextToken?:string;limit?:number}):Promise<{items:Array<Omit<T,'id'>&{id:string}>;nextToken?:string}>;tx:{add(table:string,records:Record<string,unknown>[]):Promise<Array<string|null>>;update(table:string,items:Array<{id:string;record:Record<string,unknown>;if?:Record<string,unknown>}>,options?:{patch?:boolean}):Promise<boolean[]>}};
+          export declare const ai:{generate(input:{system?:string;messages?:Array<{role:'user'|'assistant'|'system'|'model';content:string}>;thinkingMode?:'NONE'|'FAST'|'DEEP';maxTokens?:number}):Promise<{text:string}>};
+          EOF
+      - name: Check Google dependencies
+        run: node scripts/check-appdeploy-migration.mjs
+      - name: Typecheck
+        run: npm run lint
+      - name: Build
+        run: npm run build

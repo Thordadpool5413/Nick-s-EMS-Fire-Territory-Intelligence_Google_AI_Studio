@@ -295,7 +295,7 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
             {inspectedCounty && (
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-4">
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${inspectedCounty.countyName}, ${stateNode.stateName}`)}`}
+                  href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${inspectedCounty.countyName}, ${stateNode.stateName}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#1E3A8A] hover:underline"
@@ -465,12 +465,12 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
                 Verified USPS ZIP Codes: <strong className="font-mono text-slate-700">{activeCountyNode.primaryZipCodes.join(', ')}</strong>
               </span>
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeCountyNode.countyName}, ${stateNode.stateName}`)}`}
+                href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${activeCountyNode.countyName}, ${stateNode.stateName}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 font-semibold text-[#1E3A8A] hover:underline"
               >
-                <span>Open County on Google Maps</span>
+                <span>Open County on OpenStreetMap</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>

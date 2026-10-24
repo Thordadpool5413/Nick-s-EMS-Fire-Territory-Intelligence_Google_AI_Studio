@@ -51,9 +51,14 @@ const LEGACY_VERIFIED_KEYS = [
 
 /**
  * National Provider & Fire Department Database Infrastructure
- * Connects all 50 US States + DC -> all 3,144 Counties -> all Official US Census Cities & Unincorporated Districts,
- * mapping both EMS Providers and Fire Departments with verified registry records and live Federal NPI/Maps enrichment.
+ * Provides geographic candidates across all states, counties and cities. Candidate locations and modeled equipment/clinical fields are not verification that a specific EMS or fire agency exists.
  */
+function verifiedCacheKey(): string {
+  let session = 'visitor';
+  try { session = sessionStorage.getItem('ems_authenticated_user') || 'visitor'; } catch {}
+  return LIVE_VERIFIED_STORAGE_KEY + '_' + encodeURIComponent(session);
+}
+
 class NationalProviderDatabaseService {
   private providers: Agency[] = [];
   private providersById: Map<string, Agency> = new Map();
@@ -88,7 +93,7 @@ class NationalProviderDatabaseService {
       for (const k of LEGACY_VERIFIED_KEYS) {
         window.localStorage.removeItem(k);
       }
-      const raw = window.localStorage.getItem(LIVE_VERIFIED_STORAGE_KEY);
+      const raw = window.localStorage.getItem(verifiedCacheKey());
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
@@ -146,13 +151,13 @@ class NationalProviderDatabaseService {
           npiNumber: updated.npiNumber,
           headquartersPhone: '',
           officialWebsite: updated.officialWebsite,
-          googleMapsUri: updated.googleMapsUri,
+          mapSearchUri: updated.mapSearchUri,
           verificationSource: updated.verificationSource,
           isVerifiedRecord: true,
           lastVerifiedAt: new Date().toISOString(),
           keyContacts: updated.keyContacts,
         };
-        window.localStorage.setItem(LIVE_VERIFIED_STORAGE_KEY, JSON.stringify(current));
+        window.localStorage.setItem(verifiedCacheKey(), JSON.stringify(current));
       } catch {
         // Ignore storage quota errors
       }
@@ -168,7 +173,7 @@ class NationalProviderDatabaseService {
       verifiedAddress?: string;
       verifiedPhone?: string;
       officialWebsite?: string;
-      googleMapsUri?: string;
+      mapSearchUri?: string;
       authorizedOfficialName?: string;
       authorizedOfficialTitle?: string;
       verificationSource?: string;
@@ -199,7 +204,7 @@ class NationalProviderDatabaseService {
       address: info.verifiedAddress || existing.address,
       headquartersPhone: '',
       officialWebsite: info.officialWebsite || existing.officialWebsite,
-      googleMapsUri: info.googleMapsUri || existing.googleMapsUri,
+      mapSearchUri: info.mapSearchUri || existing.mapSearchUri,
       verificationSource: info.verificationSource || existing.verificationSource,
       isVerifiedRecord: true,
       keyContacts: nextContacts,
@@ -335,10 +340,10 @@ class NationalProviderDatabaseService {
       ? Math.max(2, Math.round(popServed / 14000))
       : 0;
 
-    // Official Municipal & Google Maps Verification Links (Zero fabricated emails or 555 phone numbers)
+    // OpenStreetMap is a search link, never an official verification of agency identity.
     const headquartersAddress = `${agencyName} Headquarters, ${cleanCityDisplay}, ${sc} ${zip}`;
-    const googleMapsUri = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agencyName}, ${cleanCityDisplay}, ${sc} ${zip}`)}`;
-    const officialWebsite = `https://www.google.com/search?q=${encodeURIComponent(`${agencyName} ${cleanCityDisplay} ${sc} official government website phone`)}`;
+    const mapSearchUri = `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agencyName}, ${cleanCityDisplay}, ${sc} ${zip}`)}`;
+    const officialWebsite = '';
 
     return {
       id: agencyId,
@@ -357,8 +362,8 @@ class NationalProviderDatabaseService {
       longitude,
       headquartersPhone: '',
       officialWebsite,
-      googleMapsUri,
-      verificationSource: 'USFA & Municipal Jurisdiction Index (Click Live Verify for NPI/Maps)',
+      mapSearchUri,
+      verificationSource: 'Geographic prospect generator; service provider identity has not been independently checked',
       isVerifiedRecord: false,
       populationServed: popServed,
       responseAreaSqMiles: isMunicipalCity ? (28 + (posHash % 65)) : (180 + (posHash % 240)),
@@ -477,7 +482,7 @@ class NationalProviderDatabaseService {
           headquartersAddress,
           isVerifiedOfficial: false,
           verificationSource: 'Official Municipal & Federal NPI Lookup',
-          notes: 'Click "Verify via Federal NPI & Google Maps" to pull the registered CMS NPPES Authorized Official, direct headquarters telephone number, and street address.'
+          notes: 'NPPES may identify an enrolled organization and authorized official but does not verify fire/EMS purchasing relationships.'
         }
       ],
       fieldNotes: []
@@ -519,7 +524,7 @@ class NationalProviderDatabaseService {
     const savedVerifications = this.getSavedVerifications();
     const seenCityCategory = new Set<string>();
 
-    // 1. Seed with verified baseline agencies from USFA & CMS open registries (preserving 100% real contacts, phones, and addresses)
+    // 1. Seed with imported directory candidates. Do not treat bundled officials, fleets or outcomes as separately verified.
     for (const rawAgency of INITIAL_AGENCIES) {
       const denialCode = rawAgency.cmsData.topDenialReasonCode || 'CO-16';
       const denialReasonMap: Record<string, string> = {
@@ -534,12 +539,10 @@ class NationalProviderDatabaseService {
       const commercialPct = rawAgency.cmsData.commercialPayerMixPct ?? 24.0;
       const selfPayPct = rawAgency.cmsData.selfPayPayerPct ?? +(Math.max(4.0, 100 - medicarePct - medicaidPct - commercialPct)).toFixed(1);
 
-      const officialWebsite =
-        rawAgency.officialWebsite ||
-        `https://www.google.com/search?q=${encodeURIComponent(`${rawAgency.name} ${rawAgency.city} ${rawAgency.stateCode} official website`)}`;
-      const googleMapsUri =
-        rawAgency.googleMapsUri ||
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${rawAgency.name}, ${rawAgency.address}`)}`;
+      const officialWebsite = rawAgency.officialWebsite || '';
+      const mapSearchUri =
+        rawAgency.mapSearchUri ||
+        `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${rawAgency.name}, ${rawAgency.address}`)}`;
 
       const verifiedContacts = rawAgency.keyContacts.map((c) => ({
         ...c,
@@ -547,9 +550,9 @@ class NationalProviderDatabaseService {
         phone: '',
         officialWebsite,
         headquartersAddress: rawAgency.address,
-        isVerifiedOfficial: true,
-        verificationSource: 'USFA & Municipal Registry Verified',
-        notes: 'Use Official Department Website or Google Maps Station Lookup for verified contact details.'
+        isVerifiedOfficial: false,
+        verificationSource: 'Imported account candidate (person not independently verified)',
+        notes: 'This imported contact is unverified. Check the originating public agency or government roster.'
       }));
 
       const savedPatch = savedVerifications[rawAgency.id] || {};
@@ -560,9 +563,9 @@ class NationalProviderDatabaseService {
         providerCategory: isFireRaw ? 'FIRE' : 'EMS',
         headquartersPhone: '',
         officialWebsite,
-        googleMapsUri,
-        verificationSource: 'USFA & Municipal Registry Verified',
-        isVerifiedRecord: true,
+        mapSearchUri,
+        verificationSource: 'Imported public-facing directory candidate; provider-level identity not independently verified',
+        isVerifiedRecord: false,
         gisData: {
           ...rawAgency.gisData,
           primaryReceivingHospital: rawAgency.gisData.primaryReceivingHospital || `${rawAgency.city} Regional Medical Center (${rawAgency.gisData.traumaCenterLevel} & STEMI PCI)`,

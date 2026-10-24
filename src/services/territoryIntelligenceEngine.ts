@@ -560,8 +560,8 @@ class TerritoryIntelligenceService {
 
     const stateGeo = STATE_GEO_AND_AREA_CODES[sc] || { lat: 38.5, lng: -96.5 };
     const headquartersAddress = `${agencyName} Headquarters, ${city}, ${sc} ${zip}`;
-    const googleMapsUri = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agencyName}, ${city}, ${sc} ${zip}`)}`;
-    const officialWebsite = `https://www.google.com/search?q=${encodeURIComponent(`${agencyName} ${city} ${sc} official government website phone`)}`;
+    const mapSearchUri = `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agencyName}, ${city}, ${sc} ${zip}`)}`;
+    const officialWebsite = '';
 
     const dummyAgency: Agency = {
       id: `territory-${sc.toLowerCase()}-${isFireBased ? 'fire' : 'ems'}-${posHash.toString(36).slice(0, 6)}`,
@@ -580,8 +580,8 @@ class TerritoryIntelligenceService {
       longitude: +(stateGeo.lng + (((posHash >> 2) % 300) - 150) / 1000).toFixed(4),
       headquartersPhone: '',
       officialWebsite,
-      googleMapsUri,
-      verificationSource: 'USFA & Municipal Jurisdiction Index (Click Live Verify for NPI/Maps)',
+      mapSearchUri,
+      verificationSource: 'Generated geography-based prospect hypothesis; no verified operational provider identity',
       isVerifiedRecord: false,
       populationServed: countyRecord.population,
       responseAreaSqMiles: +(24.0 + (posHash % 240)).toFixed(1),
@@ -698,7 +698,7 @@ class TerritoryIntelligenceService {
           headquartersAddress,
           isVerifiedOfficial: false,
           verificationSource: 'Official Municipal & Federal NPI Lookup',
-          notes: 'Click "Verify via Federal NPI & Google Maps" to pull the registered CMS NPPES Authorized Official, direct headquarters telephone number, and street address.'
+          notes: 'This prospect is generated from geography and requires independent agency verification.'
         }
       ],
       fieldNotes: [],

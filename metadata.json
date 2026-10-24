@@ -1,6 +1,0 @@
-{
-  "name": "Nick's EMS & Fire Territory Intelligence",
-  "description": "Predictive field sales CRM and healthcare intelligence platform for EMS providers and Fire Departments powered by CMS claims, NEMSIS cardiac registry, and federal grant analytics.",
-  "requestFramePermissions": ["notifications"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

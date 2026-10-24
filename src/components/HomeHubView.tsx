@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import brandLogoAsset from '../assets/images/nicks_ems_logo_1792367124466.jpg';
+const brandLogoAsset = 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg';
 import { 
   Agency, 
   PushAlert 
@@ -139,7 +139,7 @@ export const HomeHubView: React.FC<HomeHubViewProps> = ({
   globalCategory,
   setGlobalCategory
 }) => {
-  const [logoSrc, setLogoSrc] = useState<string>(brandLogoAsset || '/logo.jpg');
+  const [logoSrc, setLogoSrc] = useState<string>(brandLogoAsset || 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
   const [logoFailed, setLogoFailed] = useState<boolean>(false);
   const [isInteractiveTourOpen, setIsInteractiveTourOpen] = useState<boolean>(false);
   const [isPlaybookDrawerOpen, setIsPlaybookDrawerOpen] = useState<boolean>(false);
@@ -242,8 +242,8 @@ export const HomeHubView: React.FC<HomeHubViewProps> = ({
                     alt="Nick's EMS & Fire Intelligence Crest"
                     referrerPolicy="no-referrer"
                     onError={() => {
-                      if (logoSrc !== '/logo.jpg') {
-                        setLogoSrc('/logo.jpg');
+                      if (logoSrc !== 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg') {
+                        setLogoSrc('https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
                       } else {
                         setLogoFailed(true);
                       }

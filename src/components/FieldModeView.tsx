@@ -65,8 +65,8 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
 
   const dayRouteAgencies = agencies.filter(a => a.inDayRoute);
 
-  const googleMapsMultiStopUrl = dayRouteAgencies.length > 0
-    ? `https://www.google.com/maps/dir/${dayRouteAgencies.map(a => encodeURIComponent(`${a.name}, ${a.address}`)).join('/')}`
+  const openMapRouteUrl = dayRouteAgencies.length > 0
+    ? `https://www.openstreetmap.org/search?query=${encodeURIComponent([dayRouteAgencies[0].name, dayRouteAgencies[0].address].filter(Boolean).join(', '))}`
     : '';
 
   const handleExportRouteCsv = () => {
@@ -83,14 +83,14 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
       'Command Official',
       'Title',
       'Official Website',
-      'Google Maps Link',
+      'OpenStreetMap Link',
       'Installed Defib Brand',
       'Defib Units',
       'Priority Score'
     ];
     const rows = targetList.map((a, idx) => {
       const chief = a.keyContacts.find(c => c.role.includes('Chief')) || a.keyContacts[0];
-      const mapsLink = a.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a.name}, ${a.address}`)}`;
+      const mapsLink = a.mapSearchUri || `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${a.name}, ${a.address}`)}`;
       return [
         idx + 1,
         `"${(a.name || '').replace(/"/g, '""')}"`,
@@ -207,21 +207,21 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
               <span>Today's Field Route Itinerary</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Optimized station sequence with verified addresses, official websites, Google Maps navigation, and rapid field notes logging.
+              User-selected station sequence. Confirm addresses, official websites, map lookup, and rapid field notes logging.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {dayRouteAgencies.length > 0 && (
               <a
-                href={googleMapsMultiStopUrl}
+                href={openMapRouteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#1E3A8A] text-white hover:bg-[#111827] dark:hover:bg-blue-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                title="Open turn-by-turn multi-stop route in Google Maps"
+                title="Search first selected stop on OpenStreetMap; multi-stop navigation is not currently integrated"
               >
                 <Navigation className="w-3.5 h-3.5" />
-                <span>Launch Multi-Stop Google Maps Route</span>
+                <span>Find First Stop</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             )}
@@ -299,13 +299,13 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
                           <div className="text-xs text-slate-600 dark:text-slate-300 mt-1 flex flex-wrap items-center gap-3">
                             <span className="font-semibold text-slate-800 dark:text-slate-100">{chief.name} ({chief.title})</span>
                             <a
-                              href={agency.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`}
+                              href={agency.mapSearchUri || `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-sky-700 dark:text-sky-400 hover:text-sky-900 dark:hover:text-sky-300 font-semibold inline-flex items-center gap-1"
                             >
                               <MapPin className="w-3 h-3 text-sky-600 dark:text-sky-400" />
-                              <span>Google Maps Lookup</span>
+                              <span>OpenStreetMap Lookup</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>

@@ -1,0 +1,33 @@
+name: Export AppDeploy migration source bundle
+on:
+  push:
+    branches: [migration/appdeploy-google-free-2026-10]
+    paths:
+      - scripts/export-appdeploy-bundle.mjs
+      - .github/workflows/export-appdeploy-bundle.yml
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: migration/appdeploy-google-free-2026-10
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Export full source to one AppDeploy payload
+        run: node scripts/export-appdeploy-bundle.mjs
+      - name: Store migration-only deployment payload
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add appdeploy-deploy-bundle.json
+          if git diff --cached --quiet; then
+            echo "Bundle already synchronized"
+          else
+            git commit -m "Build AppDeploy source bundle from GitHub migration"
+            git push origin HEAD:migration/appdeploy-google-free-2026-10
+          fi
