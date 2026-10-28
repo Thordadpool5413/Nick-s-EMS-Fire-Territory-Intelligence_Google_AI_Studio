@@ -10,7 +10,10 @@ import {
   Map, 
   AdvancedMarker, 
   Pin, 
-  InfoWindow 
+  InfoWindow,
+  useMap,
+  MapControl,
+  ControlPosition
 } from '@vis.gl/react-google-maps';
 import { Agency, PriorityTier } from '../types';
 import { 
@@ -103,6 +106,44 @@ function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: 
   return Math.round(R * c * 10) / 10;
 }
 
+interface RecenterControlProps {
+  userLocation: { lat: number; lng: number } | null;
+  isPermissionGranted: boolean;
+  onRecenter?: () => void;
+}
+
+const RecenterControl: React.FC<RecenterControlProps> = ({ userLocation, isPermissionGranted, onRecenter }) => {
+  const map = useMap();
+
+  const handleRecenter = () => {
+    if (userLocation && map) {
+      map.panTo({ lat: userLocation.lat, lng: userLocation.lng });
+      map.setZoom(11);
+    }
+    if (onRecenter) {
+      onRecenter();
+    }
+  };
+
+  if (!isPermissionGranted || !userLocation) return null;
+
+  return (
+    <MapControl position={ControlPosition.RIGHT_BOTTOM}>
+      <div className="m-3">
+        <button
+          type="button"
+          onClick={handleRecenter}
+          className="h-10 px-3.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-white rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+          title="Recenter map to your current location"
+        >
+          <LocateFixed className="w-4 h-4 text-[#285EE8]" />
+          <span>Recenter to Location</span>
+        </button>
+      </div>
+    </MapControl>
+  );
+};
+
 export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerProps> = ({
   agencies,
   onSelectAgency,
@@ -140,16 +181,34 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
 
   // Geolocation / Near Me State
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isPermissionGranted, setIsPermissionGranted] = useState<boolean>(false);
+  const [isLocating, setIsLocating] = useState<boolean>(() => {
+    // Start locating automatically unless an account or explicit county is already provided
+    return !activeAccount && (globalState === 'all' || globalCounty === 'all');
+  });
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isNearMeActive, setIsNearMeActive] = useState<boolean>(false);
-  const [nearMeRadiusMiles, setNearMeRadiusMiles] = useState<number>(30);
+  const [nearMeRadiusMiles, setNearMeRadiusMiles] = useState<number>(25);
 
   // Manual Map Building Trigger (Crash Prevention: Do NOT load national view by default)
   const [hasUserBuiltMap, setHasUserBuiltMap] = useState<boolean>(() => {
     // If a specific state & county is already selected or an account is active, allow building immediately
     return Boolean(activeAccount) || (globalState !== 'all' && globalCounty !== 'all');
   });
+
+  // Query browser geolocation permission status
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'permissions' in navigator && navigator.permissions?.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        setIsPermissionGranted(result.state === 'granted');
+        result.onchange = () => {
+          setIsPermissionGranted(result.state === 'granted');
+        };
+      }).catch(() => {
+        // Fallback for browsers that do not support permission query for geolocation
+      });
+    }
+  }, []);
 
   // Filters & Map Display Settings
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -180,7 +239,8 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
   // Handle GPS Current Location Request
   const handleUseCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser or device.');
+      setLocationError('Geolocation is not supported by your browser or device. Please select your State & County below.');
+      setIsLocating(false);
       return;
     }
 
@@ -194,27 +254,52 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
           lng: position.coords.longitude
         };
         setUserLocation(coords);
+        setIsPermissionGranted(true);
         setIsLocating(false);
         setIsNearMeActive(true);
-        setHasUserBuiltMap(true); // Allow map to build safely focused on user's coordinates
+        setNearMeRadiusMiles(25);
+        setHasUserBuiltMap(true); // Allow map to build safely focused on user's 25-mile radius
       },
       (error) => {
         setIsLocating(false);
         let msg = 'Unable to retrieve your location.';
         if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Location permission denied. Please select your State & County below instead.';
+          setIsPermissionGranted(false);
+          msg = 'Location permission was denied. Please select your State & County below to build the map.';
+        } else if (error.code === error.TIMEOUT) {
+          msg = 'Location request timed out. Please select your State & County below to build the map.';
         } else if (error.code === error.POSITION_UNAVAILABLE) {
-          msg = 'Location position unavailable. Please select your State & County below.';
+          msg = 'Location position unavailable. Please select your State & County below to build the map.';
         }
         setLocationError(msg);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 9000,
         maximumAge: 60000
       }
     );
   }, []);
+
+  // Recenter map to current user coordinates
+  const handleRecenterToLocation = useCallback(() => {
+    if (userLocation) {
+      setIsNearMeActive(true);
+      setNearMeRadiusMiles(25);
+      setHasUserBuiltMap(true);
+    } else {
+      handleUseCurrentLocation();
+    }
+  }, [userLocation, handleUseCurrentLocation]);
+
+  // Automatically request user geolocation on load
+  useEffect(() => {
+    if (activeAccount || (globalState !== 'all' && globalCounty !== 'all')) {
+      setIsLocating(false);
+      return;
+    }
+    handleUseCurrentLocation();
+  }, [handleUseCurrentLocation, activeAccount, globalState, globalCounty]);
 
   // Filtered agencies based on State/County OR Near Me location
   const filteredAgencies = useMemo(() => {
@@ -294,7 +379,7 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
 
   const mapZoom = useMemo(() => {
     if (isNearMeActive) {
-      return nearMeRadiusMiles <= 15 ? 12 : nearMeRadiusMiles <= 30 ? 11 : 10;
+      return nearMeRadiusMiles <= 15 ? 12 : nearMeRadiusMiles <= 25 ? 11 : 10;
     }
     if (activeAccount) return 13;
     if (globalCity !== 'all') return 12;
@@ -379,6 +464,19 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
               <span>{isLocating ? 'Locating GPS...' : isNearMeActive ? 'GPS Active (Near Me)' : 'Use My Location'}</span>
             </button>
 
+            {/* Recenter to Location Control (Visible if permission granted and location known) */}
+            {isPermissionGranted && userLocation && (
+              <button
+                type="button"
+                onClick={handleRecenterToLocation}
+                className="h-9 px-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title="Recenter map directly to your detected location"
+              >
+                <LocateFixed className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Recenter to Location</span>
+              </button>
+            )}
+
             {/* Change Territory Button */}
             {hasUserBuiltMap && (
               <button
@@ -437,10 +535,41 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
 
       {/* ====================================================================
           GATEWAY STATE: PREVENT NATIONAL CRASH
-          If user has not selected a state/county or Near Me, display the fast
-          launchpad instead of crashing with 10,000 national Google Maps pins!
+          Auto-request geolocation on load to zoom to 25-mile radius.
+          If locating or user has not selected a state/county, prevent national
+          map from mounting to ensure 60 FPS mobile speed and stability!
          ==================================================================== */}
-      {!hasUserBuiltMap && !isNearMeActive ? (
+      {isLocating && !hasUserBuiltMap && !isNearMeActive ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 sm:p-12 shadow-md text-center max-w-xl mx-auto space-y-5 animate-in fade-in duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[#285EE8] dark:text-blue-400 mx-auto flex items-center justify-center shadow-xs">
+            <Radio className="w-8 h-8 animate-pulse text-[#285EE8]" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-xl sm:text-2xl font-bold font-display text-slate-900 dark:text-white">
+              Locating Providers Near You
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+              Requesting GPS position to zoom directly to EMS agencies and Fire stations within a 25-mile radius...
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+            <span>Awaiting device location response</span>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLocating(false);
+                setHasUserBuiltMap(false);
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer transition-colors"
+            >
+              Or Choose State &amp; County Manually &rarr;
+            </button>
+          </div>
+        </div>
+      ) : !hasUserBuiltMap && !isNearMeActive ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-md text-center max-w-3xl mx-auto space-y-6 animate-in fade-in duration-200">
           
           <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[#285EE8] dark:text-blue-400 mx-auto flex items-center justify-center shadow-xs">
@@ -452,7 +581,7 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
               Launch Live Google Maps Explorer
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
-              Google Maps builds on-demand for your targeted county or live GPS proximity. National rendering of thousands of markers is disabled to guarantee 60 FPS mobile speed and prevent WebGL memory crashes.
+              Google Maps zooms directly to your local 25-mile radius or targeted county. National rendering of thousands of markers is disabled to guarantee 60 FPS mobile speed and prevent WebGL memory crashes.
             </p>
           </div>
 
@@ -634,7 +763,7 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
               {isNearMeActive && (
                 <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded-lg">
                   <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">Radius:</span>
-                  {[15, 30, 50].map((r) => (
+                  {[15, 25, 50].map((r) => (
                     <button
                       key={r}
                       type="button"
@@ -727,6 +856,13 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
                       </div>
                     </AdvancedMarker>
                   )}
+
+                  {/* Native On-Map Recenter to Location Control */}
+                  <RecenterControl
+                    userLocation={userLocation}
+                    isPermissionGranted={isPermissionGranted}
+                    onRecenter={handleRecenterToLocation}
+                  />
 
                   {/* Plotted Local Station Markers */}
                   {filteredAgencies.map((agency) => {

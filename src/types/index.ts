@@ -289,6 +289,7 @@ export interface Agency {
   headquartersPhone?: string;
   officialWebsite?: string;
   googleMapsUri?: string;
+  mapSearchUri?: string;
   verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | 'Google Maps Verified' | 'Firestore Cloud Synced' | string;
   isVerifiedRecord?: boolean;
   lastVerifiedAt?: string;
