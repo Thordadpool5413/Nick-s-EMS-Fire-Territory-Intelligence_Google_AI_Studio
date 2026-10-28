@@ -652,6 +652,19 @@ export const TopBar: React.FC<TopBarProps> = ({
               </button>
             )}
 
+            {/* Territory Strategy & RFP Desk Trigger */}
+            {openChatbot && (
+              <button
+                type="button"
+                onClick={openChatbot}
+                className="h-9 px-3 rounded-lg border border-blue-200 dark:border-blue-800/80 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-[#285EE8] dark:text-blue-300 flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                title="Open Territory Strategy & RFP AI Desk"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#285EE8] dark:text-blue-400" />
+                <span className="hidden sm:inline">Strategy AI</span>
+              </button>
+            )}
+
             {/* Primary Action: Log Field Visit */}
             <button
               type="button"
