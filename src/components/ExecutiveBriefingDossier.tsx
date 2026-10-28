@@ -380,84 +380,84 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider text-white ${
+                    <span className={`px-2.5 py-0.5 rounded text-xs font-semibold text-white ${
                       isFire ? 'bg-red-700' : 'bg-[#1E3A8A]'
                     }`}>
-                      {isFire ? 'Fire Department' : 'EMS Provider'}
+                      {isFire ? 'Fire department' : 'EMS provider'}
                     </span>
-                    <span className="text-xs font-semibold text-slate-600">
-                      {agency.agencyType} · {agency.jurisdictionLevel} Jurisdiction
+                    <span className="text-xs text-slate-600 font-medium">
+                      {agency.agencyType} &middot; {agency.jurisdictionLevel} jurisdiction
                     </span>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-1 leading-tight">
+                  <h1 className="text-[28px] sm:text-[32px] font-[650] text-slate-900 tracking-tight mt-1 leading-tight">
                     {agency.name}
                   </h1>
-                  <p className="text-xs font-semibold text-slate-600 mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-2">
                     <span>{agency.address || `${agency.city}, ${agency.stateCode}`}, {agency.city}, {agency.county}, {agency.stateCode} {agency.zipCode}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-slate-800">FDID: {agency.fdid || 'Verified'}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-slate-800">CMS NPI: {agency.npiNumber || '1043298711'}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono text-slate-800">Taxonomy: {agency.taxonomyCode || '341600000X'}</span>
+                    <span aria-hidden="true">&middot;</span>
+                    <span className="text-slate-700">FDID: {agency.fdid || 'Verified'}</span>
+                    <span aria-hidden="true">&middot;</span>
+                    <span className="text-slate-700">NPI: {agency.npiNumber || '1043298711'}</span>
+                    <span aria-hidden="true">&middot;</span>
+                    <span className="text-slate-700">Taxonomy: {agency.taxonomyCode || '341600000X'}</span>
                   </p>
                 </div>
               </div>
 
               <div className="text-right shrink-0">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Account Dossier Date</div>
-                <div className="text-xs font-bold text-slate-900 mt-0.5">{currentDate}</div>
-                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-bold">
+                <div className="text-xs text-slate-500 font-medium">Dossier publication date</div>
+                <div className="text-xs font-semibold text-slate-900 mt-0.5">{currentDate}</div>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Verified Public Record</span>
+                  <span>Verified public record</span>
                 </div>
               </div>
             </div>
 
             {/* Official Leadership & Key Contacts Directory */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>Verified Department Leadership &amp; Authorizing Officials</span>
-                <span className="text-[10px] text-slate-500 font-mono">CMS NPPES &amp; Municipal Public Records</span>
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>Agency leadership and authorizing officials</span>
+                <span className="text-xs text-slate-500">CMS NPPES &amp; municipal records</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Registered Authorized Official</div>
-                  <div className="text-sm font-bold text-slate-900 mt-0.5">
+                  <div className="text-[11px] font-medium text-slate-500">Authorized official</div>
+                  <div className="text-sm font-semibold text-slate-900 mt-0.5">
                     {agency.nppesOfficialName || primaryContact?.name || 'Chief Executive Officer'}
                   </div>
-                  <div className="text-[11px] text-slate-600">
+                  <div className="text-xs text-slate-600">
                     {agency.nppesOfficialTitle || primaryContact?.title || (isFire ? 'Fire Chief & Authorized Official' : 'EMS Director & Authorized Official')}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                  <div className="text-xs text-slate-500 mt-0.5 tabular-nums">
                     Direct: {departmentPhone}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Command Headquarters Contact</div>
-                  <div className="text-xs font-extrabold text-[#1E3A8A] mt-0.5">
+                  <div className="text-[11px] font-medium text-slate-500">Command headquarters contact</div>
+                  <div className="text-xs font-semibold text-[#1E3A8A] mt-0.5 tabular-nums">
                     {departmentPhone}
                   </div>
-                  <div className="text-[11px] text-slate-600 truncate" title={agency.address}>
+                  <div className="text-xs text-slate-600 truncate" title={agency.address}>
                     {agency.address}
                   </div>
                   {agency.officialWebsite && (
-                    <div className="text-[11px] text-blue-700 truncate mt-0.5 font-medium">
+                    <div className="text-xs text-blue-700 truncate mt-0.5 font-medium">
                       {agency.officialWebsite}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Healthcare Software Stack</div>
-                  <div className="text-xs font-bold text-slate-900 mt-0.5">
+                  <div className="text-[11px] font-medium text-slate-500">Clinical software stack</div>
+                  <div className="text-xs font-semibold text-slate-900 mt-0.5">
                     Billing: {agency.installedFleet?.billingSoftware || 'In-House Municipal'}
                   </div>
-                  <div className="text-[11px] text-slate-700 mt-0.5">
-                    ePCR: <span className="font-semibold">{agency.installedFleet?.epcrCadSoftware || 'ImageTrend Elite'}</span>
+                  <div className="text-xs text-slate-700 mt-0.5">
+                    ePCR: <span className="font-medium">{agency.installedFleet?.epcrCadSoftware || 'ImageTrend Elite'}</span>
                   </div>
-                  <div className="text-[11px] text-blue-700 font-medium">
+                  <div className="text-xs text-blue-700 font-medium">
                     CAD: {agency.installedFleet?.dispatchCadVendor || 'Municipal 911 CAD'}
                   </div>
                 </div>
@@ -467,23 +467,23 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
               {agency.keyContacts && agency.keyContacts.length > 0 && (
                 <div className="mt-2.5 overflow-x-auto border border-slate-200 rounded-lg">
                   <table className="w-full text-left border-collapse text-xs">
-                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-medium">
                       <tr>
-                        <th className="py-2 px-3">Contact Official</th>
-                        <th className="py-2 px-3">Functional Role</th>
-                        <th className="py-2 px-3">Direct Phone</th>
-                        <th className="py-2 px-3">Official Email / Verification</th>
+                        <th className="py-2 px-3">Contact official</th>
+                        <th className="py-2 px-3">Functional role</th>
+                        <th className="py-2 px-3">Direct phone</th>
+                        <th className="py-2 px-3">Official email</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-slate-800">
                       {agency.keyContacts.map((contact, cIdx) => (
                         <tr key={contact.id || cIdx} className="hover:bg-slate-50">
-                          <td className="py-1.5 px-3 font-semibold text-slate-900">{contact.name}</td>
+                          <td className="py-1.5 px-3 font-medium text-slate-900">{contact.name}</td>
                           <td className="py-1.5 px-3 text-slate-600">{contact.title || contact.role}</td>
-                          <td className="py-1.5 px-3 font-mono text-slate-700">{contact.phone || departmentPhone}</td>
-                          <td className="py-1.5 px-3 text-slate-600 text-[11px]">
+                          <td className="py-1.5 px-3 text-slate-700 tabular-nums">{contact.phone || departmentPhone}</td>
+                          <td className="py-1.5 px-3 text-slate-600 text-xs">
                             {contact.email ? (
-                              <span className="font-mono text-blue-700">{contact.email}</span>
+                              <span className="text-blue-700">{contact.email}</span>
                             ) : (
                               <span className="text-slate-400 italic">HQ Operator Verified</span>
                             )}
@@ -498,47 +498,47 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
             {/* 4 Core Executive Metric Callouts */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2">
-                Executive Operational &amp; Clinical Indicators
+              <div className="text-xs font-semibold text-slate-700 mb-2">
+                Executive operational and clinical indicators
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">911 Transports</div>
-                  <div className="text-xl font-bold font-mono text-slate-900 mt-1">
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">Annual 911 transports</div>
+                  <div className="text-[24px] font-[650] text-slate-900 mt-1 tabular-nums leading-none">
                     {(agency.annual911Transports || 3200).toLocaleString()}
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
-                    {(agency.annualCallVolume || 5400).toLocaleString()} dispatches · Pop {(agency.populationServed || 45000).toLocaleString()}
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
+                    {(agency.annualCallVolume || 5400).toLocaleString()} dispatches &middot; Pop {(agency.populationServed || 45000).toLocaleString()}
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Installed Defib Fleet</div>
-                  <div className="text-sm font-bold text-slate-900 mt-1 truncate" title={agency.installedFleet?.defibBrand}>
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">Installed defib fleet</div>
+                  <div className="text-sm font-semibold text-slate-900 mt-1 truncate" title={agency.installedFleet?.defibBrand}>
                     {agency.installedFleet?.defibBrand || 'Stryker LIFEPAK 15'}
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
-                    {agency.installedFleet?.defibUnitsCount || 12} monitors · {agency.installedFleet?.defibAgeYears || 8} yrs ({agency.installedFleet?.defibWarrantyStatus || 'Expired / Sunset'})
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
+                    {agency.installedFleet?.defibUnitsCount || 12} devices &middot; Age: {agency.installedFleet?.defibAgeYears || 8} yrs
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-emerald-300 bg-emerald-50/50">
-                  <div className="text-[10px] font-bold uppercase text-emerald-800">Billing Recovery Gap</div>
-                  <div className="text-xl font-bold font-mono text-emerald-700 mt-1">
-                    +${Math.round((agency.cmsData?.estimatedRecoverableRevenue || 145000) / 1000)}K<span className="text-xs font-semibold">/yr</span>
+                <div className="p-3.5 rounded-lg border border-emerald-300 bg-emerald-50/50">
+                  <div className="text-xs text-emerald-800 font-medium">Billing recovery potential</div>
+                  <div className="text-[24px] font-[650] text-emerald-700 mt-1 tabular-nums leading-none">
+                    ${Math.round((agency.cmsData?.estimatedRecoverableRevenue || 145000) / 1000)}K per year
                   </div>
-                  <div className="text-[10px] text-emerald-800 mt-0.5">
-                    {agency.cmsData?.claimDenialRate || 19.4}% Denials · Code {agency.cmsData?.topDenialReasonCode || 'CO-16'}
+                  <div className="text-xs text-emerald-800 mt-1.5 tabular-nums">
+                    {agency.cmsData?.claimDenialRate || 19.4}% denials &middot; Code {agency.cmsData?.topDenialReasonCode || 'CO-16'}
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Cardiac Survival &amp; Acuity</div>
-                  <div className="text-xl font-bold font-mono text-blue-900 mt-1">
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">Cardiac survival &amp; acuity</div>
+                  <div className="text-[24px] font-[650] text-blue-900 mt-1 tabular-nums leading-none">
                     {agency.utsteinSurvivalRate || 14.2}%
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
-                    {(agency.annualCardiacArrestCalls || 680).toLocaleString()} OHCA calls · AHA {agency.qualityMetrics?.ahaMissionLifelineTier || 'Gold Plus'}
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
+                    {(agency.annualCardiacArrestCalls || 680).toLocaleString()} OHCA calls &middot; AHA {agency.qualityMetrics?.ahaMissionLifelineTier || 'Gold Plus'}
                   </div>
                 </div>
               </div>
@@ -548,33 +548,33 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 text-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-950">
-                    Pulse IQ Priority Opportunity Index
+                  <span className="text-xs font-semibold text-slate-900">
+                    Modeled priority index
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#1E3A8A] text-white">
-                    {agency.zollOpportunity?.priorityTier || 'Tier 1 Prime Target'}
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-[#1E3A8A] text-white">
+                    {agency.zollOpportunity?.priorityTier || 'Tier 1 Target'}
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-blue-900 border border-blue-300">
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-white text-blue-900 border border-blue-200">
                     Stage: {agency.zollOpportunity?.salesStage || 'Evaluation Trial'}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold font-mono text-[#1E3A8A]">
+                  <span className="text-[24px] font-[650] text-[#1E3A8A] tabular-nums">
                     {agency.zollOpportunity?.pulseIqScore || 92}
                   </span>
-                  <span className="text-xs font-bold text-slate-500">/ 100</span>
+                  <span className="text-xs text-slate-500">/ 100</span>
                 </div>
               </div>
 
               {/* 5-Pillar Score Breakdown */}
-              <div className="grid grid-cols-5 gap-2 pt-1 border-t border-blue-200/60 text-[11px]">
+              <div className="grid grid-cols-5 gap-2 pt-1 border-t border-blue-200/60 text-xs">
                 {scoreExplanation?.factors.map((f) => (
                   <div key={f.id} className="text-center p-2 rounded bg-white border border-blue-100">
-                    <div className="text-slate-500 text-[10px] truncate">{f.name.split(' ')[0]} {f.name.split(' ')[1]}</div>
-                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
+                    <div className="text-slate-500 text-[11px] truncate">{f.name.split(' ')[0]} {f.name.split(' ')[1]}</div>
+                    <div className="font-semibold text-slate-900 text-xs mt-0.5 tabular-nums">
                       +{f.pointsContributed} pts
                     </div>
-                    <div className="text-[9px] text-blue-700 font-medium">
+                    <div className="text-[10px] text-blue-700 font-medium tabular-nums">
                       ({f.weightPct}% wt)
                     </div>
                   </div>
@@ -582,66 +582,66 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
               </div>
 
               {/* Strategic Rationale Narrative */}
-              <div className="text-[11px] text-slate-700 leading-relaxed pt-1 border-t border-blue-200/50">
-                <strong>Strategic Conversion Rationale:</strong> {agency.zollOpportunity?.scoreRationale || 
+              <div className="text-xs text-slate-700 leading-relaxed pt-1 border-t border-blue-200/50">
+                <strong className="font-semibold text-slate-900">Strategic conversion rationale:</strong> {agency.zollOpportunity?.scoreRationale || 
                   `Aging incumbent ${agency.installedFleet?.defibBrand} monitors are past manufacturer end-of-life with elevated maintenance liability. High Medicare claim rejection rate (${agency.cmsData?.claimDenialRate}%) presents immediate ROI through ZOLL RescueNet integration.`}
               </div>
             </div>
 
             {/* Granular Apparatus & Vehicle Fleet Inventory */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>Apparatus &amp; Emergency Vehicle Fleet Breakdown</span>
-                <span className="font-mono text-slate-800">Total Active Units: {fleet.totalActiveUnits} · Stations: {agency.stationsCount || 4}</span>
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>Apparatus and emergency fleet breakdown</span>
+                <span className="text-xs text-slate-600 tabular-nums">Total active units: {fleet.totalActiveUnits} &middot; Stations: {agency.stationsCount || 4}</span>
               </div>
               <div className="overflow-x-auto border border-slate-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-medium">
                     <tr>
-                      <th className="py-2 px-3">Vehicle Apparatus Classification</th>
-                      <th className="py-2 px-3 text-center">Active Count</th>
-                      <th className="py-2 px-3">Primary Equipment Payload</th>
-                      <th className="py-2 px-3">Fleet Lifecycle Status</th>
+                      <th className="py-2 px-3">Vehicle apparatus classification</th>
+                      <th className="py-2 px-3 text-center">Active count</th>
+                      <th className="py-2 px-3">Primary equipment payload</th>
+                      <th className="py-2 px-3">Lifecycle status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-800">
                     <tr>
-                      <td className="py-2 px-3 font-bold text-slate-900">Frontline ALS Ambulances (Type I/III)</td>
-                      <td className="py-2 px-3 text-center font-mono font-bold text-blue-900">{fleet.alsAmbulances}</td>
+                      <td className="py-2 px-3 font-semibold text-slate-900">Frontline ALS Ambulances (Type I/III)</td>
+                      <td className="py-2 px-3 text-center font-semibold text-blue-900 tabular-nums">{fleet.alsAmbulances}</td>
                       <td className="py-2 px-3 text-slate-600">Advanced 12-Lead Monitor, Mechanical CPR, Transport Vent</td>
                       <td className="py-2 px-3 text-slate-700">7-Year High-Mileage Replacement Cycle</td>
                     </tr>
                     <tr>
-                      <td className="py-2 px-3 font-semibold text-slate-900">Reserve / BLS Ambulances</td>
-                      <td className="py-2 px-3 text-center font-mono font-bold text-slate-700">{fleet.blsAmbulances}</td>
+                      <td className="py-2 px-3 font-medium text-slate-900">Reserve / BLS Ambulances</td>
+                      <td className="py-2 px-3 text-center text-slate-700 tabular-nums">{fleet.blsAmbulances}</td>
                       <td className="py-2 px-3 text-slate-600">Automated External Defibrillator (AED), BVM Airway</td>
                       <td className="py-2 px-3 text-slate-700">Secondary Peak-Volume Backup Units</td>
                     </tr>
                     {fleet.fireEngines > 0 && (
                       <tr>
-                        <td className="py-2 px-3 font-semibold text-slate-900">Type 1 Fire Engines / Pumpers</td>
-                        <td className="py-2 px-3 text-center font-mono font-bold text-slate-700">{fleet.fireEngines}</td>
+                        <td className="py-2 px-3 font-medium text-slate-900">Type 1 Fire Engines / Pumpers</td>
+                        <td className="py-2 px-3 text-center text-slate-700 tabular-nums">{fleet.fireEngines}</td>
                         <td className="py-2 px-3 text-slate-600">First-Response AED, Oxygen Resuscitation Pack</td>
                         <td className="py-2 px-3 text-slate-700">10-15 Year Frontline Service Standard</td>
                       </tr>
                     )}
                     {fleet.ladderTrucks > 0 && (
                       <tr>
-                        <td className="py-2 px-3 font-semibold text-slate-900">Aerial Ladders / Platforms</td>
-                        <td className="py-2 px-3 text-center font-mono font-bold text-slate-700">{fleet.ladderTrucks}</td>
+                        <td className="py-2 px-3 font-medium text-slate-900">Aerial Ladders / Platforms</td>
+                        <td className="py-2 px-3 text-center text-slate-700 tabular-nums">{fleet.ladderTrucks}</td>
                         <td className="py-2 px-3 text-slate-600">High-Angle Rescue, First-In Medical AED</td>
                         <td className="py-2 px-3 text-slate-700">Municipal Capital Depreciation Schedule</td>
                       </tr>
                     )}
                     <tr>
-                      <td className="py-2 px-3 font-semibold text-slate-900">Heavy Rescue &amp; Extrication Squads</td>
-                      <td className="py-2 px-3 text-center font-mono font-bold text-slate-700">{fleet.heavyRescueUnits}</td>
+                      <td className="py-2 px-3 font-medium text-slate-900">Heavy Rescue &amp; Extrication Squads</td>
+                      <td className="py-2 px-3 text-center text-slate-700 tabular-nums">{fleet.heavyRescueUnits}</td>
                       <td className="py-2 px-3 text-slate-600">Full ALS Defibrillator &amp; Hydraulic Extrication</td>
                       <td className="py-2 px-3 text-slate-700">County Mutual Aid Technical Team</td>
                     </tr>
                     <tr>
-                      <td className="py-2 px-3 font-semibold text-slate-900">Command &amp; EMS Supervisor Interceptors</td>
-                      <td className="py-2 px-3 text-center font-mono font-bold text-slate-700">{fleet.commandVehicles}</td>
+                      <td className="py-2 px-3 font-medium text-slate-900">Command &amp; EMS Supervisor Interceptors</td>
+                      <td className="py-2 px-3 text-center text-slate-700 tabular-nums">{fleet.commandVehicles}</td>
                       <td className="py-2 px-3 text-slate-600">Supervisor Monitor-Defibrillator &amp; Incident Telemetry</td>
                       <td className="py-2 px-3 text-slate-700">Battalion Field Command Units</td>
                     </tr>
@@ -653,18 +653,18 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             {/* Hospital Trauma & Cath Lab Logistics Strip */}
             <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Primary Receiving Trauma Hospital</div>
-                <div className="text-sm font-bold text-slate-900 mt-0.5">{logistics.primaryTraumaHospital}</div>
-                <div className="text-[11px] text-slate-600 mt-1">
-                  Driving Distance: <strong className="font-mono">{logistics.distanceToTraumaMiles} miles</strong> · Avg Transit Latency: <strong className="font-mono">{logistics.transportTimeMinutes} mins</strong>
+                <div className="text-xs text-slate-500 font-medium">Primary receiving trauma hospital</div>
+                <div className="text-sm font-semibold text-slate-900 mt-0.5">{logistics.primaryTraumaHospital}</div>
+                <div className="text-xs text-slate-600 mt-1 tabular-nums">
+                  Driving distance: <strong className="font-medium text-slate-800">{logistics.distanceToTraumaMiles} miles</strong> &middot; Transit time: <strong className="font-medium text-slate-800">{logistics.transportTimeMinutes} mins</strong>
                 </div>
               </div>
 
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">24/7 STEMI PCI Cath Lab Destination</div>
-                <div className="text-sm font-bold text-slate-900 mt-0.5">{logistics.primaryCathLabHospital}</div>
-                <div className="text-[11px] text-slate-600 mt-1">
-                  Cath Lab Distance: <strong className="font-mono">{logistics.cathLabDistanceMiles} miles</strong> · Avg Offload Latency: <strong className="font-mono">{logistics.avgEdOffloadLatencyMinutes} mins</strong>
+                <div className="text-xs text-slate-500 font-medium">24/7 STEMI PCI cath lab destination</div>
+                <div className="text-sm font-semibold text-slate-900 mt-0.5">{logistics.primaryCathLabHospital}</div>
+                <div className="text-xs text-slate-600 mt-1 tabular-nums">
+                  Distance: <strong className="font-medium text-slate-800">{logistics.cathLabDistanceMiles} miles</strong> &middot; Offload latency: <strong className="font-medium text-slate-800">{logistics.avgEdOffloadLatencyMinutes} mins</strong>
                 </div>
               </div>
             </div>
@@ -680,62 +680,62 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             {/* Header for Page 2 */}
             <div className="flex items-center justify-between border-b border-slate-300 pb-3">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  {agency.name} · Executive Briefing (Page 2)
+                <span className="text-xs text-slate-500 font-medium">
+                  {agency.name} &middot; Executive briefing (Page 2)
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">Clinical Resuscitation Quality, CMS Denials &amp; Contract Expiration</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Clinical resuscitation quality, CMS denials &amp; contract timeline</h3>
               </div>
-              <div className="text-xs font-mono font-semibold text-slate-600">
-                CMS NPI #{agency.npiNumber || '1043298711'} · FDID: {agency.fdid || 'Verified'}
+              <div className="text-xs text-slate-600 tabular-nums">
+                NPI #{agency.npiNumber || '1043298711'} &middot; FDID: {agency.fdid || 'Verified'}
               </div>
             </div>
 
             {/* 1. Clinical Resuscitation Quality Metrics (CARES & NEMSQA Benchmarks) */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>NEMSQA National Clinical Quality Measures &amp; CARES Neurological Survival</span>
-                <span className="text-[10px] font-mono text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>NEMSQA clinical quality measures &amp; CARES neurological survival</span>
+                <span className="text-xs text-emerald-800 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                   AHA Mission: Lifeline {agency.qualityMetrics?.ahaMissionLifelineTier || 'Gold Plus'}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">STEMI 12-Lead Acquisition</div>
-                  <div className="text-xl font-bold font-mono text-blue-900 mt-1">
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">STEMI 12-lead acquisition</div>
+                  <div className="text-[24px] font-[650] text-blue-900 mt-1 tabular-nums leading-none">
                     {agency.qualityMetrics?.nemsqaStemi12LeadAcquisitionPct || 89}%
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
                     Target: &ge;85% within &le;10 min
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Chest Compression Fraction</div>
-                  <div className="text-xl font-bold font-mono text-emerald-800 mt-1">
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">Chest compression fraction</div>
+                  <div className="text-[24px] font-[650] text-emerald-800 mt-1 tabular-nums leading-none">
                     {agency.qualityMetrics?.nemsqaChestCompressionFractionPct || 81}%
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
-                    Target: &ge;78% (ZOLL AutoPulse 98%)
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
+                    Target: &ge;78% (AutoPulse 98%)
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">ETCO2 Ventilation Compliance</div>
-                  <div className="text-xl font-bold font-mono text-amber-800 mt-1">
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">ETCO2 ventilation compliance</div>
+                  <div className="text-[24px] font-[650] text-amber-800 mt-1 tabular-nums leading-none">
                     {agency.qualityMetrics?.nemsqaEtco2VentilationCompliancePct || 68}%
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
                     Target: &ge;64% (Real BVM Help)
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Pediatric Respiratory Support</div>
-                  <div className="text-xl font-bold font-mono text-purple-900 mt-1">
+                <div className="p-3.5 rounded-lg border border-slate-200 bg-white">
+                  <div className="text-xs text-slate-500 font-medium">Pediatric respiratory support</div>
+                  <div className="text-[24px] font-[650] text-purple-900 mt-1 tabular-nums leading-none">
                     {agency.qualityMetrics?.nemsqaPediatricRespiratorySupportPct || 74}%
                   </div>
-                  <div className="text-[10px] text-slate-600 mt-0.5">
+                  <div className="text-xs text-slate-500 mt-1.5 tabular-nums">
                     Target: &ge;72% pediatric standard
                   </div>
                 </div>
@@ -746,92 +746,92 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             <div className="p-4 rounded-xl border border-emerald-300 bg-emerald-50/40 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900">
-                    CMS Reimbursement &amp; Revenue Recovery Analytics
+                  <span className="text-xs text-emerald-900 font-medium">
+                    CMS reimbursement &amp; revenue recovery analytics
                   </span>
-                  <h4 className="text-base font-bold text-slate-900 mt-0.5">
-                    Medicare Denial Rate: {agency.cmsData?.claimDenialRate || 19.4}% vs 8.2% ZOLL Benchmark
+                  <h4 className="text-base font-semibold text-slate-900 mt-0.5">
+                    Medicare denial rate: {agency.cmsData?.claimDenialRate || 19.4}% vs. 8.2% ZOLL benchmark
                   </h4>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-slate-600">Annual Recoverable Cash:</span>
-                  <div className="text-xl font-bold font-mono text-emerald-700">
-                    +${Math.round((agency.cmsData?.estimatedRecoverableRevenue || 145000)).toLocaleString()}/yr
+                  <span className="text-xs text-slate-600 font-medium">Annual recoverable cash:</span>
+                  <div className="text-[24px] font-[650] text-emerald-700 tabular-nums leading-none mt-0.5">
+                    +${Math.round((agency.cmsData?.estimatedRecoverableRevenue || 145000)).toLocaleString()} per year
                   </div>
                 </div>
               </div>
 
               {/* Payer Mix Distribution Bar */}
               <div className="space-y-1.5 pt-2 border-t border-emerald-200">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                  <span>Payer Mix Breakdown:</span>
-                  <span className="text-slate-500 font-mono text-[11px]">
-                    GADCS Status: {agency.cmsData?.gadcsReportingStatus || 'Selected - Compliant'}
+                <div className="flex items-center justify-between text-xs text-slate-700 font-medium">
+                  <span>Payer mix breakdown:</span>
+                  <span className="text-slate-500 text-xs tabular-nums">
+                    GADCS status: {agency.cmsData?.gadcsReportingStatus || 'Selected - Compliant'}
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   <div className="p-2 rounded bg-white border border-slate-200">
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Medicare</div>
-                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
+                    <div className="text-xs text-slate-500 font-medium">Medicare</div>
+                    <div className="font-semibold text-slate-900 text-sm mt-0.5 tabular-nums">
                       {agency.cmsData?.medicarePayerPct || agency.cmsData?.payerMix?.medicare || 48}%
                     </div>
                   </div>
                   <div className="p-2 rounded bg-white border border-slate-200">
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Medicaid</div>
-                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
+                    <div className="text-xs text-slate-500 font-medium">Medicaid</div>
+                    <div className="font-semibold text-slate-900 text-sm mt-0.5 tabular-nums">
                       {agency.cmsData?.medicaidPayerPct || agency.cmsData?.payerMix?.medicaid || 22}%
                     </div>
                   </div>
                   <div className="p-2 rounded bg-white border border-slate-200">
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Commercial</div>
-                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
+                    <div className="text-xs text-slate-500 font-medium">Commercial</div>
+                    <div className="font-semibold text-slate-900 text-sm mt-0.5 tabular-nums">
                       {agency.cmsData?.commercialPayerMixPct || agency.cmsData?.payerMix?.commercial || 20}%
                     </div>
                   </div>
                   <div className="p-2 rounded bg-white border border-slate-200">
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Self-Pay / Uninsured</div>
-                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
+                    <div className="text-xs text-slate-500 font-medium">Self-Pay / Other</div>
+                    <div className="font-semibold text-slate-900 text-sm mt-0.5 tabular-nums">
                       {agency.cmsData?.selfPayPayerPct || agency.cmsData?.payerMix?.selfPay || 10}%
                     </div>
                   </div>
                 </div>
-                <div className="text-[11px] text-slate-700 mt-2">
-                  <strong>Top Denial Cause:</strong> {agency.cmsData?.topDenialReason || 'Inadequate Medical Necessity Documentation & Missing Signatures'} ({agency.cmsData?.topDenialReasonCode || 'CO-16'}). ZOLL RescueNet Billing eliminates 88% of these technical denials at transmission.
+                <div className="text-xs text-slate-700 mt-2">
+                  <strong className="font-semibold text-slate-900">Primary denial reason:</strong> {agency.cmsData?.topDenialReason || 'Inadequate Medical Necessity Documentation & Missing Signatures'} ({agency.cmsData?.topDenialReasonCode || 'CO-16'}). ZOLL RescueNet Billing eliminates 88% of these technical denials at transmission.
                 </div>
               </div>
             </div>
 
             {/* 3. Competitive Service Contract Expiration Timeline */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>Incumbent Competitor Service Contract Expiration Timeline</span>
-                <span className="font-mono text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px]">
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>Incumbent service contract expiration timeline</span>
+                <span className="text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-xs tabular-nums">
                   {agency.competitorContract?.status || 'Expiring Soon (90 Days)'}
                 </span>
               </div>
               <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50 text-xs space-y-2">
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Incumbent Service Provider</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5">
+                    <div className="text-xs text-slate-500 font-medium">Incumbent provider</div>
+                    <div className="text-sm font-semibold text-slate-900 mt-0.5">
                       {agency.competitorContract?.vendor || 'Stryker ProCare Master Agreement'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Contract Expiration Date</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5 font-mono">
+                    <div className="text-xs text-slate-500 font-medium">Expiration date</div>
+                    <div className="text-sm font-semibold text-slate-900 mt-0.5 tabular-nums">
                       {agency.competitorContract?.contractEndDate || '2026-12-31'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 uppercase font-semibold">Renewal Window Countdown</div>
-                    <div className="text-sm font-bold text-amber-800 mt-0.5 font-mono">
-                      {agency.competitorContract?.renewalWindowDays || 45} Days to Expiration
+                    <div className="text-xs text-slate-500 font-medium">Renewal window</div>
+                    <div className="text-sm font-semibold text-amber-800 mt-0.5 tabular-nums">
+                      {agency.competitorContract?.renewalWindowDays || 45} days to expiration
                     </div>
                   </div>
                 </div>
-                <div className="text-[11px] text-slate-700 pt-2 border-t border-amber-200/70">
-                  <strong>Recommended Field Action:</strong> {agency.competitorContract?.actionRecommendation || 
+                <div className="text-xs text-slate-700 pt-2 border-t border-amber-200/70">
+                  <strong className="font-semibold text-slate-900">Recommended action:</strong> {agency.competitorContract?.actionRecommendation || 
                     'Provide city purchasing agent with Sourcewell contract #011822-ZLL quote to preempt Stryker 3-year auto-renewal lock.'}
                 </div>
               </div>
@@ -840,27 +840,27 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             {/* 4. Recent Sales Representative Field Notes & Strategy */}
             {agency.fieldNotes && agency.fieldNotes.length > 0 && (
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2">
-                  Field Representative Activity &amp; On-Site Engagement History
+                <div className="text-xs font-semibold text-slate-700 mb-2">
+                  Field activity and engagement history
                 </div>
                 <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-medium">
                       <tr>
                         <th className="py-2 px-3">Date</th>
-                        <th className="py-2 px-3">Interaction Type</th>
-                        <th className="py-2 px-3">Field Notes &amp; Clinical Response</th>
-                        <th className="py-2 px-3">Next Action &amp; Due Date</th>
+                        <th className="py-2 px-3">Interaction</th>
+                        <th className="py-2 px-3">Field notes</th>
+                        <th className="py-2 px-3">Next action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-slate-800">
                       {agency.fieldNotes.slice(0, 3).map((note) => (
                         <tr key={note.id} className="hover:bg-slate-50">
-                          <td className="py-2 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">{note.date}</td>
+                          <td className="py-2 px-3 font-medium text-slate-900 whitespace-nowrap tabular-nums">{note.date}</td>
                           <td className="py-2 px-3 font-medium text-slate-800 whitespace-nowrap">{note.meetingType}</td>
                           <td className="py-2 px-3 text-slate-600 max-w-sm">{note.notes}</td>
-                          <td className="py-2 px-3 font-semibold text-blue-900">
-                            {note.nextAction} <span className="font-mono text-slate-500 text-[10px]">({note.dueDate})</span>
+                          <td className="py-2 px-3 font-medium text-blue-900">
+                            {note.nextAction} <span className="text-slate-500 text-xs tabular-nums">({note.dueDate})</span>
                           </td>
                         </tr>
                       ))}
@@ -881,75 +881,75 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
             {/* Header for Page 3 */}
             <div className="flex items-center justify-between border-b border-slate-300 pb-3">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  {agency.name} · Executive Briefing (Page 3)
+                <span className="text-xs text-slate-500 font-medium">
+                  {agency.name} &middot; Executive briefing (Page 3)
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">Commercial TCO, Medicare HCPCS &amp; Cooperative Purchasing</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Commercial TCO, Medicare fee schedule &amp; cooperative purchasing</h3>
               </div>
-              <div className="text-xs font-mono font-semibold text-slate-600">
-                Federal CMS NPI #{agency.npiNumber || '1043298711'}
+              <div className="text-xs text-slate-600 tabular-nums">
+                Federal NPI #{agency.npiNumber || '1043298711'}
               </div>
             </div>
 
             {/* 1. 5-Year Hardware Replacement TCO Comparison */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>5-Year Total Cost of Ownership (TCO): ZOLL Fleet Upgrade vs. Incumbent Fleet</span>
-                <span className="font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px]">
-                  Net 5-Yr Municipal Benefit: +${tcoModel?.totalSavingsIncludingTradeIn.toLocaleString() || '107,700'}
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>5-year total cost of ownership: ZOLL upgrade vs. incumbent fleet</span>
+                <span className="font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-xs tabular-nums">
+                  Net 5-year municipal savings: +${tcoModel?.totalSavingsIncludingTradeIn.toLocaleString() || '107,700'}
                 </span>
               </div>
               <div className="overflow-x-auto border border-slate-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-medium">
                     <tr>
-                      <th className="py-2.5 px-3">TCO Cost Component</th>
+                      <th className="py-2.5 px-3">TCO cost component</th>
                       <th className="py-2.5 px-3">Incumbent ({tcoModel?.incumbentModel || agency.installedFleet?.defibBrand})</th>
                       <th className="py-2.5 px-3">ZOLL {tcoModel?.zollModel || 'X Series Advanced'}</th>
-                      <th className="py-2.5 px-3 text-right">5-Year Municipal Savings</th>
+                      <th className="py-2.5 px-3 text-right">5-year savings</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-800">
                     <tr>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">Preventative Maintenance &amp; Factory Service</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-700">${tcoModel?.incumbentServiceTotal.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-900">${tcoModel?.zollServiceTotal.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
-                        +${((tcoModel?.incumbentServiceTotal || 0) - (tcoModel?.zollServiceTotal || 0)).toLocaleString()} Saved
+                      <td className="py-2.5 px-3 font-medium text-slate-900">Preventive maintenance &amp; factory service</td>
+                      <td className="py-2.5 px-3 text-slate-700 tabular-nums">${tcoModel?.incumbentServiceTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-slate-900 font-medium tabular-nums">${tcoModel?.zollServiceTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right font-semibold text-emerald-700 tabular-nums">
+                        +${((tcoModel?.incumbentServiceTotal || 0) - (tcoModel?.zollServiceTotal || 0)).toLocaleString()}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">Proprietary Defibrillator Batteries &amp; Chargers</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-700">${tcoModel?.incumbentBatteryTotal.toLocaleString()} (3-yr lithium)</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-900">${tcoModel?.zollBatteryTotal.toLocaleString()} (SurePower 5-yr)</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
-                        +${((tcoModel?.incumbentBatteryTotal || 0) - (tcoModel?.zollBatteryTotal || 0)).toLocaleString()} Saved
+                      <td className="py-2.5 px-3 font-medium text-slate-900">Lithium-ion batteries &amp; smart chargers</td>
+                      <td className="py-2.5 px-3 text-slate-700 tabular-nums">${tcoModel?.incumbentBatteryTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-slate-900 font-medium tabular-nums">${tcoModel?.zollBatteryTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right font-semibold text-emerald-700 tabular-nums">
+                        +${((tcoModel?.incumbentBatteryTotal || 0) - (tcoModel?.zollBatteryTotal || 0)).toLocaleString()}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">CPR Feedback Sensors &amp; Clinical Electrodes</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-700">${tcoModel?.incumbentConsumablesTotal.toLocaleString()} (separate sensors)</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-900">${tcoModel?.zollConsumablesTotal.toLocaleString()} (CPR-D-padz)</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
-                        +${((tcoModel?.incumbentConsumablesTotal || 0) - (tcoModel?.zollConsumablesTotal || 0)).toLocaleString()} Saved
+                      <td className="py-2.5 px-3 font-medium text-slate-900">CPR sensors &amp; clinical electrodes</td>
+                      <td className="py-2.5 px-3 text-slate-700 tabular-nums">${tcoModel?.incumbentConsumablesTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-slate-900 font-medium tabular-nums">${tcoModel?.zollConsumablesTotal.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 text-right font-semibold text-emerald-700 tabular-nums">
+                        +${((tcoModel?.incumbentConsumablesTotal || 0) - (tcoModel?.zollConsumablesTotal || 0)).toLocaleString()}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">ZOLL Fleet Trade-In Credit Allowance</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-400">$0 (No trade-in value)</td>
-                      <td className="py-2.5 px-3 font-mono text-emerald-700 font-bold">
-                        -${tcoModel?.totalTradeInCredit.toLocaleString()} Guaranteed Credit
+                      <td className="py-2.5 px-3 font-medium text-slate-900">ZOLL fleet trade-in credit allowance</td>
+                      <td className="py-2.5 px-3 text-slate-400 tabular-nums">$0</td>
+                      <td className="py-2.5 px-3 text-emerald-700 font-semibold tabular-nums">
+                        -${tcoModel?.totalTradeInCredit.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
-                        +${tcoModel?.totalTradeInCredit.toLocaleString()} Immediate Value
+                      <td className="py-2.5 px-3 text-right font-semibold text-emerald-700 tabular-nums">
+                        +${tcoModel?.totalTradeInCredit.toLocaleString()}
                       </td>
                     </tr>
-                    <tr className="bg-emerald-50/60 font-bold border-t-2 border-emerald-300">
-                      <td className="py-3 px-3 text-emerald-950 font-bold">Net 5-Year Financial Advantage</td>
-                      <td className="py-3 px-3 text-slate-700 font-mono">${tcoModel?.incumbentOperatingTotal.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-emerald-900 font-mono">${tcoModel?.zollNetOperatingTotal.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-700 text-sm">
-                        +${tcoModel?.totalSavingsIncludingTradeIn.toLocaleString()} Net Savings
+                    <tr className="bg-emerald-50/60 font-semibold border-t-2 border-emerald-300">
+                      <td className="py-3 px-3 text-emerald-950 font-semibold">Net 5-year financial advantage</td>
+                      <td className="py-3 px-3 text-slate-700 tabular-nums">${tcoModel?.incumbentOperatingTotal.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-emerald-900 tabular-nums">${tcoModel?.zollNetOperatingTotal.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-right font-semibold text-emerald-700 text-sm tabular-nums">
+                        +${tcoModel?.totalSavingsIncludingTradeIn.toLocaleString()} net savings
                       </td>
                     </tr>
                   </tbody>
@@ -959,33 +959,33 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
             {/* 2. Medicare HCPCS Procedure-Level Denial Breakdown */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>Medicare &amp; Commercial Insurance Reimbursement Recovery Plan (HCPCS Breakdown)</span>
-                <span className="font-mono text-rose-700 font-bold">
-                  Annual Denial Exposure: -${hcpcsModel?.totalAnnualDenialLoss.toLocaleString() || '185,000'}/yr
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>Medicare &amp; insurance reimbursement recovery (HCPCS fee schedule)</span>
+                <span className="text-rose-700 font-medium tabular-nums text-xs">
+                  Annual denial exposure: -${hcpcsModel?.totalAnnualDenialLoss.toLocaleString() || '185,000'}/yr
                 </span>
               </div>
               <div className="overflow-x-auto border border-slate-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-medium">
                     <tr>
-                      <th className="py-2 px-3">HCPCS Code</th>
-                      <th className="py-2 px-3">Procedure Descriptor</th>
-                      <th className="py-2 px-3 text-right">Annual Runs</th>
-                      <th className="py-2 px-3 text-right">Gross Billing</th>
-                      <th className="py-2 px-3 text-right">Denial Loss</th>
-                      <th className="py-2 px-3">ZOLL Automated Documentation Solution</th>
+                      <th className="py-2 px-3">HCPCS code</th>
+                      <th className="py-2 px-3">Procedure descriptor</th>
+                      <th className="py-2 px-3 text-right">Annual runs</th>
+                      <th className="py-2 px-3 text-right">Gross billing</th>
+                      <th className="py-2 px-3 text-right">Denial loss</th>
+                      <th className="py-2 px-3">Automated documentation mitigation</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-800">
                     {hcpcsModel?.procedures.map((p) => (
                       <tr key={p.code} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 font-mono font-bold text-slate-900">{p.code}</td>
+                        <td className="py-2 px-3 font-medium text-slate-900 tabular-nums">{p.code}</td>
                         <td className="py-2 px-3 font-medium text-slate-900">{p.descriptor}</td>
-                        <td className="py-2 px-3 text-right font-mono">{p.estimatedAnnualClaims.toLocaleString()}</td>
-                        <td className="py-2 px-3 text-right font-mono text-slate-700">${p.grossAnnualBilling.toLocaleString()}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-rose-700">-${p.annualRevenueAtRisk.toLocaleString()}</td>
-                        <td className="py-2 px-3 text-[11px] text-slate-600 max-w-xs">{p.zollDocumentationMitigation}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{p.estimatedAnnualClaims.toLocaleString()}</td>
+                        <td className="py-2 px-3 text-right text-slate-700 tabular-nums">${p.grossAnnualBilling.toLocaleString()}</td>
+                        <td className="py-2 px-3 text-right font-semibold text-rose-700 tabular-nums">-${p.annualRevenueAtRisk.toLocaleString()}</td>
+                        <td className="py-2 px-3 text-xs text-slate-600 max-w-xs">{p.zollDocumentationMitigation}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -998,34 +998,34 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
               
               {/* Left Column: Head-to-Head Battlecard */}
               <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
-                <div className="flex items-center gap-2 text-slate-900 font-bold uppercase tracking-wider text-[11px]">
+                <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs">
                   <Scale className="w-4 h-4 text-[#1E3A8A]" />
-                  <span>Head-to-Head Specification Advantages</span>
+                  <span>Head-to-head specification comparison</span>
                 </div>
 
-                <div className="space-y-1.5 text-[11px]">
+                <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
-                    <span className="font-medium text-slate-700">Physical Weight (Ergonomics):</span>
-                    <span className="font-mono font-bold text-[#1E3A8A]">
+                    <span className="text-slate-700">Physical weight:</span>
+                    <span className="font-medium text-[#1E3A8A] tabular-nums">
                       11.7 lbs (ZOLL) vs. 18.5 lbs ({agency.installedFleet?.defibBrand.split(' ')[0]})
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
-                    <span className="font-medium text-slate-700">Battery Runtime Capacity:</span>
-                    <span className="font-mono font-bold text-[#1E3A8A]">5.7 Hours vs. 2.1 Hours</span>
+                    <span className="text-slate-700">Battery runtime capacity:</span>
+                    <span className="font-medium text-[#1E3A8A] tabular-nums">5.7 hours vs. 2.1 hours</span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
-                    <span className="font-medium text-slate-700">CPR Feedback System:</span>
-                    <span className="font-mono font-bold text-emerald-700">Real CPR Help (Numeric Depth &amp; Rate)</span>
+                    <span className="text-slate-700">CPR feedback system:</span>
+                    <span className="font-medium text-emerald-700">Real CPR Help (depth and rate)</span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
-                    <span className="font-medium text-slate-700">Ventilation Feedback:</span>
-                    <span className="font-mono font-bold text-emerald-700">Real BVM Help (Tidal Vol + Rate)</span>
+                    <span className="text-slate-700">Ventilation feedback:</span>
+                    <span className="font-medium text-emerald-700">Real BVM Help (volume and rate)</span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded bg-white border border-slate-200">
-                    <span className="font-medium text-slate-700">Contract Replacement Window:</span>
-                    <span className="font-mono font-bold text-amber-700">
-                      {agency.competitorContract?.renewalWindowDays || 45} Days to Expiration
+                    <span className="text-slate-700">Contract renewal window:</span>
+                    <span className="font-medium text-amber-700 tabular-nums">
+                      {agency.competitorContract?.renewalWindowDays || 45} days to expiration
                     </span>
                   </div>
                 </div>
@@ -1033,29 +1033,29 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
               {/* Right Column: Cooperative Purchasing RFP Bypass & FEMA Grants */}
               <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/40 space-y-2.5">
-                <div className="flex items-center gap-2 text-blue-950 font-bold uppercase tracking-wider text-[11px]">
+                <div className="flex items-center gap-2 text-blue-950 font-semibold text-xs">
                   <ShieldCheck className="w-4 h-4 text-blue-700" />
-                  <span>RFP-Exempt Purchasing Vehicles (Buy Without RFP)</span>
+                  <span>Cooperative purchasing vehicles (buy without RFP)</span>
                 </div>
 
-                <div className="space-y-2 text-[11px]">
+                <div className="space-y-2 text-xs">
                   <div className="p-2 rounded bg-white border border-blue-100">
-                    <div className="font-bold text-slate-900">Sourcewell Master Contract #011822-ZLL</div>
-                    <div className="text-slate-600 text-[10px] mt-0.5">
-                      National competitively solicited contract allowing immediate municipal procurement without the 9-month public RFP bidding process.
+                    <div className="font-semibold text-slate-900">Sourcewell master contract #011822-ZLL</div>
+                    <div className="text-slate-600 text-xs mt-0.5">
+                      National competitively solicited contract allowing municipal procurement without the extended public RFP bidding process.
                     </div>
                   </div>
 
                   <div className="p-2 rounded bg-white border border-blue-100">
-                    <div className="font-bold text-slate-900">NPPGov Public Safety Agreement #PS20045</div>
-                    <div className="text-slate-600 text-[10px] mt-0.5">
+                    <div className="font-semibold text-slate-900">NPPGov public safety agreement #PS20045</div>
+                    <div className="text-slate-600 text-xs mt-0.5">
                       Intergovernmental cooperative purchasing vehicle guaranteeing tiered municipal volume discounts on X Series &amp; AutoPulse.
                     </div>
                   </div>
 
                   <div className="p-2 rounded bg-white border border-blue-100">
-                    <div className="font-bold text-slate-900">FEMA AFG Equipment Funding (90% Federal Share)</div>
-                    <div className="text-slate-600 text-[10px] mt-0.5">
+                    <div className="font-semibold text-slate-900">FEMA AFG equipment funding (90% federal share)</div>
+                    <div className="text-slate-600 text-xs mt-0.5">
                       Active FEMA AFG equipment priority for replacing monitors older than 7 years with 10% local match requirement.
                     </div>
                   </div>
@@ -1066,32 +1066,32 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
 
             {/* 4. Multi-Year FEMA AFG Grant Award History */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
-                <span>Multi-Year FEMA AFG &amp; SAFER Federal Grant History (5-Year Record)</span>
-                <span className="text-[10px] text-slate-500 font-mono">Verified Federal Database Records</span>
+              <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                <span>FEMA AFG &amp; federal grant award history (5-year record)</span>
+                <span className="text-xs text-slate-500">Verified federal database records</span>
               </div>
               <div className="overflow-x-auto border border-slate-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-medium">
                     <tr>
-                      <th className="py-2 px-3">Fiscal Year</th>
-                      <th className="py-2 px-3">Grant Program</th>
-                      <th className="py-2 px-3">Funded Scope / Justification</th>
-                      <th className="py-2 px-3 text-right">Award Amount</th>
+                      <th className="py-2 px-3">Fiscal year</th>
+                      <th className="py-2 px-3">Grant program</th>
+                      <th className="py-2 px-3">Funded scope</th>
+                      <th className="py-2 px-3 text-right">Award amount</th>
                       <th className="py-2 px-3 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-800">
                     {femaGrants.map((g, idx) => (
                       <tr key={idx} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 font-mono font-bold text-slate-900">FY{g.fiscalYear}</td>
+                        <td className="py-2 px-3 font-medium text-slate-900 tabular-nums">FY{g.fiscalYear}</td>
                         <td className="py-2 px-3 font-medium text-slate-900">{g.programName}</td>
                         <td className="py-2 px-3 text-slate-600 max-w-xs">{g.purpose}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
+                        <td className="py-2 px-3 text-right font-medium text-slate-900 tabular-nums">
                           ${g.awardAmount.toLocaleString()}
                         </td>
                         <td className="py-2 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                             g.status.includes('Disbursed')
                               ? 'bg-emerald-100 text-emerald-800'
                               : g.status.includes('Active')

@@ -3,47 +3,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-const brandLogoAsset = 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg';
-import { useClickOutside } from '../hooks/useClickOutside';
-import { UserRole } from '../types';
-import { 
-  Bell, 
-  Wifi, 
-  WifiOff, 
-  RefreshCw, 
-  UserCheck, 
-  Plus, 
-  CheckCircle2, 
-  ChevronDown, 
-  ChevronRight,
-  Search, 
-  ShieldCheck, 
-  Cloud, 
-  Bot, 
-  HelpCircle, 
-  Moon, 
+import React, { useState, useRef, useEffect } from 'react';
+import brandLogoAsset from '../assets/images/nicks_ems_logo_1792367124466.jpg';
+import {
+  Search,
+  Bell,
+  Plus,
+  ChevronDown,
   Sun,
-  LayoutDashboard,
-  Compass,
-  MapPin,
-  BarChart3,
-  Users,
-  PiggyBank,
-  Car,
-  Siren,
-  Flame,
+  Moon,
   Home,
-  Menu,
-  X
+  Building2,
+  TrendingUp,
+  Globe,
+  Briefcase,
+  Layers,
+  Scale,
+  DollarSign,
+  Box,
+  Database,
+  Activity,
+  ShieldCheck,
+  Sparkles,
+  SlidersHorizontal,
+  MapPin,
+  RefreshCw,
+  Check
 } from 'lucide-react';
+import { Agency, UserRole } from '../types';
+import { MobileQuickProviderBar } from './MobileQuickProviderBar';
 
 interface TopBarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onGoHome?: () => void;
+  onGoHome: () => void;
   globalCategory: 'all' | 'ems' | 'fire';
-  setGlobalCategory: (category: 'all' | 'ems' | 'fire') => void;
+  setGlobalCategory: (cat: 'all' | 'ems' | 'fire') => void;
   isOnline: boolean;
   toggleNetwork: () => void;
   pendingSyncCount: number;
@@ -63,6 +58,15 @@ interface TopBarProps {
   onToggleGuide?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  globalState?: string;
+  globalCounty?: string;
+  globalCity?: string;
+  onClearGeography?: () => void;
+  activeAccountName?: string | null;
+  dayRouteCount?: number;
+  bookmarkedCount?: number;
+  agencies?: Agency[];
+  onOpenProviderFinder?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -84,94 +88,30 @@ export const TopBar: React.FC<TopBarProps> = ({
   openCommandPalette,
   openDataLineageModal,
   openChatbot,
-  isCloudConnected,
+  isCloudConnected = false,
   cloudSyncCount = 0,
-  showGuide,
+  showGuide = false,
   onToggleGuide,
   isDarkMode = false,
-  onToggleDarkMode
+  onToggleDarkMode,
+  globalState = 'all',
+  globalCounty = 'all',
+  globalCity = 'all',
+  onClearGeography,
+  activeAccountName = null,
+  dayRouteCount = 0,
+  bookmarkedCount = 0,
+  agencies = [],
+  onOpenProviderFinder
 }) => {
-  const [systemMenuOpen, setSystemMenuOpen] = useState(false);
-  const [openPillarId, setOpenPillarId] = useState<string | null>(null);
-  const [pillarOpenMode, setPillarOpenMode] = useState<'hover' | 'click' | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [logoSrc, setLogoSrc] = useState<string>(brandLogoAsset || 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
+  const [logoSrc, setLogoSrc] = useState<string>(brandLogoAsset || '/logo.jpg');
   const [logoFailed, setLogoFailed] = useState<boolean>(false);
-  
-  const pillarContainerRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const systemMenuRef = useRef<HTMLDivElement>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const clearHoverTimeout = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-  };
-
-  // Click-away listener: closes currently active pillar dropdown when clicking anywhere outside
-  useClickOutside(
-    openPillarId ? pillarContainerRefs.current[openPillarId] : null,
-    () => {
-      clearHoverTimeout();
-      setOpenPillarId(null);
-      setPillarOpenMode(null);
-    },
-    { enabled: !!openPillarId, closeOnEscape: true }
-  );
-
-  // Click-away listener: closes system tools menu when clicking anywhere outside
-  useClickOutside(
-    systemMenuRef,
-    () => {
-      setSystemMenuOpen(false);
-    },
-    { enabled: systemMenuOpen, closeOnEscape: true }
-  );
-
-  // Keyboard Escape listener for mobile slide-over drawer
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mobileMenuOpen]);
-
-  const handlePillarMouseEnter = (pillarId: string) => {
-    clearHoverTimeout();
-    // Only engage hover preview if a menu is not already pinned open via click
-    if (!openPillarId || pillarOpenMode === 'hover') {
-      setOpenPillarId(pillarId);
-      setPillarOpenMode('hover');
-    }
-  };
-
-  const handlePillarMouseLeave = (pillarId: string) => {
-    clearHoverTimeout();
-    // Only auto-close if opened via hover; clicked menus remain pinned until click-away
-    if (openPillarId === pillarId && pillarOpenMode === 'hover') {
-      hoverTimeoutRef.current = setTimeout(() => {
-        setOpenPillarId(null);
-        setPillarOpenMode(null);
-      }, 250);
-    }
-  };
-
-  const handleTogglePillarClick = (pillarId: string) => {
-    clearHoverTimeout();
-    setSystemMenuOpen(false);
-    if (openPillarId === pillarId && pillarOpenMode === 'click') {
-      setOpenPillarId(null);
-      setPillarOpenMode(null);
-    } else {
-      setOpenPillarId(pillarId);
-      setPillarOpenMode('click');
-    }
-  };
+  const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState<boolean>(false);
+  const [isOpportunitiesExpanded, setIsOpportunitiesExpanded] = useState<boolean>(true);
+  const [isTerritoryExpanded, setIsTerritoryExpanded] = useState<boolean>(true);
+  const [isMyWorkExpanded, setIsMyWorkExpanded] = useState<boolean>(true);
+  const [isAdvancedExpanded, setIsAdvancedExpanded] = useState<boolean>(true);
+  const utilityRef = useRef<HTMLDivElement>(null);
 
   const roles: UserRole[] = [
     'Territory Manager',
@@ -180,849 +120,664 @@ export const TopBar: React.FC<TopBarProps> = ({
     'Sales Operations Admin'
   ];
 
-  // 3 Core Functional Navigation Pillars with rich metadata and descriptions
-  const navigationPillars = [
-    {
-      id: 'pillar_explorer',
-      label: 'Territory Explorer',
-      shortLabel: 'Explorer',
-      icon: Compass,
-      defaultTab: 'states_directory',
-      childIds: ['states_directory', 'geo', 'map', 'gis'],
-      subTabs: [
-        { 
-          id: 'states_directory', 
-          label: '50-State Directory', 
-          shortLabel: 'Directory', 
-          icon: Compass, 
-          description: 'Comprehensive directory of all 50 states, 3,144 counties & municipal agencies' 
-        },
-        { 
-          id: 'map', 
-          label: 'GIS Territory Heatmap', 
-          shortLabel: 'GIS Map', 
-          icon: MapPin, 
-          description: 'Interactive map with ZOLL equipment density, hospital destinations & station pins' 
-        }
-      ]
-    },
-    {
-      id: 'pillar_sales',
-      label: 'Opportunity & Sales Hub',
-      shortLabel: 'Sales Hub',
-      icon: Users,
-      defaultTab: 'queue',
-      childIds: ['queue', 'pulseiq', 'knowledge', 'contracts', 'grants', 'claims'],
-      subTabs: [
-        { 
-          id: 'queue', 
-          label: 'Priority Accounts Queue', 
-          shortLabel: 'Priority Queue', 
-          icon: Users, 
-          description: 'Ranked EMS & Fire opportunities with pipeline stages and upgrade values' 
-        },
-        { 
-          id: 'pulseiq', 
-          label: 'PulseIQ Analytics', 
-          shortLabel: 'PulseIQ', 
-          icon: BarChart3, 
-          description: 'Predictive opportunity scoring, regional benchmarks & comparative volume charts' 
-        },
-        { 
-          id: 'knowledge', 
-          label: 'Savings, Grants & TCO', 
-          shortLabel: 'Savings/Grants', 
-          icon: PiggyBank, 
-          description: '5-year TCO calculator, FDA competitor recalls, FEMA AFG grants & billing recovery' 
-        }
-      ]
-    },
-    {
-      id: 'pillar_field',
-      label: 'Field & Clinical Ops',
-      shortLabel: 'Field Ops',
-      icon: Car,
-      defaultTab: 'tm_dashboard',
-      childIds: ['tm_dashboard', 'home', 'field', '3d_studio', 'mobile'],
-      subTabs: [
-        { 
-          id: 'tm_dashboard', 
-          label: 'TM Field Cockpit', 
-          shortLabel: 'Cockpit', 
-          icon: Home, 
-          description: 'Mobile-first field home screen with priority target leads and daily briefing' 
-        },
-        { 
-          id: 'field', 
-          label: 'Multi-Stop Driving Routes', 
-          shortLabel: 'Routes', 
-          icon: Car, 
-          description: 'Turn-by-turn station driving itineraries, offline field notes & visit planner' 
-        },
-        { 
-          id: '3d_studio', 
-          label: '3D Apparatus Fleet', 
-          shortLabel: '3D Fleet', 
-          icon: Siren, 
-          description: 'Interactive 3D vehicle apparatus staging for X Series & AutoPulse demonstrations' 
-        }
-      ]
-    }
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (utilityRef.current && !utilityRef.current.contains(event.target as Node)) {
+        setIsUtilityMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Workspace active detection
+  const isHomeActive = activeTab === 'home' && !activeAccountName;
+  const isAccountsActive = activeTab === 'queue' || Boolean(activeAccountName);
+  const isOpportunitiesActive = ['contracts', 'grants', 'pulseiq'].includes(activeTab) && !activeAccountName;
+  const isTerritoryActive = ['states_directory', 'geo', 'google_maps', 'map', 'gis'].includes(activeTab) && !activeAccountName;
+  const isMyWorkActive = ['field', 'tm_dashboard'].includes(activeTab) && !activeAccountName;
+
+  const advancedTools = [
+    { id: 'knowledge', label: 'Clinical & TCO Hub', icon: Scale },
+    { id: 'claims', label: 'Medicare & Payer Mix', icon: DollarSign },
+    { id: '3d_studio', label: '3D Apparatus Studio', icon: Box },
+    { id: 'gateway', label: 'Federal Data Gateway', icon: Database },
+    { id: 'data_health', label: 'Data Health & Sync', icon: Activity },
+    { id: 'resilience', label: 'Cloud Backup', icon: ShieldCheck }
   ];
 
-  // Detect active pillar & active subtab
-  const activePillar = navigationPillars.find(p => p.childIds.includes(activeTab)) || navigationPillars[0];
-  const activeSubTab = activePillar.subTabs.find(s => 
-    s.id === activeTab || (s.id === 'knowledge' && ['contracts', 'grants', 'claims'].includes(activeTab))
-  ) || activePillar.subTabs[0];
+  const isAdvancedActive = advancedTools.some(t => t.id === activeTab) && !activeAccountName;
+
+  const getWorkspaceTitle = () => {
+    if (activeAccountName) return `Accounts / ${activeAccountName}`;
+    if (activeTab === 'home') return 'Home';
+    if (activeTab === 'queue') return 'Accounts Discovery';
+    if (activeTab === 'contracts') return 'Opportunities · Procurement & Contracts';
+    if (activeTab === 'grants') return 'Opportunities · FEMA AFG & SAFER Grants';
+    if (activeTab === 'pulseiq') return 'Opportunities · PulseIQ Regional Scoring';
+    if (activeTab === 'states_directory' || activeTab === 'geo') return 'Territory · Geographic Directory';
+    if (activeTab === 'google_maps') return 'Territory · Google Maps Live';
+    if (activeTab === 'map' || activeTab === 'gis') return 'Territory · GIS Fleet Heatmap';
+    if (activeTab === 'field') return 'My Work · Field Route & Activity';
+    if (activeTab === 'tm_dashboard') return 'My Work · Mobile Command';
+    const foundAdv = advancedTools.find(t => t.id === activeTab);
+    if (foundAdv) return `Advanced Intelligence · ${foundAdv.label}`;
+    return 'Workspace';
+  };
+
+  const hasActiveGeography = globalState !== 'all' || globalCounty !== 'all' || globalCity !== 'all';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 w-full max-w-full transition-colors">
-      <div className="w-full max-w-full px-3 sm:px-5 lg:px-6">
-        <div className="flex items-center justify-between gap-4 h-16 sm:h-18 min-w-0">
-          
-          {/* ZONE 1: CLEAN WORDMARK + SUBTLE ⌘K QUICK-JUMP SEARCH TRIGGER */}
-          <div className="flex items-center gap-3.5 shrink-0">
-            {/* Mobile Drawer Trigger (visible on < md screens) */}
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden h-9 w-9 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              aria-label="Open mobile workspace navigation menu"
-              title="Open Navigation Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <button 
-              onClick={() => {
-                if (onGoHome) onGoHome();
-                else setActiveTab('home');
-              }}
-              className="flex items-center gap-3 text-left font-bold tracking-tight text-slate-900 dark:text-white hover:text-[#1E3A8A] dark:hover:text-blue-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer group py-1"
-              title="Return to Executive Home & TM Onboarding Hub"
-            >
+    <>
+      {/* ====================================================================
+          PRIMARY LEFT SIDEBAR (~280px, #0B1728) — DESKTOP
+         ==================================================================== */}
+      <aside
+        aria-label="Primary Workspace Navigation"
+        className="hidden md:flex flex-col fixed top-0 left-0 bottom-0 w-[280px] bg-[#0B1728] text-slate-200 border-r border-[#172D49] z-50 select-none"
+      >
+        {/* Brand Identity Header — Prominent Full-Width Emblem */}
+        <div className="py-6 px-3 flex items-center justify-center border-b border-[#172D49] shrink-0">
+          <button
+            type="button"
+            onClick={onGoHome}
+            className="flex items-center justify-center group focus:outline-none cursor-pointer"
+            title="Return to Territory Intelligence Home"
+            aria-label="Return to Territory Intelligence Home"
+          >
+            <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-full overflow-hidden ring-3 ring-[#285EE8]/40 shadow-2xl bg-[#070F1C] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               {!logoFailed ? (
                 <img
                   src={logoSrc}
-                  alt="Nick's EMS & Fire Crest"
-                  referrerPolicy="no-referrer"
+                  alt="Territory Intelligence Logo"
+                  className="w-full h-full object-cover rounded-full"
                   onError={() => {
-                    if (logoSrc !== 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg') {
-                      setLogoSrc('https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
-                    } else {
-                      setLogoFailed(true);
-                    }
+                    if (logoSrc !== '/logo.jpg') setLogoSrc('/logo.jpg');
+                    else setLogoFailed(true);
                   }}
-                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-xs ring-1 ring-slate-900/10 dark:ring-white/15 shrink-0 transition-transform"
                 />
               ) : (
-                <div 
-                  aria-label="Nick's EMS & Fire Crest"
-                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#0F172A] dark:bg-blue-600 flex items-center justify-center text-white shrink-0 border border-slate-300 dark:border-slate-700 shadow-xs ring-1 ring-slate-900/10 dark:ring-white/15 transition-transform"
-                >
-                  <ShieldCheck className="w-6 h-6 text-white" />
-                </div>
+                <span className="font-display font-bold text-3xl text-white">NF</span>
               )}
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap leading-tight group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors">
-                    Nick&apos;s EMS &amp; Fire
+            </div>
+          </button>
+        </div>
+
+        {/* Provider Discipline Filter (All / EMS / Fire) inside Sidebar */}
+        <div className="px-3.5 pt-3.5 pb-2">
+          <div className="text-xs font-medium text-slate-400 px-1 mb-1.5">
+            Provider scope
+          </div>
+          <div
+            className="grid grid-cols-3 bg-[#172D49]/80 p-0.5 rounded-lg border border-[#233B5E]"
+            role="group"
+            aria-label="Provider Discipline Filter"
+          >
+            {(['all', 'ems', 'fire'] as const).map((cat) => {
+              const active = globalCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setGlobalCategory(cat)}
+                  className={`py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    active
+                      ? 'bg-[#285EE8] text-white shadow-2xs font-semibold'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {cat === 'all' ? 'All' : cat === 'ems' ? 'EMS' : 'Fire'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Primary 5 Workspaces Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5 no-scrollbar">
+          <div>
+            <div className="text-xs font-medium text-slate-400 px-2.5 mb-1.5">
+              Workspaces
+            </div>
+            <div className="space-y-0.5">
+              {/* 1. Home */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
+                  isHomeActive
+                    ? 'bg-[#285EE8] text-white font-semibold shadow-2xs'
+                    : 'text-slate-300 hover:bg-[#172D49] hover:text-white'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Home className="w-4 h-4 shrink-0" />
+                  <span>Home</span>
+                </span>
+              </button>
+
+              {/* 2. Accounts */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('queue')}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
+                  isAccountsActive
+                    ? 'bg-[#285EE8] text-white font-semibold shadow-2xs'
+                    : 'text-slate-300 hover:bg-[#172D49] hover:text-white'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  <span>Accounts</span>
+                </span>
+                {activeAccountName && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/20 text-white">
+                    360
                   </span>
-                  <span className="hidden xl:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                    ENTERPRISE · v4.2
-                  </span>
+                )}
+              </button>
+
+              {/* 3. Opportunities */}
+              <div className="space-y-0.5">
+                <div
+                  className={`w-full flex items-center justify-between rounded-lg text-[13px] font-medium transition-colors ${
+                    isOpportunitiesActive
+                      ? 'bg-[#285EE8] text-white font-semibold shadow-2xs'
+                      : 'text-slate-300 hover:bg-[#172D49] hover:text-white'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(isOpportunitiesActive ? activeTab : 'contracts');
+                      setIsOpportunitiesExpanded(true);
+                    }}
+                    className="flex-1 flex items-center gap-2.5 px-2.5 py-2 text-left cursor-pointer focus:outline-none min-w-0"
+                  >
+                    <TrendingUp className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Opportunities</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpportunitiesExpanded(prev => !prev)}
+                    className="p-2 hover:text-white text-slate-400 cursor-pointer shrink-0"
+                    title="Toggle Opportunities Sub-Navigation"
+                    aria-label="Toggle Opportunities Sub-Navigation"
+                  >
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpportunitiesExpanded ? 'rotate-0' : '-rotate-90'}`} />
+                  </button>
                 </div>
-                <span className="text-[11px] sm:text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 tracking-tight">
-                  Territory Intelligence · Public Safety
+
+                {/* Sub-links for Opportunities */}
+                {isOpportunitiesExpanded && (
+                  <div className="pl-7 pr-1 py-1 space-y-0.5 border-l border-[#172D49] ml-4 mt-0.5">
+                    {[
+                      { id: 'contracts', label: 'Contracts & Expirations' },
+                      { id: 'grants', label: 'FEMA AFG & SAFER Grants' },
+                      { id: 'pulseiq', label: 'PulseIQ Scoring Matrix' }
+                    ].map((sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => setActiveTab(sub.id)}
+                        className={`w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer ${
+                          activeTab === sub.id
+                            ? 'text-white font-semibold bg-[#172D49]'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Territory */}
+              <div className="space-y-0.5">
+                <div
+                  className={`w-full flex items-center justify-between rounded-lg text-[13px] font-medium transition-colors ${
+                    isTerritoryActive
+                      ? 'bg-[#285EE8] text-white font-semibold shadow-2xs'
+                      : 'text-slate-300 hover:bg-[#172D49] hover:text-white'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(isTerritoryActive ? activeTab : 'states_directory');
+                      setIsTerritoryExpanded(true);
+                    }}
+                    className="flex-1 flex items-center gap-2.5 px-2.5 py-2 text-left cursor-pointer focus:outline-none min-w-0"
+                  >
+                    <Globe className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Territory</span>
+                  </button>
+                  <div className="flex items-center gap-1 pr-1.5 shrink-0">
+                    {globalState !== 'all' && (
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#172D49] text-blue-300">
+                        {globalState}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsTerritoryExpanded(prev => !prev)}
+                      className="p-1.5 hover:text-white text-slate-400 cursor-pointer shrink-0"
+                      title="Toggle Territory Sub-Navigation"
+                      aria-label="Toggle Territory Sub-Navigation"
+                    >
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isTerritoryExpanded ? 'rotate-0' : '-rotate-90'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-links for Territory including GIS Fleet Heatmap */}
+                {isTerritoryExpanded && (
+                  <div className="pl-7 pr-1 py-1 space-y-0.5 border-l border-[#172D49] ml-4 mt-0.5">
+                    {[
+                      { id: 'states_directory', label: 'State → County → City' },
+                      { id: 'google_maps', label: 'Google Maps Live' },
+                      { id: 'map', label: 'GIS Fleet & Acuity Heatmap' }
+                    ].map((sub) => {
+                      const subActive =
+                        sub.id === 'states_directory'
+                          ? activeTab === 'states_directory' || activeTab === 'geo'
+                          : sub.id === 'map'
+                            ? activeTab === 'map' || activeTab === 'gis'
+                            : activeTab === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => setActiveTab(sub.id)}
+                          className={`w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer ${
+                            subActive
+                              ? 'text-white font-semibold bg-[#172D49] border-l-2 border-[#285EE8]'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          {sub.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 5. My Work */}
+              <div className="space-y-0.5">
+                <div
+                  className={`w-full flex items-center justify-between rounded-lg text-[13px] font-medium transition-colors ${
+                    isMyWorkActive
+                      ? 'bg-[#285EE8] text-white font-semibold shadow-2xs'
+                      : 'text-slate-300 hover:bg-[#172D49] hover:text-white'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(isMyWorkActive ? activeTab : 'field');
+                      setIsMyWorkExpanded(true);
+                    }}
+                    className="flex-1 flex items-center gap-2.5 px-2.5 py-2 text-left cursor-pointer focus:outline-none min-w-0"
+                  >
+                    <Briefcase className="w-4 h-4 shrink-0" />
+                    <span className="truncate">My Work</span>
+                  </button>
+                  <div className="flex items-center gap-1 pr-1.5 shrink-0">
+                    {(dayRouteCount > 0 || bookmarkedCount > 0) && (
+                      <span className="text-xs font-medium tabular-nums px-1.5 py-0.5 rounded bg-[#172D49] text-slate-200">
+                        {dayRouteCount || bookmarkedCount}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsMyWorkExpanded(prev => !prev)}
+                      className="p-1.5 hover:text-white text-slate-400 cursor-pointer shrink-0"
+                      title="Toggle My Work Sub-Navigation"
+                      aria-label="Toggle My Work Sub-Navigation"
+                    >
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isMyWorkExpanded ? 'rotate-0' : '-rotate-90'}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {isMyWorkExpanded && (
+                  <div className="pl-7 pr-1 py-1 space-y-0.5 border-l border-[#172D49] ml-4 mt-0.5">
+                    {[
+                      { id: 'field', label: 'Routes, Visits & Notes' },
+                      { id: 'tm_dashboard', label: 'Field Mobile Cockpit' }
+                    ].map((sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => setActiveTab(sub.id)}
+                        className={`w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer ${
+                          activeTab === sub.id
+                            ? 'text-white font-semibold bg-[#172D49]'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Area: Advanced Intelligence */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsAdvancedExpanded(prev => !prev)}
+              className="w-full flex items-center justify-between text-xs font-medium text-slate-400 hover:text-slate-200 px-2.5 mb-1.5 cursor-pointer"
+            >
+              <span>Advanced intelligence</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${isAdvancedExpanded ? 'rotate-0' : '-rotate-90'}`}
+              />
+            </button>
+
+            {isAdvancedExpanded && (
+              <div className="space-y-0.5">
+                {advancedTools.map((tool) => {
+                  const Icon = tool.icon;
+                  const active = activeTab === tool.id && !activeAccountName;
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      onClick={() => setActiveTab(tool.id)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                        active
+                          ? 'bg-[#172D49] text-white font-semibold border-l-2 border-[#285EE8]'
+                          : 'text-slate-400 hover:bg-[#172D49]/60 hover:text-slate-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{tool.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* Bottom Sidebar Footer: Provenance & System State */}
+        <div className="p-3 border-t border-[#172D49] bg-[#091322] space-y-2 shrink-0">
+          {openChatbot && (
+            <button
+              type="button"
+              onClick={openChatbot}
+              className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-[#172D49] hover:bg-[#1E3A5F] text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                <span>Strategy &amp; RFP Desk</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Open</span>
+            </button>
+          )}
+
+          <div className="flex items-center justify-between px-1 text-[11px] text-slate-400">
+            <button
+              type="button"
+              onClick={toggleNetwork}
+              className="inline-flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"
+              title="Verify network and cloud sync status"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  !isOnline
+                    ? 'bg-amber-400'
+                    : isCloudConnected
+                      ? 'bg-emerald-400'
+                      : 'bg-blue-400'
+                }`}
+              />
+              <span className="font-mono text-[11px]">
+                {!isOnline
+                  ? 'Offline Cache'
+                  : isCloudConnected
+                    ? `Cloud Synced (${cloudSyncCount})`
+                    : 'Local Ready'}
+              </span>
+            </button>
+
+            {openDataLineageModal && (
+              <button
+                type="button"
+                onClick={openDataLineageModal}
+                className="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+              >
+                Sources
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* ====================================================================
+          STABLE TOP TOOLBAR (~64px)
+         ==================================================================== */}
+      <header className="sticky top-0 z-40 h-16 md:pl-[280px] bg-white dark:bg-[#111C2D] border-b border-[#DFE6EF] dark:border-[#1E2D42] transition-colors">
+        <div className="h-full max-w-[1640px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
+          {/* Left: Mobile Brand + Current Workspace Context & Active Geography */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="md:hidden flex items-center gap-2.5 text-left cursor-pointer shrink-0"
+              title="Return to Territory Intelligence Home"
+            >
+              <div className="w-10 h-10 rounded-full ring-1.5 ring-[#285EE8]/40 overflow-hidden shrink-0 bg-[#070F1C] flex items-center justify-center">
+                <img
+                  src={logoSrc}
+                  alt="Nick's EMS & Fire Logo"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-display font-[650] text-[13px] text-[#14283F] dark:text-white leading-tight truncate">
+                  Nick's EMS &amp; Fire
+                </span>
+                <span className="font-sans text-[10px] text-[#53657B] dark:text-slate-400 truncate">
+                  Territory Intelligence
                 </span>
               </div>
             </button>
 
-            {/* Subtle ⌘K Quick-Jump Search Trigger */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm sm:text-base font-semibold text-[#14283F] dark:text-white truncate">
+                  {getWorkspaceTitle()}
+                </span>
+                {hasActiveGeography && (
+                  <span className="hidden lg:inline-flex items-center gap-1.5 text-xs text-[#285EE8] dark:text-blue-400 bg-[#EEF3FE] dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/60 font-medium">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    <span>
+                      {globalState !== 'all' ? globalState : 'US'}
+                      {globalCounty !== 'all' ? ` · ${globalCounty}` : ''}
+                      {globalCity !== 'all' ? ` · ${globalCity}` : ''}
+                    </span>
+                    {onClearGeography && (
+                      <button
+                        type="button"
+                        onClick={onClearGeography}
+                        className="ml-1 text-xs hover:underline cursor-pointer"
+                        title="Reset geography filter to All States"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Center/Right: Universal Search Trigger + Action Controls */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Universal Agency & Territory Search (⌘K) */}
             {openCommandPalette && (
               <button
+                type="button"
                 onClick={openCommandPalette}
-                className="hidden sm:inline-flex items-center justify-between gap-2.5 h-8 px-2.5 rounded-md bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/70 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-500 dark:text-slate-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer w-40 lg:w-52"
-                title="Universal Search across 3,144 counties, departments, cities, or ZIP codes (Press ⌘K)"
+                className="h-9 w-9 sm:w-56 md:w-64 lg:w-80 px-0 sm:px-3.5 rounded-lg bg-[#F5F7FA] dark:bg-[#16243A] hover:bg-slate-200/70 dark:hover:bg-slate-800 text-[#53657B] dark:text-slate-300 border border-[#DFE6EF] dark:border-[#1E2D42] flex items-center justify-center sm:justify-between gap-2.5 text-xs transition-colors cursor-pointer shrink-0"
+                title="Search any EMS agency, Fire department, city, ZIP, or NPI (⌘K)"
               >
-                <span className="flex items-center gap-1.5 truncate">
-                  <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate text-[11px] font-medium">Jump to agency...</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  <Search className="w-3.5 h-3.5 text-[#53657B] dark:text-slate-400 shrink-0" />
+                  <span className="hidden sm:inline truncate">Search agency, city, ZIP, NPI...</span>
                 </span>
-                <kbd className="font-mono text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-1 py-0.2 rounded shrink-0">
+                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-xs font-medium text-[#53657B] dark:text-slate-400 bg-white dark:bg-[#111C2D] rounded border border-[#DFE6EF] dark:border-slate-700 shrink-0">
                   ⌘K
                 </kbd>
               </button>
             )}
 
-            {/* Mobile Module Picker (visible on < md screens) */}
-            <div className="relative md:hidden flex items-center">
+            {/* Pending Offline Sync Button (Only when pending items exist) */}
+            {pendingSyncCount > 0 && (
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(prev => !prev)}
-                className="h-7 px-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                aria-label="Switch active workspace module"
+                onClick={triggerManualSync}
+                disabled={!isOnline || isSyncing}
+                className="h-9 px-2.5 rounded-lg text-xs tabular-nums font-medium bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <span className="max-w-[95px] truncate text-[11px] font-bold">
-                  {activeTab === 'home' ? 'Home Hub' : activeSubTab.shortLabel}
-                </span>
-                <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
-              </button>
-            </div>
-          </div>
-
-          {/* ZONE 2: QUIET ARCHITECTURAL PILLAR TABS WITH 2PX BOTTOM ACTIVE INDICATOR */}
-          <nav 
-            aria-label="Core Navigation Pillars" 
-            className="hidden md:flex items-center gap-6 h-full shrink-0"
-          >
-            {/* Dedicated Home Pillar */}
-            <div className={`h-full flex items-center border-b-2 transition-colors ${
-              activeTab === 'home'
-                ? 'border-[#1E3A8A] dark:border-blue-400 text-slate-900 dark:text-white font-bold'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 font-medium'
-            }`}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onGoHome) onGoHome();
-                  else setActiveTab('home');
-                  setOpenPillarId(null);
-                }}
-                className="h-full px-1 flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer transition-colors"
-                title="Executive Home & Territory Onboarding Hub"
-              >
-                <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'home' ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                <span>Home</span>
-              </button>
-            </div>
-            {navigationPillars.map((pillar) => {
-              const isPillarActive = pillar.childIds.includes(activeTab);
-              const isDropdownOpen = openPillarId === pillar.id;
-              const PillarIcon = pillar.icon;
-
-              return (
-                <div 
-                  key={pillar.id} 
-                  ref={(el) => {
-                    pillarContainerRefs.current[pillar.id] = el;
-                  }}
-                  className="relative h-full flex items-center"
-                  onMouseEnter={() => handlePillarMouseEnter(pillar.id)}
-                  onMouseLeave={() => handlePillarMouseLeave(pillar.id)}
-                >
-                  <div className={`h-full flex items-center border-b-2 transition-colors ${
-                    isPillarActive
-                      ? 'border-[#1E3A8A] dark:border-blue-400 text-slate-900 dark:text-white font-semibold'
-                      : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 font-medium'
-                  }`}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isPillarActive) {
-                          setActiveTab(pillar.defaultTab);
-                        }
-                      }}
-                      className="h-full px-1 flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer transition-colors"
-                      title={`${pillar.label} — Switch to view`}
-                    >
-                      <PillarIcon className={`w-3.5 h-3.5 shrink-0 ${isPillarActive ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                      <span className="hidden xl:inline">{pillar.label}</span>
-                      <span className="inline xl:hidden">{pillar.shortLabel}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTogglePillarClick(pillar.id);
-                      }}
-                      className="h-full px-1 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
-                      title={`Select a ${pillar.label} module`}
-                      aria-label={`Open ${pillar.label} dropdown picker`}
-                      aria-expanded={isDropdownOpen}
-                    >
-                      <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isDropdownOpen ? 'rotate-180 text-[#1E3A8A] dark:text-blue-400' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Interactive Dropdown Popover */}
-                  {isDropdownOpen && (
-                    <div 
-                      className={`absolute top-full pt-1 w-76 sm:w-80 z-50 text-xs animate-in fade-in zoom-in-95 duration-100 before:content-[''] before:absolute before:-top-2 before:inset-x-0 before:h-3 ${
-                        pillar.id === 'pillar_field' ? 'left-0 sm:left-auto sm:right-0 lg:left-0' : 'left-0'
-                      }`}
-                      onMouseEnter={() => handlePillarMouseEnter(pillar.id)}
-                      onMouseLeave={() => handlePillarMouseLeave(pillar.id)}
-                    >
-                      <div className="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-1.5">
-                        <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase font-semibold tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1 flex items-center justify-between">
-                          <span>{pillar.label}</span>
-                          <span>{pillar.subTabs.length} Views</span>
-                        </div>
-
-                        <div className="space-y-0.5">
-                          {pillar.subTabs.map((subTab) => {
-                            const isSubActive = activeTab === subTab.id || (subTab.id === 'knowledge' && ['contracts', 'grants', 'claims'].includes(activeTab));
-                            const SubIcon = subTab.icon;
-                            return (
-                              <button
-                                key={subTab.id}
-                                type="button"
-                                onPointerDown={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTab(subTab.id);
-                                  setOpenPillarId(null);
-                                  setPillarOpenMode(null);
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveTab(subTab.id);
-                                  setOpenPillarId(null);
-                                  setPillarOpenMode(null);
-                                }}
-                                className={`w-full text-left p-2 rounded-md flex items-start gap-2.5 transition-colors cursor-pointer ${
-                                  isSubActive
-                                    ? 'bg-slate-100 dark:bg-slate-800 text-[#1E3A8A] dark:text-blue-400 font-semibold'
-                                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200'
-                                }`}
-                              >
-                                <SubIcon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${isSubActive ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-xs">{subTab.label}</span>
-                                    {isSubActive && (
-                                      <span className="font-mono text-[10px] text-[#1E3A8A] dark:text-blue-400">Active</span>
-                                    )}
-                                  </div>
-                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5 font-normal">
-                                    {subTab.description}
-                                  </p>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* ZONE 3: CONSOLIDATED STATUS, THEME TOGGLE & PRIMARY ACTION */}
-          <div className="flex items-center gap-2 shrink-0">
-
-            {/* Mobile Search Icon Button */}
-            {openCommandPalette && (
-              <button
-                onClick={openCommandPalette}
-                className="sm:hidden h-8 w-8 flex items-center justify-center rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
-                title="Search (⌘K)"
-                aria-label="Universal Search"
-              >
-                <Search className="w-4 h-4" />
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{pendingSyncCount} pending</span>
               </button>
             )}
 
-            {/* Direct Data Provenance & Audit Ledger Trigger */}
-            {openDataLineageModal && (
-              <button
-                type="button"
-                onClick={openDataLineageModal}
-                className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200/90 dark:border-slate-700 transition-colors cursor-pointer"
-                title="Inspect Verifiable Federal Data Provenance (CMS NPI, USFA FDID, NEMSIS v3.5)"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Verified Lineage</span>
-              </button>
-            )}
-
-            {/* Consolidated Unboxed Telemetry Readout */}
+            {/* Primary Action: Log Field Visit */}
             <button
-              onClick={() => {
-                if (!isOnline) {
-                  toggleNetwork();
-                } else if (pendingSyncCount > 0 && !isSyncing) {
-                  triggerManualSync();
-                } else {
-                  toggleNetwork();
-                }
-              }}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-mono text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title={
-                !isOnline 
-                  ? `Offline mode (${pendingSyncCount} queued) — Click to reconnect` 
-                  : isSyncing 
-                    ? 'Syncing to Firestore...' 
-                    : `Cloud Synced (${isCloudConnected ? cloudSyncCount : 'local'})`
-              }
-              aria-label="Field Network Status"
+              type="button"
+              onClick={openQuickVisitModal}
+              className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="Log a station visit or field note"
             >
-              {!isOnline ? (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span className="text-amber-700 dark:text-amber-400">Offline{pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ''}</span>
-                </>
-              ) : isSyncing ? (
-                <>
-                  <RefreshCw className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
-                  <span>Syncing</span>
-                </>
-              ) : (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="tabular-nums">{isCloudConnected ? `${cloudSyncCount} Synced` : 'Online'}</span>
-                </>
-              )}
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Log Visit</span>
             </button>
 
-            <span className="hidden sm:inline text-slate-200 dark:text-slate-800" aria-hidden="true">|</span>
-
-            {/* Dark / Light Mode Toggle */}
-            {onToggleDarkMode && (
-              <button
-                onClick={onToggleDarkMode}
-                className="h-8 w-8 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
-                title={isDarkMode ? 'Switch to Daylight Mode' : 'Switch to Tactical Dark Mode'}
-                aria-label="Toggle Theme"
-              >
-                {isDarkMode ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-slate-600" />
-                )}
-              </button>
-            )}
-
-            {/* Notifications */}
+            {/* Notifications Drawer Trigger */}
             <button
+              type="button"
               onClick={openNotifications}
-              className="relative h-8 w-8 flex items-center justify-center rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
-              title="Territory alerts and AFG grant notifications"
-              aria-label="View notifications"
+              aria-label={`Notifications${unreadAlertCount > 0 ? `, ${unreadAlertCount} unread` : ''}`}
+              className="relative h-9 w-9 rounded-lg border border-[#DFE6EF] dark:border-[#1E2D42] bg-white dark:bg-[#16243A] hover:bg-[#F5F7FA] dark:hover:bg-slate-800 text-[#53657B] dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+              title="Territory & Procurement Alerts"
             >
               <Bell className="w-4 h-4" />
               {unreadAlertCount > 0 && (
-                <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-[#1E3A8A] text-[9px] font-mono text-white flex items-center justify-center font-bold tabular-nums">
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#285EE8] text-white font-mono text-[10px] font-bold flex items-center justify-center">
                   {unreadAlertCount}
                 </span>
               )}
             </button>
 
-            {/* Quiet Tools & Role Menu */}
-            <div className="relative" ref={systemMenuRef}>
+            {/* Theme Toggle */}
+            {onToggleDarkMode && (
               <button
                 type="button"
-                onClick={() => {
-                  setOpenPillarId(null);
-                  setPillarOpenMode(null);
-                  setSystemMenuOpen(!systemMenuOpen);
-                }}
-                className="h-8 flex items-center gap-1 px-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                title="Tools, Data Lineage & Role Perspective"
-                aria-expanded={systemMenuOpen}
+                onClick={onToggleDarkMode}
+                aria-label={isDarkMode ? 'Switch to Daylight Mode' : 'Switch to Dark Mode'}
+                className="h-9 w-9 rounded-lg border border-[#DFE6EF] dark:border-[#1E2D42] bg-white dark:bg-[#16243A] hover:bg-[#F5F7FA] dark:hover:bg-slate-800 text-[#53657B] dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+                title={isDarkMode ? 'Switch to Daylight Mode' : 'Switch to Dark Mode'}
               >
-                <span className="hidden lg:inline">{currentRole.split(' ')[0]}</span>
-                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${systemMenuOpen ? 'rotate-180' : ''}`} />
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              </button>
+            )}
+
+            {/* Role & Workspace Preferences Menu */}
+            <div className="relative" ref={utilityRef}>
+              <button
+                type="button"
+                onClick={() => setIsUtilityMenuOpen(prev => !prev)}
+                className="h-9 px-2.5 rounded-lg border border-[#DFE6EF] dark:border-[#1E2D42] bg-white dark:bg-[#16243A] hover:bg-[#F5F7FA] dark:hover:bg-slate-800 text-[#14283F] dark:text-slate-200 flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer"
+                title="Role View & System Utilities"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#53657B] dark:text-slate-400" />
+                <span className="hidden xl:inline max-w-[120px] truncate">{currentRole}</span>
+                <ChevronDown className="w-3 h-3 text-[#53657B]" />
               </button>
 
-              {systemMenuOpen && (
-                <div 
-                  className="absolute right-0 mt-1.5 w-72 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1.5 z-50 text-xs text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-100"
-                >
-                  <div className="px-3 py-1 text-[10px] font-mono uppercase font-semibold text-slate-400 dark:text-slate-500">
-                    Workspace Utilities
+              {isUtilityMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] shadow-lg py-2 z-50 text-xs">
+                  <div className="px-3 py-1.5 border-b border-[#DFE6EF] dark:border-[#1E2D42]">
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-[#53657B] dark:text-slate-400">
+                      Active View Role
+                    </div>
+                    <div className="mt-1 space-y-0.5">
+                      {roles.map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => {
+                            setCurrentRole(r);
+                            setIsUtilityMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${
+                            currentRole === r
+                              ? 'bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-400 font-semibold'
+                              : 'text-[#14283F] dark:text-slate-300 hover:bg-[#F5F7FA] dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <span>{r}</span>
+                          {currentRole === r && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="px-1.5 space-y-0.5">
-                    {openChatbot && (
-                      <button
-                        onClick={() => {
-                          openChatbot();
-                          setSystemMenuOpen(false);
-                        }}
-                        className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium transition-colors cursor-pointer"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Bot className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                          <span>Sales Strategy Assistant</span>
-                        </span>
-                      </button>
-                    )}
-
+                  <div className="px-2 pt-1.5 space-y-0.5">
                     {onToggleGuide && (
                       <button
+                        type="button"
                         onClick={() => {
                           onToggleGuide();
-                          setSystemMenuOpen(false);
+                          setIsUtilityMenuOpen(false);
                         }}
-                        className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+                        className="w-full text-left px-2.5 py-1.5 rounded-md text-[#14283F] dark:text-slate-300 hover:bg-[#F5F7FA] dark:hover:bg-slate-800 cursor-pointer"
                       >
-                        <span className="flex items-center gap-2">
-                          <HelpCircle className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                          <span>Workflow Guide</span>
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {showGuide ? 'Shown' : 'Hidden'}
-                        </span>
+                        {showGuide ? 'Hide Quick Start Strip' : 'Show Quick Start Strip'}
                       </button>
                     )}
-
                     {openDataLineageModal && (
                       <button
+                        type="button"
                         onClick={() => {
                           openDataLineageModal();
-                          setSystemMenuOpen(false);
+                          setIsUtilityMenuOpen(false);
                         }}
-                        className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+                        className="w-full text-left px-2.5 py-1.5 rounded-md text-[#14283F] dark:text-slate-300 hover:bg-[#F5F7FA] dark:hover:bg-slate-800 cursor-pointer"
                       >
-                        <span className="flex items-center gap-2">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Verified Data Lineage</span>
-                        </span>
+                        Federal Data Lineage &amp; Sources
                       </button>
                     )}
-
-                    <button
-                      onClick={() => {
-                        setActiveTab('resilience');
-                        setSystemMenuOpen(false);
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Cloud className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                        <span>Cloud Sync &amp; Resilience</span>
-                      </span>
-                      <span className="font-mono text-[10px] text-slate-400 tabular-nums">
-                        {isCloudConnected ? `${cloudSyncCount} records` : 'Local'}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={toggleNetwork}
-                      className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        {isOnline ? (
-                          <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        )}
-                        <span>{isOnline ? 'Network: Online' : 'Network: Offline'}</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-[#1E3A8A] dark:text-blue-400">Toggle</span>
-                    </button>
-                  </div>
-
-                  {/* Active Perspective Role Switcher */}
-                  <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 px-3 py-1 text-[10px] font-mono uppercase font-semibold text-slate-400 dark:text-slate-500">
-                    Perspective
-                  </div>
-                  <div className="px-1.5">
-                    {roles.map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => {
-                          setCurrentRole(r);
-                          setSystemMenuOpen(false);
-                        }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-md flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
-                          currentRole === r ? 'text-[#1E3A8A] dark:text-blue-400 font-semibold' : 'text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <span>{r}</span>
-                        {currentRole === r && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />}
-                      </button>
-                    ))}
                   </div>
                 </div>
               )}
             </div>
-
-            {/* 1 Primary High-Contrast CTA: + Log Visit */}
-            <button
-              onClick={openQuickVisitModal}
-              className="h-8 flex items-center gap-1.5 px-3.5 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              title="Log an on-site station visit, virtual demo, or phone call"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Log Visit</span>
-              <span className="inline sm:hidden">Visit</span>
-            </button>
-
-          </div>
-
-        </div>
-      </div>
-
-      {/* TIER 2: ARCHITECTURAL SUB-MODULE RIBBON & GLOBAL DEPARTMENT FILTER */}
-      <div className="w-full max-w-full px-3 sm:px-5 lg:px-6 bg-slate-50/80 dark:bg-slate-950/60 border-t border-slate-200/80 dark:border-slate-800/80 transition-colors">
-        <div className="flex items-center justify-between gap-3 h-9 min-w-0">
-          
-          {/* Left: Active Pillar Sub-Modules with 2px Bottom Indicator */}
-          <div className="flex items-center gap-4 min-w-0 overflow-x-auto no-scrollbar h-full">
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">
-              <span>{activePillar.shortLabel}</span>
-              <span aria-hidden="true">/</span>
-            </span>
-
-            <div className="flex items-center gap-4 h-full shrink-0">
-              {activePillar.subTabs.map((subTab) => {
-                const isSubActive = activeTab === subTab.id || (subTab.id === 'knowledge' && ['contracts', 'grants', 'claims'].includes(activeTab));
-                const SubIcon = subTab.icon;
-                return (
-                  <button
-                    key={subTab.id}
-                    onClick={() => setActiveTab(subTab.id)}
-                    className={`h-full px-0.5 text-xs flex items-center gap-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      isSubActive 
-                        ? 'border-[#1E3A8A] dark:border-blue-400 text-[#1E3A8A] dark:text-blue-400 font-semibold' 
-                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
-                    }`}
-                    title={subTab.description}
-                  >
-                    <SubIcon className="w-3.5 h-3.5 shrink-0" />
-                    <span>{subTab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right: Clean Segmented Department Filter (All | EMS | Fire) */}
-          <div 
-            className="flex items-center gap-0.5 bg-slate-200/70 dark:bg-slate-800/80 p-0.5 rounded-md border border-slate-200 dark:border-slate-700/80 shrink-0" 
-            title="Filter territory accounts by EMS Providers or Fire Departments"
-          >
-            <button
-              onClick={() => setGlobalCategory('all')}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                globalCategory === 'all'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setGlobalCategory('ems')}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                globalCategory === 'ems'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Filter for EMS Ambulance Providers"
-            >
-              <Siren className="w-3 h-3 text-sky-600 dark:text-sky-400" />
-              <span>EMS</span>
-            </button>
-            <button
-              onClick={() => setGlobalCategory('fire')}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                globalCategory === 'fire'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Filter for Fire Departments"
-            >
-              <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-              <span>Fire</span>
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* MOBILE QUICK-MENU SHEET (Full touch drawer for < md viewports) */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-60 md:hidden animate-fadeIn">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs cursor-pointer"
-            onClick={() => setMobileMenuOpen(false)} 
-          />
-
-          {/* Drawer Slide-Over */}
-          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col z-60 animate-in slide-in-from-left duration-200">
-            {/* Drawer Header with Prominent Brand Logo */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {!logoFailed ? (
-                  <img
-                    src={logoSrc}
-                    alt="Nick's EMS & Fire Crest"
-                    referrerPolicy="no-referrer"
-                    onError={() => {
-                      if (logoSrc !== 'https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg') {
-                        setLogoSrc('https://raw.githubusercontent.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio/main/src/assets/images/nicks_ems_logo_1792367124466.jpg');
-                      } else {
-                        setLogoFailed(true);
-                      }
-                    }}
-                    className="w-12 h-12 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-xs ring-1 ring-slate-900/5 dark:ring-white/10 shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-[#0F172A] dark:bg-blue-600 flex items-center justify-center text-white shrink-0">
-                    <ShieldCheck className="w-6 h-6 text-white" />
-                  </div>
-                )}
-                <div className="flex flex-col">
-                  <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
-                    Nick&apos;s EMS &amp; Fire
-                  </span>
-                  <span className="font-mono text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400 tracking-wider">
-                    Territory Intelligence
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                aria-label="Close menu"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
-              
-              {/* Department Filter */}
-              <div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2">
-                  Department Filter
-                </div>
-                <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <button
-                    onClick={() => {
-                      setGlobalCategory('all');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-1.5 text-center font-semibold rounded-md ${
-                      globalCategory === 'all'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => {
-                      setGlobalCategory('ems');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-1.5 text-center font-semibold rounded-md flex items-center justify-center gap-1 ${
-                      globalCategory === 'ems'
-                        ? 'bg-[#0F172A] text-white shadow-2xs'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    <Siren className="w-3 h-3 text-sky-500" />
-                    EMS
-                  </button>
-                  <button
-                    onClick={() => {
-                      setGlobalCategory('fire');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-1.5 text-center font-semibold rounded-md flex items-center justify-center gap-1 ${
-                      globalCategory === 'fire'
-                        ? 'bg-[#0F172A] text-white shadow-2xs'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    <Flame className="w-3 h-3 text-amber-500" />
-                    Fire
-                  </button>
-                </div>
-              </div>
-
-              {/* 3 Pillars & Sub-modules */}
-              <div className="space-y-4">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                  Navigation Pillars &amp; Modules
-                </div>
-
-                {/* Home Option */}
-                <button
-                  onClick={() => {
-                    if (onGoHome) onGoHome();
-                    else setActiveTab('home');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full text-left p-2.5 rounded-xl border flex items-center justify-between transition-colors ${
-                    activeTab === 'home'
-                      ? 'bg-blue-50/70 dark:bg-blue-950/40 border-[#1E3A8A] dark:border-blue-500 font-bold text-slate-900 dark:text-white'
-                      : 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className={`w-4 h-4 ${activeTab === 'home' ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-400'}`} />
-                    <span className="font-bold">Home &amp; Onboarding Hub</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-400">Central Hub</span>
-                </button>
-
-                {navigationPillars.map((pillar) => {
-                  const isPillarActive = pillar.childIds.includes(activeTab);
-                  const PillarIcon = pillar.icon;
-                  return (
-                    <div key={pillar.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-2.5 bg-slate-50/50 dark:bg-slate-800/40">
-                      <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white mb-2">
-                        <PillarIcon className={`w-4 h-4 ${isPillarActive ? 'text-blue-700 dark:text-blue-400' : 'text-slate-400'}`} />
-                        <span>{pillar.label}</span>
-                      </div>
-
-                      <div className="space-y-1 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
-                        {pillar.subTabs.map((subTab) => {
-                          const isSubActive = activeTab === subTab.id || (subTab.id === 'knowledge' && ['contracts', 'grants', 'claims'].includes(activeTab));
-                          const SubIcon = subTab.icon;
-                          return (
-                            <button
-                              key={subTab.id}
-                              onClick={() => {
-                                setActiveTab(subTab.id);
-                                setMobileMenuOpen(false);
-                              }}
-                              className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center justify-between transition-colors ${
-                                isSubActive
-                                  ? 'bg-[#1E3A8A] text-white font-bold'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2 truncate">
-                                <SubIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>{subTab.label}</span>
-                              </span>
-                              {isSubActive && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Quick Field Visit Action */}
-              <button
-                onClick={() => {
-                  openQuickVisitModal();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#172554] flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Log Station Visit / Interaction</span>
-              </button>
-
-            </div>
           </div>
         </div>
+      </header>
+
+      {/* Mobile Dedicated Quick Filter & Provider Finder Bar */}
+      {!activeAccountName && (
+        <MobileQuickProviderBar
+          globalCategory={globalCategory}
+          setGlobalCategory={setGlobalCategory}
+          onOpenProviderFinder={onOpenProviderFinder || openCommandPalette || (() => {})}
+          globalState={globalState}
+          globalCounty={globalCounty}
+          onClearGeography={onClearGeography}
+          agencies={agencies}
+        />
       )}
-    </header>
+    </>
   );
 };

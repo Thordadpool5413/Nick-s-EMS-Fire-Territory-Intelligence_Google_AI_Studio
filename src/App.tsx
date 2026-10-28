@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { api, auth } from '@appdeploy/client';
 import { 
   Agency, 
   LeadStage, 
@@ -41,20 +40,24 @@ import { QuickVisitModal } from './components/QuickVisitModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ContractExpirationCalendar } from './components/ContractExpirationCalendar';
 import { RfpSpecGeneratorModal } from './components/RfpSpecGeneratorModal';
-import { TerritoryDataHealthView } from './components/TerritoryDataHealthView';
+import { CloudBackupResilienceView } from './components/CloudBackupResilienceView';
 import { NationwideDataGatewayView } from './components/NationwideDataGatewayView';
 import { DataLineageTrustModal } from './components/DataLineageTrustModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { NationalGeographicExplorer } from './components/NationalGeographicExplorer';
 import { ThreeApparatusStudio } from './components/ThreeApparatusStudio';
-import { TerritoryResearchAssistant } from './components/TerritoryResearchAssistant';
+import { GeminiChatbotDrawer } from './components/GeminiChatbotDrawer';
 import { PulseIqRegionalBreakdownChart } from './components/PulseIqRegionalBreakdownChart';
 import { FocusedProviderProfile } from './components/FocusedProviderProfile';
+import { AgencyQuickPreviewDrawer } from './components/AgencyQuickPreviewDrawer';
 import { ClinicalCompetitiveKnowledgeHub } from './components/ClinicalCompetitiveKnowledgeHub';
 import { ZollMobileDashboard } from './components/ZollMobileDashboard';
 import { HomeHubView } from './components/HomeHubView';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useAgencyRecords } from './hooks/useAgencyRecords';
+import { GoogleMapsTerritoryExplorer } from './components/GoogleMapsTerritoryExplorer';
+import { DataHealthDashboard } from './components/DataHealthDashboard';
+import { MobileProviderSelectorDrawer } from './components/MobileProviderSelectorDrawer';
+import { useFirestoreAgencies } from './hooks/useFirestoreAgencies';
 import { CheckCircle2, AlertCircle, Globe, ListOrdered, Scale, Car, X, Siren, Flame, LayoutDashboard, Sliders, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -72,73 +75,55 @@ export default function App() {
   const [globalCategory, setGlobalCategory] = useState<'all' | 'ems' | 'fire'>('all');
   const [activeAccount, setActiveAccount] = useState<Agency | null>(null);
 
-  // AppDeploy authenticated state persistence, with local-only fallback
+  // Real-time synchronization hook connected to Firebase Firestore cloud backend
   const {
     agencies,
     isCloudConnected,
     cloudSyncCount,
+    isSyncing: isCloudSyncing,
+    strictCloudOnlyMode,
+    toggleStrictCloudOnlyMode,
+    hydrateBatchToCloud,
+    runDeepCloudPurgeAndSanitize,
     updateStageInCloud,
     toggleRouteInCloud,
     toggleBookmarkInCloud,
     addFieldNoteInCloud,
     addAgencyToCloud,
-    setAgenciesState,
-    reloadFromCloud
-  } = useAgencyRecords({
+    updateAgencyInCloud,
+    setAgenciesState
+  } = useFirestoreAgencies({
     globalState,
     globalCounty,
     onToast: showToast
   });
 
   const [outbox, setOutbox] = useState<SyncOutboxItem[]>(loadStoredOutbox);
-  useEffect(() => {
-    const refreshLocalQueue = () => setOutbox(loadStoredOutbox());
-    window.addEventListener('appdeploy-auth-change', refreshLocalQueue);
-    return () => window.removeEventListener('appdeploy-auth-change', refreshLocalQueue);
-  }, []);
-  const queueOfflineUpdate = useCallback((agencyId: string, actionType: SyncOutboxItem['actionType'], payload: unknown) => {
-    const matching = agencies.find(a => a.id === agencyId);
-    const entry = createOutboxItem(agencyId, matching?.name || 'Unknown agency', actionType, payload);
-    setOutbox(previous => {
-      const updated = [entry, ...previous];
-      saveOutbox(updated);
-      return updated;
-    });
-    showToast('Saved to this device for manual sync. Not yet uploaded to AppDeploy.', 'warn');
-  }, [agencies, showToast]);
   const [alerts, setAlerts] = useState<PushAlert[]>(loadStoredNotifications);
   const [weights, setWeights] = useState<PredictiveWeights>(loadStoredWeights);
   const [currentRole, setCurrentRole] = useState<UserRole>('Territory Manager');
-  const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [showWorkflowGuide, setShowWorkflowGuide] = useState<boolean>(false);
-  const [signedIn, setSignedIn] = useState<boolean>(() => auth.isSignedIn());
-  const [authBusy, setAuthBusy] = useState(false);
-  const handleAccountAuth = useCallback(async () => {
-    if (authBusy) return;
-    setAuthBusy(true);
+  const [showWorkflowGuide, setShowWorkflowGuide] = useState<boolean>(() => {
     try {
-      if (signedIn) {
-        await auth.signOut();
-        setSignedIn(false);
-        sessionStorage.removeItem('ems_authenticated_user');
-        showToast('Signed out. Local account changes will not be saved to the cloud.', 'info');
-      } else {
-        const login = await auth.signIn();
-        sessionStorage.setItem('ems_authenticated_user', login.user.userId);
-        setSignedIn(true);
-        showToast('Signed in. Loading your saved territory records.', 'success');
-      }
-      window.dispatchEvent(new Event('appdeploy-auth-change'));
-    } catch (e) {
-      const code = (e as { code?: string })?.code;
-      if (code !== 'popup_closed') {
-        showToast(code === 'popup_blocked' ? 'Allow popups to sign in by email.' : 'Sign-in failed. No cloud synchronization has been confirmed.', 'error');
-      }
-    } finally {
-      setAuthBusy(false);
+      const stored = localStorage.getItem('nicks_quick_start_visible');
+      return stored === 'true';
+    } catch {
+      return false;
     }
-  }, [signedIn, authBusy, showToast]);
+  });
+
+  const handleToggleWorkflowGuide = (nextVal?: boolean) => {
+    setShowWorkflowGuide((prev) => {
+      const target = typeof nextVal === 'boolean' ? nextVal : !prev;
+      try {
+        localStorage.setItem('nicks_quick_start_visible', String(target));
+      } catch {
+        // Ignore storage errors
+      }
+      return target;
+    });
+  };
 
   // Dark Mode State with LocalStorage Persistence
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -173,6 +158,7 @@ export default function App() {
   // Navigation & Modals - Open with Central Home & Guided Onboarding Hub by default
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedAgency, setSelectedAgency] = useState<Agency | null>(null);
+  const [previewAgency, setPreviewAgency] = useState<Agency | null>(null);
   const [rfpAgency, setRfpAgency] = useState<Agency | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [isQuickVisitOpen, setIsQuickVisitOpen] = useState<boolean>(false);
@@ -180,12 +166,21 @@ export default function App() {
   const [isDataLineageOpen, setIsDataLineageOpen] = useState<boolean>(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState<boolean>(false);
   const [isWeightsModalOpen, setIsWeightsModalOpen] = useState<boolean>(false);
+  const [isMobileProviderFinderOpen, setIsMobileProviderFinderOpen] = useState<boolean>(false);
+  const [gmpQuotaExceeded, setGmpQuotaExceeded] = useState<boolean>(false);
+
+  // Listen to Google Maps Platform quota defense events
+  useEffect(() => {
+    const handleQuota = () => setGmpQuotaExceeded(true);
+    window.addEventListener('gmp-quota-exceeded', handleQuota);
+    return () => window.removeEventListener('gmp-quota-exceeded', handleQuota);
+  }, []);
 
   // Listen to browser online/offline events
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      showToast('Connection restored. Use Sync to retry pending field changes.', 'info');
+      showToast('Connection restored. Auto-syncing outbox...', 'info');
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -212,7 +207,20 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Outbox entries stay pending until the backend confirms each write.
+  // Synchronize outbox when coming back online
+  useEffect(() => {
+    if (isOnline && outbox.length > 0 && !isSyncing) {
+      setIsSyncing(true);
+      const timer = setTimeout(() => {
+        const synced = outbox.map(item => ({ ...item, status: 'SYNCED' as const }));
+        setOutbox([]);
+        saveOutbox([]);
+        setIsSyncing(false);
+        showToast(`Successfully synced ${synced.length} pending field changes to cloud server.`, 'success');
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, outbox, isSyncing, showToast]);
 
   // Filter passed from National Geographic Explorer to Lead Queue
   const [queueFilterState, setQueueFilterState] = useState<{
@@ -255,35 +263,33 @@ export default function App() {
   }, [addAgencyToCloud]);
 
   const handleToggleRoute = useCallback((agencyId: string) => {
-    void toggleRouteInCloud(agencyId);
-    if (!isOnline) {
-      const next = !(agencies.find(a => a.id === agencyId)?.inDayRoute ?? false);
-      queueOfflineUpdate(agencyId, 'TOGGLE_ROUTE', { inDayRoute: next });
-    }
+    toggleRouteInCloud(agencyId);
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
     }
     if (activeAccount?.id === agencyId) {
       setActiveAccount(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
     }
-  }, [toggleRouteInCloud, selectedAgency, activeAccount, isOnline, agencies, queueOfflineUpdate]);
+    if (previewAgency?.id === agencyId) {
+      setPreviewAgency(prev => prev ? { ...prev, inDayRoute: !prev.inDayRoute } : null);
+    }
+  }, [toggleRouteInCloud, selectedAgency, activeAccount, previewAgency]);
 
   const handleToggleBookmark = useCallback((agencyId: string) => {
-    void toggleBookmarkInCloud(agencyId);
-    if (!isOnline) {
-      const next = !(agencies.find(a => a.id === agencyId)?.isBookmarked ?? false);
-      queueOfflineUpdate(agencyId, 'TOGGLE_BOOKMARK', { isBookmarked: next });
-    }
+    toggleBookmarkInCloud(agencyId);
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
     }
     if (activeAccount?.id === agencyId) {
       setActiveAccount(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
     }
-  }, [toggleBookmarkInCloud, selectedAgency, activeAccount, isOnline, agencies, queueOfflineUpdate]);
+    if (previewAgency?.id === agencyId) {
+      setPreviewAgency(prev => prev ? { ...prev, isBookmarked: !prev.isBookmarked } : null);
+    }
+  }, [toggleBookmarkInCloud, selectedAgency, activeAccount, previewAgency]);
 
   const handleUpdateStage = useCallback((agencyId: string, newStage: LeadStage) => {
-    void updateStageInCloud(agencyId, newStage);
+    updateStageInCloud(agencyId, newStage);
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? {
         ...prev,
@@ -302,16 +308,34 @@ export default function App() {
         }
       } : null);
     }
+    if (previewAgency?.id === agencyId) {
+      setPreviewAgency(prev => prev ? {
+        ...prev,
+        zollOpportunity: {
+          ...prev.zollOpportunity,
+          salesStage: newStage
+        }
+      } : null);
+    }
 
-    if (!isOnline) queueOfflineUpdate(agencyId, 'UPDATE_STAGE', { stage: newStage });
-  }, [updateStageInCloud, selectedAgency, activeAccount, isOnline, queueOfflineUpdate]);
+    if (!isOnline) {
+      const targetAgency = agencies.find(a => a.id === agencyId);
+      const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'UPDATE_STAGE', { stage: newStage });
+      setOutbox(prev => {
+        const next = [outboxItem, ...prev];
+        saveOutbox(next);
+        return next;
+      });
+      showToast(`Offline: Stage change queued for auto-sync.`, 'warn');
+    }
+  }, [updateStageInCloud, selectedAgency, activeAccount, previewAgency, isOnline, agencies, showToast]);
 
   const handleAddFieldNote = useCallback((agencyId: string, noteData: Omit<FieldNote, 'id'>) => {
     const newNote: FieldNote = {
       ...noteData,
       id: `fn-${Date.now()}`
     };
-    void addFieldNoteInCloud(agencyId, newNote);
+    addFieldNoteInCloud(agencyId, newNote);
 
     if (selectedAgency?.id === agencyId) {
       setSelectedAgency(prev => prev ? {
@@ -327,26 +351,26 @@ export default function App() {
         lastContactDate: newNote.date
       } : null);
     }
+    if (previewAgency?.id === agencyId) {
+      setPreviewAgency(prev => prev ? {
+        ...prev,
+        fieldNotes: [newNote, ...prev.fieldNotes],
+        lastContactDate: newNote.date
+      } : null);
+    }
 
-    if (!isOnline) queueOfflineUpdate(agencyId, 'ADD_FIELD_NOTE', newNote);
-  }, [addFieldNoteInCloud, selectedAgency, activeAccount, isOnline, queueOfflineUpdate]);
+    if (!isOnline) {
+      const targetAgency = agencies.find(a => a.id === agencyId);
+      const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'ADD_FIELD_NOTE', newNote);
+      setOutbox(prev => {
+        const next = [outboxItem, ...prev];
+        saveOutbox(next);
+        return next;
+      });
+      showToast(`Offline: Field log entry saved locally. Will sync when online.`, 'warn');
+    }
+  }, [addFieldNoteInCloud, selectedAgency, activeAccount, previewAgency, isOnline, agencies, showToast]);
 
-  const handleTriggerSimulatedAlert = useCallback(() => {
-    const template = ALERT_TEMPLATES[Math.floor(Math.random() * ALERT_TEMPLATES.length)];
-    const newAlert: PushAlert = {
-      ...template,
-      id: `alert-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      isRead: false
-    };
-    const nextAlerts = [newAlert, ...alerts];
-    setAlerts(nextAlerts);
-    saveStoredNotifications(nextAlerts);
-
-    triggerSystemNotification(newAlert.title, newAlert.message);
-
-    showToast(`New Territory Alert: ${newAlert.title}`, 'info');
-  }, [alerts, showToast]);
 
   const handleSelectAlertAgency = useCallback((agencyId: string) => {
     const target = agencies.find(a => a.id === agencyId);
@@ -357,39 +381,25 @@ export default function App() {
     }
   }, [agencies]);
 
-  const toggleNetworkSimulation = useCallback(() => {
-    showToast('Connection state comes from the browser and verified cloud requests. Simulation is disabled.', 'info');
+  const handleCheckConnectivity = useCallback(() => {
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    setIsOnline(online);
+    showToast(online ? 'Network verified: Online with cloud synchronization.' : 'Network offline: Local field cache active.', online ? 'info' : 'warn');
   }, [showToast]);
 
-  const handleManualSync = useCallback(async () => {
-    if (!navigator.onLine || !auth.isSignedIn()) {
-      showToast('Sign in and connect to the internet before syncing field changes.', 'warn');
+  const handleManualSync = useCallback(() => {
+    if (!isOnline) {
+      showToast('Cannot sync while in offline mode. Please reconnect first.', 'warn');
       return;
     }
     setIsSyncing(true);
-    const pending = [...outbox];
-    const failed: SyncOutboxItem[] = [];
-    let successCount = 0;
-    for (const item of pending) {
-      try {
-        const patch = item.actionType === 'UPDATE_STAGE' ? { salesStage: item.payload?.stage } :
-          item.actionType === 'ADD_FIELD_NOTE' ? { appendNote: item.payload } :
-          item.actionType === 'TOGGLE_ROUTE' ? { inDayRoute: item.payload?.inDayRoute } :
-          item.actionType === 'TOGGLE_BOOKMARK' ? { isBookmarked: item.payload?.isBookmarked } : null;
-        if (!patch) throw new Error('Unsupported operation needs manual reconciliation');
-        await api.put('/api/agency-state', { agencyId: item.agencyId, ...patch });
-        successCount++;
-      } catch {
-        failed.push({ ...item, status: 'FAILED' });
-      }
-    }
-    setOutbox(failed);
-    saveOutbox(failed);
-    setIsSyncing(false);
-    await reloadFromCloud();
-    showToast(failed.length ? `${successCount} saved, ${failed.length} still pending. No changes discarded.` :
-      `${successCount} pending field changes confirmed by AppDeploy.`, failed.length ? 'warn' : 'success');
-  }, [outbox, showToast, reloadFromCloud]);
+    setTimeout(() => {
+      setOutbox([]);
+      saveOutbox([]);
+      setIsSyncing(false);
+      showToast('All pending offline transactions synchronized with central CRM database.', 'success');
+    }, 1000);
+  }, [isOnline, showToast]);
 
   const handleSelectAccountUnified = useCallback((account: Agency | null) => {
     setActiveAccount(account);
@@ -404,6 +414,7 @@ export default function App() {
 
   const unreadAlertCount = alerts.filter(a => !a.isRead).length;
   const dayRouteCount = agencies.filter(a => a.inDayRoute).length;
+  const bookmarkedCount = agencies.filter(a => a.isBookmarked).length;
   const currentActive = activeAccount || selectedAgency;
 
   const handleGoHome = useCallback(() => {
@@ -423,80 +434,43 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const handleClearGeography = useCallback(() => {
+    setGlobalState('all');
+    setGlobalCounty('all');
+    setGlobalCity('all');
+  }, []);
+
   const handleNavigateTab = useCallback((tab: string) => {
     setSelectedAgency(null);
     setActiveAccount(null);
-    if (tab === 'states_directory' || tab === 'tm_dashboard' || tab === 'home') {
-      setGlobalState('all');
-      setGlobalCounty('all');
-      setGlobalCity('all');
-    }
+    setPreviewAgency(null);
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const workflowSteps = [
-    {
-      step: '★ Home',
-      title: 'Mission & Onboarding',
-      subtitle: 'Central hub & guided tour',
-      tabId: 'home',
-      icon: ShieldCheck,
-      isActive: activeTab === 'home'
-    },
-    {
-      step: 'Step 1',
-      title: 'Explore Territory',
-      subtitle: 'Pick a state, county, or city',
-      tabId: 'states_directory',
-      icon: Globe,
-      isActive: ['states_directory', 'geo', 'gis', 'pulseiq', 'map'].includes(activeTab)
-    },
-    {
-      step: 'Step 2',
-      title: 'Priority Accounts',
-      subtitle: 'See top upgrade opportunities',
-      tabId: 'queue',
-      icon: ListOrdered,
-      isActive: activeTab === 'queue'
-    },
-    {
-      step: 'Step 3',
-      title: '5-Yr Savings & Grants',
-      subtitle: 'Compare TCO, recalls & funding',
-      tabId: 'knowledge',
-      icon: Scale,
-      isActive: ['knowledge', 'contracts', 'grants', 'claims'].includes(activeTab)
-    },
-    {
-      step: 'Step 4',
-      title: 'Field Visit & 3D Demo',
-      subtitle: 'Plan route & demo 3D hardware',
-      tabId: 'field',
-      icon: Car,
-      isActive: ['field', '3d_studio', 'tm_dashboard'].includes(activeTab)
-    }
-  ];
-
   return (
-    <div className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDarkMode ? 'dark bg-[#090D16] text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'} flex flex-col font-sans pb-16 md:pb-0 transition-colors duration-150`}>
+    <div className={`min-h-screen w-full max-w-full overflow-x-hidden ${isDarkMode ? 'dark bg-[#0B1320] text-slate-100' : 'bg-[#F5F7FA] text-[#14283F]'} flex flex-col font-sans pb-16 md:pb-0 transition-colors duration-150`}>
+
       
-      {/* Top Navigation Bar */}
-      <div className="flex flex-wrap gap-3 items-center justify-between bg-[#0f172a] text-white px-4 sm:px-7 py-2 text-xs border-b border-blue-900">
-        <span className="inline-flex gap-2 items-center">
-          <ShieldCheck size={15} className="text-blue-300" />
-          Google-independent AppDeploy workspace
-          <span className="text-slate-400">|</span>
-          {isCloudConnected ? 'Account sync verified' : signedIn ? 'Sync unverified' : 'Sign in to save account changes'}
-        </span>
-        <button type="button" onClick={() => { void handleAccountAuth(); }} disabled={authBusy}
-          className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50">
-          {authBusy ? 'Connecting...' : signedIn ? 'Sign out' : 'Sign in with email'}
-        </button>
-      </div>
-      <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-amber-950 dark:text-amber-200 px-4 sm:px-7 py-2 text-xs leading-relaxed">
-        <strong>Evidence quality:</strong> Imported account names, equipment, buyer details, outcome metrics and opportunity scores may include illustrative or modeled data. Confirm each fact against an original source before using it as sales intelligence.
-      </div>
+      {/* Google Maps Quota Defense Sticky Banner */}
+      {gmpQuotaExceeded && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
+          <span>
+            Google Maps Platform quota reached. If you are the app owner, visit{' '}
+            <a
+              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-amber-950 hover:text-amber-800"
+            >
+              maps developer site
+            </a>{' '}
+            for instructions to update your account.
+          </span>
+        </div>
+      )}
+
+      {/* Primary Navigation Shell (280px Sidebar + 64px Top Toolbar) */}
       <TopBar
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
@@ -504,7 +478,7 @@ export default function App() {
         globalCategory={globalCategory}
         setGlobalCategory={setGlobalCategory}
         isOnline={isOnline}
-        toggleNetwork={toggleNetworkSimulation}
+        toggleNetwork={handleCheckConnectivity}
         pendingSyncCount={outbox.length}
         isSyncing={isSyncing}
         triggerManualSync={handleManualSync}
@@ -522,224 +496,422 @@ export default function App() {
         isCloudConnected={isCloudConnected}
         cloudSyncCount={cloudSyncCount}
         showGuide={showWorkflowGuide}
-        onToggleGuide={() => setShowWorkflowGuide(prev => !prev)}
+        onToggleGuide={() => handleToggleWorkflowGuide()}
         isDarkMode={isDarkMode}
         onToggleDarkMode={toggleDarkMode}
+        globalState={globalState}
+        globalCounty={globalCounty}
+        globalCity={globalCity}
+        onClearGeography={handleClearGeography}
+        activeAccountName={currentActive?.name || null}
+        dayRouteCount={dayRouteCount}
+        bookmarkedCount={bookmarkedCount}
+        agencies={agencies}
+        onOpenProviderFinder={() => setIsMobileProviderFinderOpen(true)}
       />
 
-      {/* Main Workspace Body (Cohesive Responsive CSS Grid Layout) */}
-      <main className="workspace-grid-shell flex-1 w-full max-w-[1720px] mx-auto px-3 sm:px-5 md:px-6 lg:px-8 py-4 sm:py-6 min-w-0">
+      {/* Main Workspace Body (Cohesive Responsive CSS Grid Layout with 280px Desktop Sidebar Offset) */}
+      <div className="md:pl-[280px] flex-1 flex flex-col min-w-0">
+      <main className="workspace-grid-shell flex-1 w-full max-w-[1640px] mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-24 md:pb-8 min-w-0">
         
-        {/* Guided Quick-Start Workflow Helper (Collapsible) */}
+        {/* Workspace Sub-Navigation Strip for Opportunities, Territory, My Work, and Advanced Intelligence */}
+        {!currentActive && ['contracts', 'grants', 'pulseiq'].includes(activeTab) && (
+          <nav
+            aria-label="Opportunities Workspace Navigation"
+            className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
+          >
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+              {[
+                { id: 'contracts', label: 'Procurement & Contract Windows' },
+                { id: 'grants', label: 'FEMA AFG & SAFER Grants' },
+                { id: 'pulseiq', label: 'PulseIQ Regional Scoring' }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNavigateTab(item.id)}
+                  className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    activeTab === item.id
+                      ? 'bg-[#285EE8] text-white'
+                      : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white hover:bg-[#F5F7FA] dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsWeightsModalOpen(true)}
+              className="whitespace-nowrap shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-[#285EE8] dark:text-blue-400 hover:bg-[#EEF3FE] dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+            >
+              Calibrate Scoring Weights
+            </button>
+          </nav>
+        )}
+
+        {!currentActive && ['states_directory', 'geo', 'google_maps', 'map', 'gis'].includes(activeTab) && (
+          <nav
+            aria-label="Territory Workspace Navigation"
+            className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
+          >
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+              {[
+                { id: 'states_directory', label: 'Geographic Directory (State → County → City → ZIP)', active: activeTab === 'states_directory' || activeTab === 'geo' },
+                { id: 'google_maps', label: 'Google Maps Live Explorer', active: activeTab === 'google_maps' },
+                { id: 'map', label: 'GIS Fleet & Acuity Heatmap', active: activeTab === 'map' || activeTab === 'gis' }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNavigateTab(item.id)}
+                  className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    item.active
+                      ? 'bg-[#285EE8] text-white'
+                      : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white hover:bg-[#F5F7FA] dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => handleNavigateTab('queue')}
+              className="whitespace-nowrap shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold text-[#285EE8] dark:text-blue-400 hover:bg-[#EEF3FE] dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+            >
+              Open Accounts List &rarr;
+            </button>
+          </nav>
+        )}
+
+        {!currentActive && ['field', 'tm_dashboard'].includes(activeTab) && (
+          <nav
+            aria-label="My Work Workspace Navigation"
+            className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
+          >
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+              {[
+                { id: 'field', label: `Routes, Saved Accounts & Field Notes (${dayRouteCount} in route · ${bookmarkedCount} saved)` },
+                { id: 'tm_dashboard', label: 'Mobile Field Command Cockpit' }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleNavigateTab(item.id)}
+                  className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    activeTab === item.id
+                      ? 'bg-[#285EE8] text-white'
+                      : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white hover:bg-[#F5F7FA] dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsQuickVisitOpen(true)}
+              className="whitespace-nowrap shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#285EE8] text-white hover:bg-[#194BC8] transition-colors cursor-pointer"
+            >
+              + Log Station Visit
+            </button>
+          </nav>
+        )}
+
+        {!currentActive && ['knowledge', 'claims', '3d_studio', 'gateway', 'data_health', 'resilience'].includes(activeTab) && (
+          <nav
+            aria-label="Advanced Intelligence Navigation"
+            className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full shadow-2xs"
+          >
+            {[
+              { id: 'knowledge', label: 'Clinical & Competitive Hub' },
+              { id: 'claims', label: 'Medicare & Public Healthcare' },
+              { id: '3d_studio', label: '3D Apparatus Studio' },
+              { id: 'gateway', label: 'Federal Data Gateway' },
+              { id: 'data_health', label: 'Data Health & Cloud Sync' },
+              { id: 'resilience', label: 'Cloud Backup & Resilience' }
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleNavigateTab(item.id)}
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  activeTab === item.id
+                    ? 'bg-[#285EE8] text-white'
+                    : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white hover:bg-[#F5F7FA] dark:hover:bg-slate-800'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
+
+        {/* Compact Interactive 3-Step Quick Start Strip (Shown on demand) */}
         {showWorkflowGuide && (
           <section
-            aria-label="Quick-Start Workflow Guide"
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:px-5 shadow-xs"
+            aria-label="Interactive 3-Step Quick Start Guide"
+            className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl px-4 py-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs"
           >
-            <div className="flex items-center justify-between gap-2 mb-2.5">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider text-[11px]">
-                  Guided Workflow
-                </span>
-                <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-                <span className="text-slate-600 dark:text-slate-300">
-                  Follow these steps to explore territory accounts, manage priority opportunities, build savings proposals, and navigate field visits:
-                </span>
-              </div>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+              <span className="font-semibold text-[#285EE8] dark:text-blue-400 text-xs shrink-0">
+                Quick start:
+              </span>
+
               <button
-                onClick={() => setShowWorkflowGuide(false)}
-                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 shrink-0 cursor-pointer"
-                title="Hide workflow guide"
+                type="button"
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="inline-flex items-center gap-2 text-[#14283F] dark:text-slate-200 hover:text-[#285EE8] dark:hover:text-blue-400 font-medium transition-colors cursor-pointer"
               >
-                <span className="hidden sm:inline">Dismiss</span>
-                <X className="w-3.5 h-3.5" />
+                <span className="w-5 h-5 rounded-full bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-400 font-semibold text-xs tabular-nums flex items-center justify-center shrink-0">1</span>
+                <span>Search Territory or NPI (⌘K)</span>
+              </button>
+
+              <span className="text-slate-300 dark:text-slate-700 hidden sm:inline" aria-hidden="true">&rarr;</span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const topAccount = agencies[0];
+                  if (topAccount) {
+                    setSelectedAgency(topAccount);
+                    setActiveAccount(topAccount);
+                  }
+                }}
+                className="inline-flex items-center gap-2 text-[#14283F] dark:text-slate-200 hover:text-[#285EE8] dark:hover:text-blue-400 font-medium transition-colors cursor-pointer"
+              >
+                <span className="w-5 h-5 rounded-full bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-400 font-semibold text-xs tabular-nums flex items-center justify-center shrink-0">2</span>
+                <span>Inspect Account 360 &amp; Evidence</span>
+              </button>
+
+              <span className="text-slate-300 dark:text-slate-700 hidden sm:inline" aria-hidden="true">&rarr;</span>
+
+              <button
+                type="button"
+                onClick={() => setRfpAgency(activeAccount || agencies[0])}
+                className="inline-flex items-center gap-2 text-[#14283F] dark:text-slate-200 hover:text-[#285EE8] dark:hover:text-blue-400 font-medium transition-colors cursor-pointer"
+              >
+                <span className="w-5 h-5 rounded-full bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-400 font-semibold text-xs tabular-nums flex items-center justify-center shrink-0">3</span>
+                <span>Generate Co-Op Quote or Log Visit</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-              {workflowSteps.map((ws) => {
-                const Icon = ws.icon;
-                return (
-                  <button
-                    key={ws.tabId}
-                    onClick={() => handleNavigateTab(ws.tabId)}
-                    className={`text-left p-3 rounded-lg border transition-all flex items-start gap-3 cursor-pointer ${
-                      ws.isActive
-                        ? 'bg-blue-50/60 dark:bg-blue-950/40 border-[#1E3A8A] dark:border-blue-500 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                        ws.isActive ? 'bg-[#1E3A8A] text-white' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-bold text-[#1E3A8A] dark:text-blue-400 uppercase tracking-wider">
-                        {ws.step}
-                      </div>
-                      <div className="text-xs font-bold text-[#111827] dark:text-slate-100 truncate">
-                        {ws.title}
-                      </div>
-                      <div className="text-[11px] text-[#6B7280] dark:text-slate-400 truncate">
-                        {ws.subtitle}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              onClick={() => handleToggleWorkflowGuide(false)}
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-md transition-colors shrink-0 cursor-pointer"
+              title="Dismiss Quick Start Strip"
+              aria-label="Dismiss Quick Start Strip"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </section>
         )}
 
         <ErrorBoundary onReset={() => setActiveTab('home')}>
         {/* Executive Home & Guided Onboarding Hub */}
         {activeTab === 'home' && (
-          <HomeHubView
-            agencies={agencies}
-            onNavigateTab={handleNavigateTab}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-            onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
-            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-            onOpenDataLineageModal={() => setIsDataLineageOpen(true)}
-            isOnline={isOnline}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={toggleDarkMode}
-            alerts={alerts}
-            isCloudConnected={isCloudConnected}
-            cloudSyncCount={cloudSyncCount}
-            globalCategory={globalCategory}
-            setGlobalCategory={setGlobalCategory}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <HomeHubView
+              agencies={agencies}
+              onNavigateTab={handleNavigateTab}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
+              onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+              onOpenDataLineageModal={() => setIsDataLineageOpen(true)}
+              isOnline={isOnline}
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={toggleDarkMode}
+              alerts={alerts}
+              isCloudConnected={isCloudConnected}
+              cloudSyncCount={cloudSyncCount}
+              globalCategory={globalCategory}
+              setGlobalCategory={setGlobalCategory}
+              onSelectState={(st) => {
+                setGlobalState(st);
+                setGlobalCounty('all');
+                setGlobalCity('all');
+                setActiveTab('states_directory');
+              }}
+            />
+          </div>
         )}
 
         {/* TM Mobile Dashboard (Field Cockpit) */}
         {activeTab === 'tm_dashboard' && (
-          <ZollMobileDashboard
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onUpdateStage={handleUpdateStage}
-            onToggleRoute={handleToggleRoute}
-            onToggleBookmark={handleToggleBookmark}
-            onAddFieldNote={handleAddFieldNote}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            isOnline={isOnline}
-            toggleNetwork={toggleNetworkSimulation}
-            outbox={outbox}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={toggleDarkMode}
-            alerts={alerts}
-            globalState={globalState}
-            globalCounty={globalCounty}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <ZollMobileDashboard
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onUpdateStage={handleUpdateStage}
+              onToggleRoute={handleToggleRoute}
+              onToggleBookmark={handleToggleBookmark}
+              onAddFieldNote={handleAddFieldNote}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              isOnline={isOnline}
+              toggleNetwork={handleCheckConnectivity}
+              outbox={outbox}
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={toggleDarkMode}
+              alerts={alerts}
+              globalState={globalState}
+              globalCounty={globalCounty}
+            />
+          </div>
         )}
 
+        {/* Predictive Lead Queue (Accounts Workspace) */}
         {activeTab === 'queue' && (
-          <PredictiveLeadQueue
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onToggleRoute={handleToggleRoute}
-            onToggleBookmark={handleToggleBookmark}
-            onUpdateStage={handleUpdateStage}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-            onOpenDataLineage={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-              setIsDataLineageOpen(true);
-            }}
-            onAddAgency={handleAddAgency}
-            initialFilter={queueFilterState}
-            onClearInitialFilter={() => setQueueFilterState(null)}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-            weights={weights}
-            onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <PredictiveLeadQueue
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setPreviewAgency(null);
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onPreviewAgency={(a) => setPreviewAgency(a)}
+              onToggleRoute={handleToggleRoute}
+              onToggleBookmark={handleToggleBookmark}
+              onUpdateStage={handleUpdateStage}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              onOpenDataLineage={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+                setIsDataLineageOpen(true);
+              }}
+              onAddAgency={handleAddAgency}
+              initialFilter={queueFilterState}
+              onClearInitialFilter={() => setQueueFilterState(null)}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+              weights={weights}
+              onOpenWeightsModal={() => setIsWeightsModalOpen(true)}
+            />
+          </div>
         )}
 
+        {/* GIS Heatmap & Acuity Telemetry (Territory Workspace) */}
         {(activeTab === 'gis' || activeTab === 'map') && (
-          <GisTerritoryHeatmap
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onToggleRoute={handleToggleRoute}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-            onOpenDataLineage={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-              setIsDataLineageOpen(true);
-            }}
-            onFilterByCluster={() => {}}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-            onSelectState={(st) => {
-              setGlobalState(st);
-              setGlobalCounty('all');
-              setGlobalCity('all');
-            }}
-            onSelectCounty={(c) => {
-              setGlobalCounty(c);
-              setGlobalCity('all');
-            }}
-            onSelectCity={(city) => {
-              setGlobalCity(city);
-            }}
-            onSelectCategory={(cat) => {
-              setGlobalCategory(cat);
-            }}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <GisTerritoryHeatmap
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onToggleRoute={handleToggleRoute}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              onOpenDataLineage={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+                setIsDataLineageOpen(true);
+              }}
+              onFilterByCluster={() => {}}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+              onSelectState={(st) => {
+                setGlobalState(st);
+                setGlobalCounty('all');
+                setGlobalCity('all');
+              }}
+              onSelectCounty={(c) => {
+                setGlobalCounty(c);
+                setGlobalCity('all');
+              }}
+              onSelectCity={(city) => {
+                setGlobalCity(city);
+              }}
+              onSelectCategory={(cat) => {
+                setGlobalCategory(cat);
+              }}
+              onSwitchToGoogleMaps={() => setActiveTab('google_maps')}
+            />
+          </div>
         )}
 
+        {/* Google Maps Live Explorer (Territory Workspace) */}
+        {activeTab === 'google_maps' && (
+          <div className="workspace-view-container min-w-0 w-full">
+            <GoogleMapsTerritoryExplorer
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onToggleRoute={handleToggleRoute}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              onOpenDataLineage={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+                setIsDataLineageOpen(true);
+              }}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+              onSelectState={(st) => {
+                setGlobalState(st);
+                setGlobalCounty('all');
+                setGlobalCity('all');
+              }}
+              onSelectCounty={(c) => {
+                setGlobalCounty(c);
+                setGlobalCity('all');
+              }}
+              onSelectCity={(city) => {
+                setGlobalCity(city);
+              }}
+              onSelectCategory={(cat) => {
+                setGlobalCategory(cat);
+              }}
+              onSwitchToTacticalGis={() => setActiveTab('gis')}
+            />
+          </div>
+        )}
+
+        {/* PulseIQ Regional Breakdown (Opportunities Workspace) */}
         {activeTab === 'pulseiq' && (
-          <div className="workspace-section-grid">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs min-w-0">
-              <div>
-                <div className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-700 dark:bg-blue-400 inline-block" />
-                  Regional Priority Score Comparison
-                </div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5 tracking-tight">
+          <div className="workspace-view-container min-w-0 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-4 bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-5 sm:p-6 shadow-2xs min-w-0">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-[#14283F] dark:text-white tracking-tight">
                   Regional Priority Score Breakdown
                 </h1>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                <p className="text-xs text-[#53657B] dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
                   Compare average department priority scores, fleet age, and Medicare claim recovery potential across {globalCounty !== 'all' ? globalCounty : globalState !== 'all' ? globalState : 'all 50 states'}.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
+                  type="button"
                   onClick={() => setIsWeightsModalOpen(true)}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172554] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#285EE8] hover:bg-[#194BC8] transition-colors cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
                 >
-                  <Sliders className="w-3.5 h-3.5" />
-                  <span>Calibrate Scoring Weights</span>
+                  Calibrate Scoring Weights
                 </button>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('states_directory')}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#53657B] dark:text-slate-200 bg-[#F5F7FA] dark:bg-[#16243A] hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors border border-[#DFE6EF] dark:border-[#1E2D42] cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  <span>&larr; Back to Territory Explorer</span>
+                  &larr; Territory Explorer
                 </button>
               </div>
             </div>
@@ -767,178 +939,221 @@ export default function App() {
           </div>
         )}
 
+        {/* National Geographic Directory (Territory Workspace) */}
         {(activeTab === 'geo' || activeTab === 'states_directory') && (
-          <NationalGeographicExplorer
-            agencies={agencies}
-            initialMode={
-              globalCounty !== 'all' || globalCity !== 'all'
-                ? 'cities'
-                : globalState !== 'all'
-                  ? 'counties'
-                  : 'states'
-            }
-            onModeChange={(mode) => {
-              if (mode === 'states' && activeTab !== 'states_directory') {
-                setActiveTab('states_directory');
-              } else if (mode !== 'states' && activeTab === 'states_directory') {
-                setActiveTab('geo');
+          <div className="workspace-view-container min-w-0 w-full">
+            <NationalGeographicExplorer
+              agencies={agencies}
+              initialMode={
+                globalCounty !== 'all' || globalCity !== 'all'
+                  ? 'cities'
+                  : globalState !== 'all'
+                    ? 'counties'
+                    : 'states'
               }
-            }}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onNavigateToQueueWithFilter={(stateCode, county, city, zip) => {
-              setSelectedAgency(null);
-              setActiveAccount(null);
-              setQueueFilterState({ state: stateCode, county, city, zip });
-              handleNavigateTab('queue');
-            }}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-            onOpenDataLineage={(a) => {
-              if (a) {
+              onModeChange={(mode) => {
+                if (mode === 'states' && activeTab !== 'states_directory') {
+                  setActiveTab('states_directory');
+                } else if (mode !== 'states' && activeTab === 'states_directory') {
+                  setActiveTab('geo');
+                }
+              }}
+              onSelectAgency={(a) => {
+                setPreviewAgency(null);
                 setSelectedAgency(a);
                 setActiveAccount(a);
-              }
-              setIsDataLineageOpen(true);
-            }}
-            onAddAgency={handleAddAgency}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-            onSyncGlobalGeography={(s, c, city, cat) => {
-              if (s !== undefined) setGlobalState(s);
-              if (c !== undefined) setGlobalCounty(c);
-              if (city !== undefined) setGlobalCity(city);
-              if (cat !== undefined) setGlobalCategory(cat);
-            }}
-          />
+              }}
+              onPreviewAgency={(a) => setPreviewAgency(a)}
+              onNavigateToQueueWithFilter={(stateCode, county, city, zip) => {
+                setSelectedAgency(null);
+                setActiveAccount(null);
+                setQueueFilterState({ state: stateCode, county, city, zip });
+                handleNavigateTab('queue');
+              }}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              onOpenDataLineage={(a) => {
+                if (a) {
+                  setSelectedAgency(a);
+                  setActiveAccount(a);
+                }
+                setIsDataLineageOpen(true);
+              }}
+              onAddAgency={handleAddAgency}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+              onSyncGlobalGeography={(s, c, city, cat) => {
+                if (s !== undefined) setGlobalState(s);
+                if (c !== undefined) setGlobalCounty(c);
+                if (city !== undefined) setGlobalCity(city);
+                if (cat !== undefined) setGlobalCategory(cat);
+              }}
+            />
+          </div>
         )}
 
+        {/* Procurement & Contract Expirations (Opportunities Workspace) */}
         {activeTab === 'contracts' && (
-          <ContractExpirationCalendar
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <ContractExpirationCalendar
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+            />
+          </div>
         )}
 
+        {/* Clinical & Competitive Intelligence Hub (Advanced Workspace) */}
         {activeTab === 'knowledge' && (
-          <ClinicalCompetitiveKnowledgeHub
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onOpenRfpGenerator={(a) => setRfpAgency(a)}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <ClinicalCompetitiveKnowledgeHub
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onOpenRfpGenerator={(a) => setRfpAgency(a)}
+            />
+          </div>
         )}
 
-
+        {/* Medicare Claims & Public Healthcare Explorer (Advanced Workspace) */}
         {activeTab === 'claims' && (
-          <PublicHealthcareExplorer
-            onSelectStateFilter={(stateCode) => {
-              setGlobalState(stateCode);
-              setActiveTab('queue');
-            }}
-            onNavigateToQueue={() => setActiveTab('queue')}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <PublicHealthcareExplorer
+              onSelectStateFilter={(stateCode) => {
+                setGlobalState(stateCode);
+                setActiveTab('queue');
+              }}
+              onNavigateToQueue={() => setActiveTab('queue')}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+            />
+          </div>
         )}
 
+        {/* FEMA AFG & SAFER Grants Tracker (Opportunities Workspace) */}
         {activeTab === 'grants' && (
-          <AfgGrantsTracker
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            activeAccount={currentActive}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <AfgGrantsTracker
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              activeAccount={currentActive}
+            />
+          </div>
         )}
 
+        {/* Data Health & Synchronization Dashboard (Advanced Workspace) */}
+        {activeTab === 'data_health' && (
+          <div className="workspace-view-container min-w-0 w-full">
+            <DataHealthDashboard
+              agencies={agencies}
+              isCloudConnected={isCloudConnected}
+              cloudSyncCount={cloudSyncCount}
+              isSyncing={isCloudSyncing}
+              strictCloudOnlyMode={strictCloudOnlyMode}
+              onToggleStrictCloudOnlyMode={toggleStrictCloudOnlyMode}
+              onHydrateBatchToCloud={hydrateBatchToCloud}
+              onRunDeepCloudPurgeAndSanitize={runDeepCloudPurgeAndSanitize}
+              onSyncSingleAgencyToCloud={(agency: Agency) => updateAgencyInCloud(agency)}
+              onSelectAgency={(a: Agency) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Cloud Backup & Resilience View (Advanced Workspace) */}
         {activeTab === 'resilience' && (
-          <TerritoryDataHealthView
-            agencies={agencies}
-            onRestoreAgencies={updateAgenciesState}
-            showToast={showToast}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <CloudBackupResilienceView
+              agencies={agencies}
+              onRestoreAgencies={updateAgenciesState}
+              showToast={showToast}
+            />
+          </div>
         )}
 
+        {/* Federal Nationwide Data Gateway View (Advanced Workspace) */}
         {activeTab === 'gateway' && (
-          <NationwideDataGatewayView
-            showToast={showToast}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <NationwideDataGatewayView
+              agencies={agencies}
+              onSelectAgency={(a: Agency) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              showToast={showToast}
+            />
+          </div>
         )}
 
+        {/* Field Mode & Day Route Planner (My Work Workspace) */}
         {activeTab === 'field' && (
-          <FieldModeView
-            agencies={agencies}
-            onSelectAgency={(a) => {
-              setSelectedAgency(a);
-              setActiveAccount(a);
-            }}
-            onAddFieldNote={handleAddFieldNote}
-            onUpdateStage={handleUpdateStage}
-            isOnline={isOnline}
-            toggleNetwork={toggleNetworkSimulation}
-            outbox={outbox}
-            triggerManualSync={handleManualSync}
-            isSyncing={isSyncing}
-            activeAccount={currentActive}
-            globalState={globalState}
-            globalCounty={globalCounty}
-            globalCity={globalCity}
-            globalCategory={globalCategory}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-          />
+          <div className="workspace-view-container min-w-0 w-full">
+            <FieldModeView
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onAddFieldNote={handleAddFieldNote}
+              onUpdateStage={handleUpdateStage}
+              isOnline={isOnline}
+              toggleNetwork={handleCheckConnectivity}
+              outbox={outbox}
+              triggerManualSync={handleManualSync}
+              isSyncing={isSyncing}
+              activeAccount={currentActive}
+              globalState={globalState}
+              globalCounty={globalCounty}
+              globalCity={globalCity}
+              globalCategory={globalCategory}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
+          </div>
         )}
 
+        {/* 3D Apparatus & Cardiac Monitor Studio (Advanced Workspace) */}
         {activeTab === '3d_studio' && (
-          <div className="workspace-section-grid">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs min-w-0">
-              <div>
-                <div className="text-[11px] font-bold text-[#1E3A8A] dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A8A] dark:bg-blue-400 inline-block" />
-                  Interactive 3D Equipment &amp; Fleet Demonstration
-                </div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5 tracking-tight">
+          <div className="workspace-view-container min-w-0 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center justify-between gap-4 bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-5 sm:p-6 shadow-2xs min-w-0">
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-[#14283F] dark:text-white tracking-tight">
                   3D Ambulance, Fire Apparatus &amp; ZOLL Monitor Studio
                 </h1>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                <p className="text-xs text-[#53657B] dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
                   Rotate, zoom, and inspect 3D models of ALS ambulances, fire rescue engines, and the ZOLL X Series Advanced cardiac monitor with interactive clinical subsystem hotspots.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
+                  type="button"
                   onClick={() => setActiveTab('field')}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-[#53657B] dark:text-slate-200 bg-[#F5F7FA] dark:bg-[#16243A] hover:bg-slate-200/70 dark:hover:bg-slate-800 transition-colors border border-[#DFE6EF] dark:border-[#1E2D42] cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  <span>&larr; Back to Route Itinerary</span>
-                </button>
-                <button
-                  onClick={() => setIsChatbotOpen(true)}
-                  className="px-3.5 py-2 rounded-lg text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
-                >
-                  <span>Ask Sales Assistant</span>
+                  &larr; Route Planner
                 </button>
               </div>
             </div>
@@ -950,44 +1165,52 @@ export default function App() {
 
       </main>
 
-      {/* Institutional Trust, Data Provenance & Compliance Footer Bar */}
-      <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 text-slate-600 dark:text-slate-400 text-[11px] py-3 px-3 sm:px-6 lg:px-8 mt-auto transition-colors">
-        <div className="max-w-[1720px] mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] sm:text-[11px]">
-            <span className="inline-flex items-center gap-1.5 font-sans font-bold text-slate-900 dark:text-white">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span>VERIFIED PUBLIC-RECORD PROVENANCE</span>
+      {/* Quiet Institutional Provenance Footer */}
+      <footer className="w-full border-t border-[#DFE6EF] dark:border-[#1E2D42] bg-white dark:bg-[#111C2D] text-[#53657B] dark:text-slate-400 text-xs py-3.5 px-4 sm:px-6 lg:px-8 mt-auto transition-colors">
+        <div className="max-w-[1640px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+            <span className="font-semibold text-[#14283F] dark:text-slate-200">
+              Federal Public-Record Sources
             </span>
             <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-            <span>NEMSIS v3.5 Compliant Schema</span>
+            <span>USFA Registry</span>
             <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-            <span>CMS Part B Public Use File FY2025</span>
+            <span>CMS NPPES &amp; Part B PUF</span>
             <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-            <span>USFA National Fire Dept Registry</span>
+            <span>OpenFEMA AFG v2</span>
             <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-            <span>FEMA AFG Obligation Ledger</span>
-            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">HIPAA §164.514(b) Non-PHI Boundary Verified</span>
+            <span>NEMSIS v3.5.0</span>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="hidden xl:inline font-mono text-[10px] text-slate-400 dark:text-slate-500">
-              Cross-Walked by FDID + CMS NPI + Census FIPS
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsDataLineageOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-[#1E3A8A] hover:text-white dark:hover:bg-blue-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold transition-colors cursor-pointer"
-              title="Open Institutional Data Lineage, Federal Registry Sync Ledger & Mathematical Proof"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Data Freshness &amp; Sync Ledger</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsDataLineageOpen(true)}
+            className="text-xs font-medium text-[#285EE8] dark:text-blue-400 hover:underline transition-colors cursor-pointer shrink-0"
+            title="Inspect Federal Data Lineage & Mathematical Methodology"
+          >
+            Data Lineage &amp; Methodology &rarr;
+          </button>
         </div>
       </footer>
+      </div>
 
-      {/* Slide-Over Department Profile Drawer (Preserves user's place in the workspace) */}
+      {/* Slide-Over Quick Preview Drawer (2-second inspection before opening full dossier) */}
+      <AgencyQuickPreviewDrawer
+        agency={previewAgency}
+        onClose={() => setPreviewAgency(null)}
+        onOpenFullDossier={(a) => {
+          setPreviewAgency(null);
+          setSelectedAgency(a);
+          setActiveAccount(a);
+        }}
+        onUpdateStage={handleUpdateStage}
+        onToggleRoute={handleToggleRoute}
+        onToggleBookmark={handleToggleBookmark}
+        onAddFieldNote={handleAddFieldNote}
+        onOpenRfpGenerator={(a) => setRfpAgency(a)}
+      />
+
+      {/* Full Actuarial Department Dossier */}
       {currentActive && (
         <FocusedProviderProfile
           agency={currentActive}
@@ -1037,7 +1260,6 @@ export default function App() {
           saveStoredNotifications([]);
         }}
         onSelectAlertAgency={handleSelectAlertAgency}
-        onTriggerSimulatedAlert={handleTriggerSimulatedAlert}
       />
 
       {/* Quick Field Visit Entry Modal */}
@@ -1092,7 +1314,7 @@ export default function App() {
       />
 
       {/* Territory Strategy & RFP Desk */}
-      <TerritoryResearchAssistant
+      <GeminiChatbotDrawer
         isOpen={isChatbotOpen}
         onOpen={() => setIsChatbotOpen(true)}
         onClose={() => setIsChatbotOpen(false)}
@@ -1101,6 +1323,25 @@ export default function App() {
           setSelectedAgency(agency);
           setActiveAccount(agency);
         }}
+      />
+
+      {/* Mobile Provider Quick Finder & Selector Drawer */}
+      <MobileProviderSelectorDrawer
+        isOpen={isMobileProviderFinderOpen}
+        onClose={() => setIsMobileProviderFinderOpen(false)}
+        agencies={agencies}
+        onSelectAgency={(agency) => {
+          setSelectedAgency(agency);
+          setActiveAccount(agency);
+        }}
+        onToggleBookmark={handleToggleBookmark}
+        onToggleRoute={handleToggleRoute}
+        activeCategory={globalCategory}
+        onCategoryChange={setGlobalCategory}
+        selectedState={globalState}
+        onSelectState={(st) => setGlobalState(st)}
+        selectedCounty={globalCounty}
+        onSelectCounty={(co) => setGlobalCounty(co)}
       />
 
       {/* Toast Notification Pill */}

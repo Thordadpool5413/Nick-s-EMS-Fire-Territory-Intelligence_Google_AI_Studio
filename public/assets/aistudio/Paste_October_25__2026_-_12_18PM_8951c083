@@ -1,0 +1,876 @@
+# PRECISION INTELLIGENCE
+## Complete Application Redesign and Safe Frontend Transformation
+### Nick's EMS & Fire Territory Intelligence
+
+## 1. YOUR ASSIGNMENT
+
+Act as a principal product designer, staff-level React engineer, UX architect, design systems specialist, and frontend quality engineer.
+
+Transform the entire existing Nick's EMS & Fire Territory Intelligence application into a premium, enterprise-grade intelligence workspace.
+
+**This is a complete application-wide frontend redesign, not a backend rebuild or a new application.**
+
+The completed experience must combine:
+
+- **The precision of a high-end financial intelligence terminal:** Sophisticated information hierarchy, efficient data presentation, purposeful tables, accurate metrics, and rapid access to important findings.
+- **The clarity of an exceptional Apple application:** Restraint, beautiful typography, thoughtful spacing, intuitive navigation, predictable behavior, and polished responsive design.
+- **The practical usefulness of an elite sales command center:** Clear priorities, relevant account intelligence, credible opportunities, effective research tools, and obvious next actions.
+
+The goal is not to make the existing dashboard prettier.
+
+**The goal is to fundamentally improve how the entire application looks, feels, organizes information, and helps users make decisions.**
+
+Work directly in the existing source code.
+
+Implement actual changes.
+
+Preserve working functionality.
+
+Validate each implementation milestone.
+
+Do not declare the transformation complete until every accessible frontend workspace has been addressed.
+
+---
+
+# 2. NON-NEGOTIABLE EXECUTION PRIORITIES
+
+Apply these priorities in order.
+
+**P0: Application integrity**
+
+Never sacrifice working authentication, account identities, saved user information, source relationships, or backend integrations for visual improvements.
+
+**P1: Complete application coverage**
+
+Every reachable interface, including specialist tools, mobile screens, modals, maps, and exports, is within scope.
+
+**P2: Exceptional product design**
+
+Every redesigned interface must embody the Precision Intelligence design philosophy.
+
+**P3: Functional validation**
+
+Changes must be tested. Compilation alone is not sufficient.
+
+**P4: Controlled release**
+
+Changes remain in an isolated development environment until explicitly approved for production integration.
+
+If two requirements conflict, protect data and existing functionality first.
+
+---
+
+# 3. IDENTIFY THE EXACT PROJECT AND PROTECT IT
+
+The source repository is:
+
+`Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio`
+
+The separately hosted application is:
+
+`ems-territory-intelligence-pw2fyb.v2.appdeploy.ai`
+
+These may contain materially different implementations.
+
+Verify the actual repository, branch, source files, dependencies, and application version before editing.
+
+The existing project has used React, TypeScript, Vite, Tailwind, and AppDeploy integrations. Inspect the current configuration rather than assuming versions or capabilities.
+
+### Development isolation
+
+Perform this redesign in an isolated working copy, development branch, or separate project.
+
+Do not overwrite the production application.
+
+Do not push changes to the production/default GitHub branch, merge into production, change deployment configuration, or publish the application without explicit authorization.
+
+If branch isolation is unavailable inside AI Studio, keep changes within its isolated project and provide an export or reviewable diff. Do not silently synchronize to the production branch.
+
+### Baseline protection
+
+Before major changes:
+
+1. Record the source revision or current file state.
+2. Preserve a recoverable copy or checkpoint.
+3. Inspect existing build scripts and record baseline results.
+4. Identify current route identifiers and component relationships.
+5. Identify authentication, persistence, and backend API boundaries.
+6. Identify existing source and account identity contracts.
+7. Record known failures or unavailable integrations before making changes.
+
+Create:
+
+`docs/PRECISION_REDESIGN_PROGRESS.md`
+
+Use this file to track actual implementation progress and any outstanding problems.
+
+Do not spend the entire execution producing an inventory. Begin modifying the frontend after baseline verification.
+
+---
+
+# 4. STRICT FUNCTIONAL PROTECTION BOUNDARIES
+
+This redesign is primarily a frontend presentation and interaction project.
+
+### Protected application layers
+
+Do not rewrite, replace, or materially change the following without an independently demonstrated compatibility need and appropriate validation:
+
+- `backend/**`
+- `src/data/**`
+- `src/services/**`
+- `src/hooks/useAgencyRecords.ts`
+- `src/utils/syncStore.ts`
+- Authentication configuration
+- Backend API contracts
+- Data storage schemas
+- Provider identity generation or matching logic
+- Source ingestion and reconciliation logic
+- Environment and deployment configuration
+
+Preserve existing authentication and storage integrations, including `@appdeploy/client` and platform-specific backend services.
+
+Do not introduce Firebase, Firestore, Google Maps, or additional Google-dependent runtime services.
+
+Do not add unnecessary production dependencies.
+
+If a preview cannot execute because an AppDeploy-specific SDK is unavailable, report that limitation. Do not replace the SDK with fake authentication or fake data and present the preview as production-ready.
+
+### Preserve application invariants
+
+The following must remain true:
+
+- An agency's canonical identity stays unchanged.
+- Source records remain associated with the correct organization.
+- A fire department is not automatically merged with a similarly named EMS billing organization.
+- State, county, city, and ZIP relationships remain correct.
+- Existing saved notes and user-created records remain intact.
+- Authentication boundaries remain enforced.
+- Existing user-specific data remains separated by account.
+- Working external API calls retain their correct purpose and behavior.
+- Original research and source records are not destroyed.
+- Existing scoring calculations remain available, even if their presentation changes.
+- Existing routes and tools do not disappear without an equivalent accessible destination.
+
+Changes to navigation state, selected accounts, filters, or component mounting require explicit regression tests.
+
+**Do not rebuild business logic to solve a design problem.**
+
+---
+
+# 5. THE PRECISION INTELLIGENCE DESIGN SYSTEM
+
+Create one coherent visual system across the entire application.
+
+## Visual identity
+
+The interface must feel:
+
+- Confident
+- Precise
+- Mature
+- Calm
+- Sophisticated
+- Highly functional
+- Beautifully organized
+- Deliberately designed
+
+Use restrained color and strong typography.
+
+### Color foundation
+
+| Purpose | Value |
+|---|---|
+| Primary navigation | `#0B1728` |
+| Secondary navy | `#172D49` |
+| Primary action | `#285EE8` |
+| Primary action hover | `#194BC8` |
+| Workspace canvas | `#F5F7FA` |
+| Content surface | `#FFFFFF` |
+| Primary typography | `#14283F` |
+| Secondary typography | `#53657B` |
+| Dividers | `#DFE6EF` |
+
+Use restrained semantic colors for verified findings, warnings, conflicts, and errors.
+
+Support consistent light and dark themes using semantic design tokens.
+
+### Typography
+
+Establish consistent sizes and spacing.
+
+- Page title: approximately 30–34px
+- Section heading: 20–24px
+- Account heading: 16–18px
+- Standard body: 14–16px
+- Supporting information: 13–14px
+- Metadata: approximately 12px
+
+Use professional sans-serif typography.
+
+Use tabular numerals for metrics, financial values, and dates.
+
+Avoid excessive uppercase text and decorative miniature labels.
+
+### Layout
+
+Create a shared desktop layout with:
+
+- Approximately 248px primary sidebar
+- Approximately 64px stable top toolbar
+- Disciplined 12-column content grid
+- Appropriate content maximum width
+- Consistent 4px/8px spacing system
+- Predictable panel, table, and control spacing
+- Purposeful contextual drawers
+
+Adapt intelligently to mobile and tablet sizes.
+
+### Visual discipline
+
+Do not rely on oversized KPI cards, repetitive rectangular tiles, excessive gradients, glowing components, unnecessary shadows, decorative charts, or multiple competing primary colors.
+
+Use information rows, structured tables, meaningful timelines, carefully selected emphasis, and subtle visual separators.
+
+**The interface should communicate importance through hierarchy, not decoration.**
+
+---
+
+# 6. THE APPLICATION SHELL
+
+Replace fragmented navigation with one unified application structure.
+
+### Primary workspaces
+
+**Home**
+
+Daily priorities and important intelligence.
+
+**Accounts**
+
+Provider discovery, agency profiles, and Account 360.
+
+**Opportunities**
+
+Procurement, contracts, grants, equipment opportunities, and financial research.
+
+**Territory**
+
+Geographic discovery, state/county/city/ZIP exploration, and maps.
+
+**My Work**
+
+Saved accounts, visits, notes, follow-ups, and field activity.
+
+Include an **Advanced Intelligence** area for specialist tools.
+
+### Navigation implementation
+
+Refactor the existing navigation without breaking existing route identifiers or callbacks.
+
+Preserve all current functional destinations.
+
+Use a clean desktop sidebar with the existing product logo.
+
+Use one top toolbar with current workspace identification, global search, and relevant account controls.
+
+Do not stack multiple navigation systems across the top of the application.
+
+Provide professional mobile navigation.
+
+### Critical state requirement
+
+The existing application may clear selected accounts or geography when certain navigation functions execute.
+
+Inspect those transitions carefully.
+
+Ensure the redesigned navigation preserves relevant state when moving between associated workflows.
+
+Do not introduce unexpected resets, lost filters, lost draft notes, or incorrect selected agencies.
+
+Implement compatibility mapping between existing routes and new navigation destinations.
+
+Do not blindly rename every internal route.
+
+---
+
+# 7. HOME: DAILY INTELLIGENCE TERMINAL
+
+Redesign the homepage as a useful daily working environment.
+
+### Desktop layout
+
+**Top section**
+
+Page title:
+
+"Your Territory. Your Next Move."
+
+Below it, a prominent universal agency search.
+
+**Primary content, approximately eight columns**
+
+"What Needs Your Attention"
+
+Display meaningful, evidence-supported findings and follow-up tasks as concise, prioritized rows.
+
+Each row should communicate:
+
+- Agency
+- Important finding or action
+- Why it matters
+- Relevant date
+- Evidence status
+- Next step
+
+**Secondary content, approximately four columns**
+
+"My Active Work"
+
+Show supported saved accounts, upcoming follow-ups, recent work, and research tasks.
+
+**Lower section**
+
+A restrained territory overview and recent source activity.
+
+### Design behavior
+
+Do not fill the homepage with giant KPI cards.
+
+Do not show unsupported nationwide estimates as verified performance.
+
+Do not force users through a tutorial whenever they return.
+
+If there are no established opportunities, display useful qualification tasks rather than inventing impressive numbers.
+
+---
+
+# 8. ACCOUNTS: INTELLIGENT DISCOVERY
+
+Create a premium provider-search experience.
+
+Preserve the existing geography workflow:
+
+**State → County → City → ZIP → Individual Agency**
+
+Also support agency-name and official-identifier searches where available.
+
+### Interface
+
+Use a clear geographic filter area and a structured provider results list.
+
+Every agency row should prioritize:
+
+- Organization name
+- Provider type
+- Geography
+- Available official identity
+- Relevant supported findings
+- Open Account
+
+Avoid lengthy cards full of technical prose.
+
+Provide optional detail inspection without leaving the results.
+
+### Functionality
+
+Keep cascading filters correct.
+
+Preserve relevant search state.
+
+Support loading, empty, and error states.
+
+Use existing source identities.
+
+Do not merge unrelated agencies.
+
+Returning from a provider profile must preserve the previous search context where appropriate.
+
+---
+
+# 9. ACCOUNT 360: THE SIGNATURE EXPERIENCE
+
+Redesign the entire individual agency profile.
+
+This is the most important screen in the application.
+
+### Above the fold
+
+Prioritize:
+
+**1. Agency identity**
+
+Name, location, provider type, official identifiers, and appropriate source status.
+
+**2. Recommended Next Action**
+
+One prominent action based on genuine evidence or a clearly identified research gap.
+
+**3. Important Account Intelligence**
+
+Up to three meaningful findings, using:
+
+Fact → Why It Matters → Next Action.
+
+Do not force three findings if the evidence does not support them.
+
+### Detail architecture
+
+Create consistent topic navigation for:
+
+- Overview
+- Equipment & Technology
+- Purchasing & Funding
+- Decision Makers
+- Operations & Clinical
+- Medicare & Financial
+- Evidence & Sources
+
+### Equipment
+
+Use structured inventory and lifecycle information.
+
+Distinguish reported equipment, historic purchases, approved purchases, proposed purchases, and unknown current inventory.
+
+### Purchasing
+
+Use source-backed timelines and records for budgets, proposals, solicitations, awards, purchases, and contracts.
+
+### Decision makers
+
+Present documented roles and professional contacts without inventing purchasing authority.
+
+### Clinical and operations
+
+Use appropriately attributed metrics, reporting periods, cohorts, and definitions.
+
+### Medicare and financial
+
+Distinguish exact provider records from regional context and financial models.
+
+### Evidence
+
+Use a contextual source-inspection drawer showing publisher, record owner, source URL, reporting date, and verification classification.
+
+### Actions
+
+Preserve:
+
+- Save account
+- Add notes
+- Prepare visit
+- Record activity
+- Follow up
+- View source
+- Return to discovery
+
+Do not remove working account functionality simply because it does not fit the initial visual composition.
+
+---
+
+# 10. OPPORTUNITIES, TERRITORY, AND MY WORK
+
+## Opportunities
+
+Create a professional research and opportunity management interface using structured tables, filters, timelines, and evidence details.
+
+Include available scoring, equipment, procurement, contract, grant, clinical, and financial intelligence.
+
+Distinguish verified activity from modeled opportunities.
+
+## Territory
+
+Build a coordinated geography and provider discovery experience.
+
+Use a filter/results area and an appropriate map or geographic context panel.
+
+Make it easy to select a state, county, city, or ZIP and open the correct agency.
+
+Do not allow the map to dominate the workflow unnecessarily.
+
+## My Work
+
+Unify existing saved-account, field-visit, route, notes, bookmark, and follow-up experiences.
+
+Do not create a second persistence system.
+
+Use existing working functionality and data contracts.
+
+Make current work easy to resume.
+
+---
+
+# 11. EVERY OTHER FRONTEND FEATURE IS INCLUDED
+
+The redesign must also cover the actual implementations of:
+
+- Territory manager cockpit
+- Predictive lead queue
+- PulseIQ scoring and calibration
+- Regional comparison charts
+- EMS/fire mapping
+- Contract expiration calendar
+- FEMA grants tracker
+- Medicare and public healthcare explorer
+- Clinical and competitive intelligence
+- TCO calculators
+- Quality scorecards
+- Clinical outcome visualizations
+- Field mode and visit planning
+- Quick Visit modal
+- Mobile navigation
+- 3D apparatus studio
+- Research assistant
+- Data lineage
+- Nationwide source gateway
+- Data health dashboards
+- Command palette
+- Notifications
+- Role controls
+- Error boundaries
+- Source drawers
+- All forms, menus, popups, and dialogs
+- Executive briefings and other print/PDF outputs
+
+Use the actual component tree to identify any additional interfaces.
+
+Apply the same design system to all of them.
+
+**A shared color update alone does not count as a redesigned specialist module.**
+
+Every reachable interface must receive an actual UX and visual review.
+
+---
+
+# 12. DATA TRUST AND PRESENTATION
+
+Preserve source integrity.
+
+Distinguish:
+
+- Verified
+- Reported
+- Calculated
+- Estimated
+- Unknown
+- Conflicting
+
+Do not show synthesized account characteristics as verified facts.
+
+Do not invent new data to fill empty components.
+
+Do not use a verified NPI to imply that an organization's equipment, purchasing authority, contract, or clinical outcomes are verified.
+
+Do not delete underlying records or financial models merely because their current presentation is misleading.
+
+Instead, show models as labeled scenarios, separate from source-backed facts.
+
+Preserve access to detailed research and calculations.
+
+This assignment does not authorize rebuilding provider ingestion or modifying source ownership rules.
+
+---
+
+# 13. HOW YOU MUST IMPLEMENT THE REDESIGN
+
+Work in controlled milestones.
+
+### Milestone A: Baseline and design foundation
+
+Inspect all routes and components.
+
+Record baseline build results.
+
+Implement shared design tokens, typography, reusable controls, and layout primitives.
+
+Do not rewrite business logic.
+
+Run the available build and type checks.
+
+### Milestone B: Application shell
+
+Redesign the sidebar, toolbar, navigation, and responsive shell.
+
+Preserve all original routes.
+
+Test navigation and state preservation.
+
+### Milestone C: Home and Accounts
+
+Implement the daily workspace, geographic filters, provider results, and global search.
+
+Test actual account discovery and selection.
+
+### Milestone D: Account 360
+
+Implement the complete signature account intelligence experience.
+
+Test source attribution, selected agency identity, and saved-work controls.
+
+### Milestone E: Opportunities and Territory
+
+Redesign opportunity, procurement, grants, contracts, scoring, GIS, maps, and geographic analysis.
+
+Test original controls and data interactions.
+
+### Milestone F: My Work and specialist tools
+
+Redesign field operations, clinical research, Medicare/financial tools, research assistant, 3D studio, and data operations.
+
+Preserve current functionality.
+
+### Milestone G: Supporting interfaces and exports
+
+Redesign every modal, drawer, menu, form, notification, error state, loading state, print layout, and PDF export.
+
+### Milestone H: Full regression testing
+
+Review all reachable routes and components.
+
+Fix visual and functional regressions.
+
+Record unverified integration behavior honestly.
+
+### Milestone execution rules
+
+After each milestone:
+
+1. Record the files actually changed.
+2. Run available compilation and type checks.
+3. Exercise affected workflows in the preview where possible.
+4. Inspect the rendered layout where the environment supports it.
+5. Correct new defects before proceeding.
+6. Update `docs/PRECISION_REDESIGN_PROGRESS.md`.
+7. Preserve a recoverable checkpoint.
+
+Do not make a single massive rewrite of `App.tsx` and every major component simultaneously.
+
+Favor controlled refactoring and compatible component composition.
+
+Do not reset the project, regenerate large source files unnecessarily, or replace production dependencies to resolve preview problems.
+
+If a milestone introduces a serious regression, repair or revert that milestone before proceeding.
+
+---
+
+# 14. TESTING IS A RELEASE REQUIREMENT
+
+The repository may include build workflows using temporary AppDeploy SDK shims.
+
+Such checks can validate imports, types, and compilation, but they do not prove that actual AppDeploy authentication, database persistence, or API interactions function.
+
+**Never classify a shim-based build as a passed production integration test.**
+
+### Required checks
+
+Run available commands such as:
+
+`npm run lint`
+
+`npm run build`
+
+Record whether they pass or fail, including baseline failures unrelated to the redesign.
+
+### Functional regression scenarios
+
+Validate the following in a compatible environment:
+
+**Provider discovery**
+
+State → County → City/ZIP → EMS/fire provider → Correct individual profile.
+
+**Identity integrity**
+
+The agency profile retains the correct identifier and supporting records.
+
+**Navigation**
+
+Every original route remains reachable through the new navigation structure.
+
+**Territory preservation**
+
+Users do not unexpectedly lose selected geography or current account context.
+
+**Account intelligence**
+
+Equipment, purchasing, clinical, financial, and source information display correctly.
+
+**Account actions**
+
+Bookmarks, stages, notes, and follow-ups use the existing persistence mechanism.
+
+**Authenticated persistence**
+
+Use a real nonproduction AppDeploy test account where available.
+
+Save a note, reload, and verify the note persists under the correct user and agency.
+
+Verify that a second test account cannot view the first account's private information.
+
+**Source failure**
+
+An unavailable government API does not crash the entire workspace or erase already retrieved records.
+
+**Specialist tools**
+
+Existing charts, maps, scoring controls, financial models, route tools, and 3D controls remain usable.
+
+**Exports**
+
+PDFs and print views are readable, correctly formatted, and retain necessary source qualifications.
+
+**Responsive design**
+
+Test 320px, 390px, 768px, 1024px, 1440px, and 1920px layouts.
+
+Check short desktop viewport heights.
+
+**Accessibility**
+
+Test keyboard navigation, focus visibility, semantic controls, dialog behavior, and reduced-motion preferences.
+
+### Reporting
+
+Every test must be marked:
+
+- Passed
+- Failed
+- Blocked
+- Not tested
+
+Never invent a passing result.
+
+If a real AppDeploy backend cannot be accessed from AI Studio, continue frontend work but mark authenticated integration testing blocked.
+
+Do not release based only on a successful AI Studio preview.
+
+---
+
+# 15. PRODUCTION RELEASE PROTECTION
+
+The redesigned version must not automatically replace the live application.
+
+Before any production integration:
+
+- Preserve the current working source revision.
+- Preserve existing data and authentication configuration.
+- Verify the new source in an isolated environment.
+- Confirm all required dependencies are available.
+- Run functional and visual regression checks.
+- Verify account identity matching.
+- Verify authenticated persistence with a test account.
+- Verify critical external-source behavior.
+- Confirm that the redesign does not remove existing functionality.
+- Confirm a clear rollback path to the previous known-good deployment.
+
+If a critical check fails, do not promote the redesigned version.
+
+If production deployment procedures are unavailable, provide the completed source and identify the remaining release requirements.
+
+**Do not push, merge, deploy, or overwrite the current production application without explicit authorization.**
+
+---
+
+# 16. EXACT DEFINITION OF COMPLETE
+
+The redesign is complete only when:
+
+**Visual system**
+
+The entire application has one cohesive professional design language.
+
+**Navigation**
+
+The new application shell works across desktop, tablet, and mobile, and all original destinations remain accessible.
+
+**Information hierarchy**
+
+Major screens lead with what matters, why it matters, and the next meaningful action.
+
+**Account 360**
+
+The individual agency experience is visibly and functionally transformed.
+
+**Application coverage**
+
+Every reachable primary route, specialist workspace, modal, map, chart, and user-facing secondary component has been reviewed and addressed.
+
+**Functionality**
+
+Existing working behavior is preserved or any outstanding regression is explicitly identified.
+
+**Data integrity**
+
+Agency identities, source relationships, saved records, and authentication are protected.
+
+**Validation**
+
+Available build and functional tests have run, with accurate results.
+
+**Deployment safety**
+
+The existing production application remains unchanged until reviewed and explicitly approved.
+
+---
+
+# 17. REQUIRED COMPLETION REPORT
+
+When reporting progress, be concise and factual.
+
+Provide:
+
+**Implemented**
+
+Exact components and routes modified.
+
+**Verified**
+
+Actual build, functional, and visual checks performed.
+
+**Protected**
+
+Authentication, saved data, account identity, APIs, and existing working functionality.
+
+**Remaining**
+
+Incomplete screens, blocked tests, and outstanding defects.
+
+**Current location of changes**
+
+AI Studio workspace, isolated GitHub revision, test deployment, or production deployment.
+
+**Next implementation step**
+
+The first unfinished milestone, if any.
+
+Do not say "the entire app is redesigned" unless every required interface has been addressed.
+
+Do not claim successful integration when only a code preview has passed.
+
+Do not restart the project when continuing work. Read `docs/PRECISION_REDESIGN_PROGRESS.md` and resume from the last verified checkpoint.
+
+---
+
+# 18. EXECUTE THE TRANSFORMATION
+
+The objective remains:
+
+**The restraint and precision of a high-end financial intelligence terminal.**
+
+**The clarity, elegance, and craftsmanship of an exceptional Apple application.**
+
+**The operational intelligence and practicality of a premium sales command center.**
+
+Every major screen must reflect these qualities.
+
+This is a complete product transformation, not a cosmetic update.
+
+Implement actual frontend changes across the entire application.
+
+Maintain functional integrity.
+
+Validate incrementally.
+
+Keep production protected.
+
+**Start with the existing source, implement the unified design foundation and application shell, then proceed through every workspace and specialist interface until the full redesign is completed and verified.**

@@ -138,16 +138,16 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)] grid grid-cols-1 gap-5 min-w-0">
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] items-start xl:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4 min-w-0">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#1E3A8A] dark:text-blue-400">
-              <span>Clinical, Regulatory &amp; Financial Reference Center</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono text-slate-500 dark:text-slate-400">FDA MAUDE · CMS HCPCS · Sourcewell / NPPGov</span>
+            <div className="flex items-center gap-2 text-xs font-medium text-[#1E3A8A] dark:text-blue-400">
+              <span>Clinical &amp; competitive intelligence</span>
+              <span aria-hidden="true">&middot;</span>
+              <span className="text-slate-500 dark:text-slate-400">FDA MAUDE &middot; CMS HCPCS &middot; Sourcewell / NPPGov</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] dark:text-white mt-1">
-              Clinical &amp; Competitive Knowledge Hub
+            <h1 className="text-xl sm:text-2xl font-[650] tracking-tight text-slate-900 dark:text-white mt-1">
+              Clinical &amp; competitive knowledge hub
             </h1>
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-3xl">
-              Authoritative 5-year competitor TCO &amp; preventative maintenance modeling, verified FDA recall intelligence, pre-competed cooperative purchasing vehicles, and procedure-level HCPCS / NEMSQA clinical quality analytics.
+            <p className="text-[13px] text-slate-600 dark:text-slate-300 mt-1 max-w-3xl leading-relaxed">
+              Multi-year competitor TCO &amp; maintenance modeling, verified FDA recall intelligence, cooperative purchasing vehicles, and procedure-level HCPCS clinical quality analytics.
             </p>
           </div>
 
@@ -155,18 +155,18 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
           {referenceAgency && (
             <div className="flex flex-wrap items-center gap-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 shrink-0">
               <div className="text-xs">
-                <label htmlFor="hub-agency-select" className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Benchmark Agency Account
+                <label htmlFor="hub-agency-select" className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  Benchmark agency
                 </label>
                 <select
                   id="hub-agency-select"
                   value={referenceAgency.id}
                   onChange={(e) => handleAgencyChange(e.target.value)}
-                  className="mt-0.5 h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2.5 text-xs font-semibold text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1E3A8A] max-w-[260px]"
+                  className="mt-0.5 h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2.5 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] max-w-[260px]"
                 >
                   {agencies.slice(0, 80).map(a => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.stateCode}) — {a.installedFleet.defibBrand}
+                      {a.name} ({a.stateCode}) &mdash; {a.installedFleet.defibBrand}
                     </option>
                   ))}
                 </select>
@@ -174,18 +174,18 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
 
               <button
                 onClick={() => onSelectAgency(referenceAgency)}
-                className="h-8 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#0F172A] dark:text-white transition-colors cursor-pointer"
+                className="h-8 px-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-medium text-slate-800 dark:text-white transition-colors cursor-pointer"
               >
-                Open Dossier
+                Open dossier
               </button>
 
               {onOpenRfpGenerator && (
                 <button
                   onClick={() => onOpenRfpGenerator(referenceAgency)}
-                  className="h-8 px-3 rounded-lg bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E3A8A] dark:hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="h-8 px-3 rounded-lg bg-slate-900 dark:bg-blue-600 hover:bg-[#1E3A8A] dark:hover:bg-blue-500 text-white text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>RFP + TCO Spec</span>
+                  <span>RFP spec</span>
                 </button>
               )}
             </div>
@@ -195,10 +195,10 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
         {/* Plain-English Navigation Strip */}
         <div className="flex flex-wrap items-center gap-2">
           {[
-            { id: 'tco', label: '1. 5-Year Cost & Maintenance Savings Calculator', icon: Calculator },
-            { id: 'recalls', label: '2. Competitor FDA Safety Recalls & Talk Tracks', icon: ShieldAlert },
-            { id: 'coop', label: '3. Fast-Track Cooperative Contracts (Skip RFP)', icon: FileCheck2 },
-            { id: 'hcpcs_protocols', label: '4. NEMSQA Quality Simulator & Medicare HCPCS Codes', icon: Stethoscope }
+            { id: 'tco', label: 'Cost & maintenance savings', icon: Calculator },
+            { id: 'recalls', label: 'Safety recalls & talk tracks', icon: ShieldAlert },
+            { id: 'coop', label: 'Cooperative purchasing vehicles', icon: FileCheck2 },
+            { id: 'hcpcs_protocols', label: 'Quality scorecard & fee schedules', icon: Stethoscope }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
@@ -206,10 +206,10 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
               <button
                 key={tab.id}
                 onClick={() => setActiveSection(tab.id as HubSection)}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-[#111827] dark:bg-blue-600 text-white shadow-2xs'
-                    : 'bg-[#F8F7F4] dark:bg-slate-800 text-[#374151] dark:text-slate-300 hover:text-[#111827] dark:hover:text-white hover:bg-[#F1EFEA] dark:hover:bg-slate-700 border border-[#E5E4DF] dark:border-slate-700'
+                    ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-2xs'
+                    : 'bg-slate-100/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -222,56 +222,56 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
 
       {/* TAB 1: INTERACTIVE 5-YEAR COMPETITOR TCO & MAINTENANCE CALCULATOR */}
       {activeSection === 'tco' && tcoModel && (
-        <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-          <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <Scale className="w-4 h-4 text-[#1E3A8A]" />
-                <span>Interactive Competitor TCO &amp; Preventative Maintenance Comparison Engine</span>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Scale className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
+                <span>Competitor TCO and maintenance comparison</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Compare multi-year OEM ProCare/service contracts, battery replacement cycles, electrode standardization, and trade-in credits.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Multi-year OEM service contracts, battery replacement cycles, electrode standardization, and trade-in credits.
               </p>
             </div>
 
             <button
               onClick={() => handleCopyText('tco-brief', buildTcoBriefText())}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#0F172A] hover:bg-[#1E3A8A] text-white transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 dark:bg-blue-600 hover:bg-[#1E3A8A] dark:hover:bg-blue-500 text-white transition-colors cursor-pointer"
             >
               {copiedKey === 'tco-brief' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedKey === 'tco-brief' ? 'Copied TCO Brief' : 'Copy Executive TCO Brief'}</span>
+              <span>{copiedKey === 'tco-brief' ? 'Copied brief' : 'Copy executive brief'}</span>
             </button>
           </div>
 
           {/* Interactive Parameter Controls */}
-          <div className="p-5 bg-slate-50/70 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+          <div className="p-5 bg-slate-50/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
             <div>
-              <label className="block font-semibold text-[#0F172A] mb-1.5">
-                1. Incumbent Competitor Hardware Line
+              <label className="block font-medium text-slate-900 dark:text-white mb-1.5">
+                Incumbent hardware line
               </label>
               <select
                 value={selectedIntelId}
                 onChange={(e) => setSelectedIntelId(e.target.value)}
-                className="w-full h-9 bg-white border border-slate-200 rounded-lg px-3 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#1E3A8A]"
+                className="w-full h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#1E3A8A]"
               >
                 {COMPETITOR_HARDWARE_INTEL.map(item => (
                   <option key={item.id} value={item.id}>
-                    {item.incumbentModel} → vs. {item.zollEquivalent}
+                    {item.incumbentModel} &rarr; vs. {item.zollEquivalent}
                   </option>
                 ))}
               </select>
-              <div className="mt-1.5 text-[11px] text-slate-500">
-                Status: <strong className="text-amber-700">{tcoModel.matchedIntel.eolStatus}</strong> · {tcoModel.matchedIntel.fdaRecallId}
+              <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                Status: <strong className="text-amber-700 dark:text-amber-400 font-medium">{tcoModel.matchedIntel.eolStatus}</strong> &middot; {tcoModel.matchedIntel.fdaRecallId}
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="font-semibold text-[#0F172A]">
-                  2. Frontline Fleet Unit Count
+                <label className="font-medium text-slate-900 dark:text-white">
+                  Frontline fleet count
                 </label>
-                <span className="font-mono font-bold text-sm text-[#1E3A8A] tabular-nums">
-                  {customUnits} Units
+                <span className="font-medium text-sm text-[#1E3A8A] dark:text-blue-400 tabular-nums">
+                  {customUnits} devices
                 </span>
               </div>
               <input
@@ -280,87 +280,87 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
                 max={120}
                 value={customUnits}
                 onChange={(e) => setCustomUnits(Number(e.target.value))}
-                className="w-full accent-[#1E3A8A] cursor-pointer"
+                className="w-full accent-[#1E3A8A] dark:accent-blue-500 cursor-pointer"
               />
-              <div className="flex justify-between text-[11px] font-mono text-slate-400 mt-1">
-                <span>2 Units (Rural)</span>
-                <span>25 Units (Municipal)</span>
-                <span>120 Units (Metro)</span>
+              <div className="flex justify-between text-xs text-slate-400 mt-1 tabular-nums">
+                <span>2 devices (rural)</span>
+                <span>25 devices (municipal)</span>
+                <span>120 devices (metro)</span>
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-[#0F172A] mb-1.5">
-                3. Municipal Budget Lifecycle Horizon
+              <label className="block font-medium text-slate-900 dark:text-white mb-1.5">
+                Budget lifecycle horizon
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[3, 5, 7].map(yr => (
                   <button
                     key={yr}
                     onClick={() => setLifecycleYears(yr)}
-                    className={`h-9 rounded-lg font-mono text-xs font-bold border transition-colors cursor-pointer ${
+                    className={`h-9 rounded-lg text-xs font-medium border transition-colors cursor-pointer tabular-nums ${
                       lifecycleYears === yr
-                        ? 'bg-[#0F172A] text-white border-[#0F172A]'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    {yr}-Year TCO
+                    {yr}-year horizon
                   </button>
                 ))}
               </div>
-              <div className="mt-1.5 text-[11px] text-slate-500">
-                Includes OEM trade-in credit of <strong className="font-mono text-emerald-700">${tcoModel.matchedIntel.zollTradeInCreditPerUnit.toLocaleString()}/unit</strong>
+              <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                Includes trade-in credit of <strong className="text-emerald-700 dark:text-emerald-400 font-medium tabular-nums">${tcoModel.matchedIntel.zollTradeInCreditPerUnit.toLocaleString()} per device</strong>
               </div>
             </div>
           </div>
 
           {/* Executive Summary KPI Strip */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 border-b border-slate-200 bg-white">
+          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
             <div className="p-4">
-              <div className="text-[11px] font-medium text-slate-500">
-                {tcoModel.years}-Yr Incumbent Operating Cost
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {tcoModel.years}-year incumbent operating cost
               </div>
-              <div className="text-xl font-bold font-mono tabular-nums text-rose-700 mt-1">
+              <div className="text-[24px] font-[650] tabular-nums text-rose-700 dark:text-rose-400 mt-1 leading-none">
                 ${tcoModel.incumbentOperatingTotal.toLocaleString()}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {tcoModel.incumbentModel} ({tcoModel.unitCount} units)
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                {tcoModel.incumbentModel} ({tcoModel.unitCount} devices)
               </div>
             </div>
 
             <div className="p-4">
-              <div className="text-[11px] font-medium text-slate-500">
-                {tcoModel.years}-Yr ZOLL Net Operating Cost
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {tcoModel.years}-year ZOLL net operating cost
               </div>
-              <div className="text-xl font-bold font-mono tabular-nums text-[#0F172A] mt-1">
+              <div className="text-[24px] font-[650] tabular-nums text-slate-900 dark:text-white mt-1 leading-none">
                 ${tcoModel.zollNetOperatingTotal.toLocaleString()}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 tabular-nums">
                 After ${tcoModel.totalTradeInCredit.toLocaleString()} fleet trade-in credit
               </div>
             </div>
 
             <div className="p-4">
-              <div className="text-[11px] font-medium text-slate-500">
-                Direct Maintenance &amp; Battery Savings
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Direct maintenance &amp; battery savings
               </div>
-              <div className="text-xl font-bold font-mono tabular-nums text-emerald-700 mt-1">
+              <div className="text-[24px] font-[650] tabular-nums text-emerald-700 dark:text-emerald-400 mt-1 leading-none">
                 +${tcoModel.fiveYearOperatingSavings.toLocaleString()}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                Lower annual biomedical &amp; consumable spend
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                Reduced biomedical &amp; consumable spend
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50/60">
-              <div className="text-[11px] font-semibold text-[#1E3A8A]">
-                Total {tcoModel.years}-Year Net Lifecycle Advantage
+            <div className="p-4 bg-slate-50/60 dark:bg-slate-800/60">
+              <div className="text-xs font-medium text-[#1E3A8A] dark:text-blue-400">
+                Total {tcoModel.years}-year net lifecycle savings
               </div>
-              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-700 mt-1">
+              <div className="text-[26px] font-[650] tabular-nums text-emerald-700 dark:text-emerald-400 mt-1 leading-none">
                 ${tcoModel.totalSavingsIncludingTradeIn.toLocaleString()}
               </div>
-              <div className="text-[11px] text-slate-600 mt-0.5">
-                ${Math.round(tcoModel.totalSavingsIncludingTradeIn / tcoModel.unitCount).toLocaleString()} total savings per vehicle
+              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 tabular-nums">
+                ${Math.round(tcoModel.totalSavingsIncludingTradeIn / tcoModel.unitCount).toLocaleString()} savings per vehicle
               </div>
             </div>
           </div>
@@ -369,104 +369,104 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Lifecycle Cost Driver ({tcoModel.years} Years · {tcoModel.unitCount} Units)</th>
+                <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <th className="py-3 px-4">Lifecycle cost driver ({tcoModel.years} years &middot; {tcoModel.unitCount} devices)</th>
                   <th className="py-3 px-4 text-right">Incumbent: {tcoModel.incumbentModel}</th>
                   <th className="py-3 px-4 text-right">ZOLL: {tcoModel.zollModel}</th>
-                  <th className="py-3 px-4 text-right">Net Municipal Savings</th>
-                  <th className="py-3 px-4">Clinical &amp; Biomedical Justification</th>
+                  <th className="py-3 px-4 text-right">Net municipal savings</th>
+                  <th className="py-3 px-4">Clinical &amp; biomedical justification</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
-                <tr className="hover:bg-slate-50/80">
-                  <td className="py-3.5 px-4 font-semibold text-[#0F172A]">
-                    1. OEM Preventive Maintenance &amp; Service Contracts
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+                  <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
+                    Preventive maintenance &amp; service contracts
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-700 dark:text-slate-300">
                     ${tcoModel.incumbentServiceTotal.toLocaleString()}
-                    <div className="text-[10px] text-slate-400">${tcoModel.matchedIntel.incumbentAnnualServicePerUnit.toLocaleString()}/unit/yr</div>
+                    <div className="text-[11px] text-slate-400 tabular-nums">${tcoModel.matchedIntel.incumbentAnnualServicePerUnit.toLocaleString()}/device/yr</div>
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-[#0F172A] font-semibold">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-900 dark:text-white font-medium">
                     ${tcoModel.zollServiceTotal.toLocaleString()}
-                    <div className="text-[10px] text-slate-400">${tcoModel.matchedIntel.zollAnnualServicePerUnit.toLocaleString()}/unit/yr</div>
+                    <div className="text-[11px] text-slate-400 tabular-nums">${tcoModel.matchedIntel.zollAnnualServicePerUnit.toLocaleString()}/device/yr</div>
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-emerald-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
                     +${(tcoModel.incumbentServiceTotal - tcoModel.zollServiceTotal).toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-slate-600">
-                    Caps annual OEM biomedical calibration &amp; loaner coverage; avoids incumbent legacy service escalators.
+                  <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                    Caps annual biomedical calibration &amp; loaner coverage; eliminates legacy service escalators.
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/80">
-                  <td className="py-3.5 px-4 font-semibold text-[#0F172A]">
-                    2. Smart Lithium-Ion Battery Fleet Replacements
+                <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+                  <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
+                    Smart lithium-ion battery replacements
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-700 dark:text-slate-300">
                     ${tcoModel.incumbentBatteryTotal.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-[#0F172A] font-semibold">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-900 dark:text-white font-medium">
                     ${tcoModel.zollBatteryTotal.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-emerald-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
                     +${(tcoModel.incumbentBatteryTotal - tcoModel.zollBatteryTotal).toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-slate-600">
-                    ZOLL SurePower II high-capacity smart batteries provide runtime calibration telemetry, reducing premature discard.
+                  <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                    ZOLL SurePower II smart batteries provide runtime calibration telemetry, reducing premature discard.
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/80">
-                  <td className="py-3.5 px-4 font-semibold text-[#0F172A]">
-                    3. Resuscitation Electrodes, Capnography &amp; Sensors
+                <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+                  <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
+                    Resuscitation electrodes, capnography &amp; sensors
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-700 dark:text-slate-300">
                     ${tcoModel.incumbentConsumablesTotal.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-[#0F172A] font-semibold">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-900 dark:text-white font-medium">
                     ${tcoModel.zollConsumablesTotal.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-emerald-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
                     +${(tcoModel.incumbentConsumablesTotal - tcoModel.zollConsumablesTotal).toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-slate-600">
-                    Unified OneStep CPR resuscitation electrodes integrate pacing, defib, and Real CPR Help depth sensor in one pad.
+                  <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                    Unified OneStep CPR electrodes integrate pacing, defib, and Real CPR Help depth sensor in one pad.
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/80 bg-emerald-50/30">
-                  <td className="py-3.5 px-4 font-semibold text-[#0F172A]">
-                    4. Retired Competitor Hardware Trade-In Credit
+                <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 bg-emerald-50/30 dark:bg-emerald-950/20">
+                  <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
+                    Retired competitor hardware trade-in credit
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-400">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-400">
                     $0
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-emerald-700 font-bold">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">
                     -${tcoModel.totalTradeInCredit.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-emerald-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
                     +${tcoModel.totalTradeInCredit.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-slate-600">
-                    Guaranteed Sourcewell / NPPGov trade-in rebate of ${tcoModel.matchedIntel.zollTradeInCreditPerUnit.toLocaleString()} per retired incumbent unit.
+                  <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                    Sourcewell / NPPGov trade-in rebate of ${tcoModel.matchedIntel.zollTradeInCreditPerUnit.toLocaleString()} per retired incumbent device.
                   </td>
                 </tr>
               </tbody>
               <tfoot>
-                <tr className="bg-slate-100/90 border-t-2 border-slate-300 font-bold text-xs">
-                  <td className="py-3.5 px-4 text-[#0F172A]">
-                    TOTAL {tcoModel.years}-YEAR FLEET OPERATING &amp; TRADE-IN SUMMARY
+                <tr className="bg-slate-100/90 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-700 font-semibold text-xs">
+                  <td className="py-3.5 px-4 text-slate-900 dark:text-white">
+                    Total {tcoModel.years}-year fleet operating and trade-in summary
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-rose-700">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-rose-700 dark:text-rose-400 font-semibold">
                     ${tcoModel.incumbentOperatingTotal.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-[#0F172A]">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-slate-900 dark:text-white font-semibold">
                     ${tcoModel.zollNetOperatingTotal.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono tabular-nums text-emerald-700 text-sm">
+                  <td className="py-3.5 px-4 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold text-sm">
                     +${tcoModel.totalSavingsIncludingTradeIn.toLocaleString()}
                   </td>
-                  <td className="py-3.5 px-4 text-slate-700">
+                  <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 font-normal">
                     {tcoModel.matchedIntel.zollClinicalAdvantage}
                   </td>
                 </tr>
@@ -478,15 +478,15 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
 
       {/* TAB 2: FDA MAUDE RECALLS, SAFETY NOTICES & EOL REGISTRY */}
       {activeSection === 'recalls' && (
-        <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-          <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-rose-700" />
-                <span>Competitive FDA MAUDE Recalls, End-of-Life (EOL) &amp; Clinical Engineering Matrix</span>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-rose-700 dark:text-rose-400" />
+                <span>FDA MAUDE recalls, end-of-life status &amp; clinical differentiators</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Verified regulatory recall histories, obsolescence timelines, and clinical engineering differentiation for displacement presentations.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Verified regulatory recall histories, obsolescence timelines, and clinical engineering differentiation for replacement presentations.
               </p>
             </div>
 
@@ -498,7 +498,7 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter recalls, models, FDA IDs..."
-                  className="h-8 pl-8 pr-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-[#0F172A] focus:outline-none focus:border-[#1E3A8A]"
+                  className="h-8 pl-8 pr-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A]"
                 />
               </div>
 
@@ -506,34 +506,34 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
                 <button
                   key={mfg}
                   onClick={() => setManufacturerFilter(mfg)}
-                  className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                  className={`h-8 px-3 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                     manufacturerFilter === mfg
-                      ? 'bg-[#0F172A] text-white border-[#0F172A]'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
-                  {mfg === 'ALL' ? 'All Competitors' : mfg}
+                  {mfg === 'ALL' ? 'All manufacturers' : mfg}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="divide-y divide-slate-200">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {filteredRecalls.map(item => (
-              <div key={item.id} className="p-5 hover:bg-slate-50/50 transition-colors space-y-3">
+              <div key={item.id} className="p-5 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors space-y-3">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="font-bold text-sm text-[#0F172A]">{item.incumbentModel}</span>
-                    <span aria-hidden="true" className="text-slate-300">·</span>
-                    <span className="font-semibold text-slate-600">{item.category}</span>
-                    <span aria-hidden="true" className="text-slate-300">·</span>
-                    <span className="font-mono font-semibold text-rose-700">{item.fdaRecallId}</span>
-                    <span aria-hidden="true" className="text-slate-300">·</span>
-                    <span className="font-semibold text-amber-700">{item.eolStatus}</span>
+                    <span className="font-semibold text-sm text-slate-900 dark:text-white">{item.incumbentModel}</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">&middot;</span>
+                    <span className="text-slate-600 dark:text-slate-400">{item.category}</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">&middot;</span>
+                    <span className="font-medium text-rose-700 dark:text-rose-400">{item.fdaRecallId}</span>
+                    <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">&middot;</span>
+                    <span className="font-medium text-amber-700 dark:text-amber-400">{item.eolStatus}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[#1E3A8A]">
+                    <span className="text-xs font-medium text-[#1E3A8A] dark:text-blue-400">
                       Replacement: {item.zollEquivalent}
                     </span>
                     <button
@@ -543,45 +543,45 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
                           `${item.incumbentModel} (${item.fdaRecallId} - ${item.eolStatus}): ${item.fdaRecallSummary} Clinical Gap: ${item.clinicalVulnerability} ZOLL Advantage (${item.zollEquivalent}): ${item.zollClinicalAdvantage}`
                         )
                       }
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F172A] cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 cursor-pointer"
                     >
-                      {copiedKey === item.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#1E3A8A]" />}
-                      <span>{copiedKey === item.id ? 'Copied Brief' : 'Copy Battlecard'}</span>
+                      {copiedKey === item.id ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />}
+                      <span>{copiedKey === item.id ? 'Copied brief' : 'Copy battlecard'}</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2 border-t border-slate-100 text-xs">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
                   <div>
-                    <div className="text-[11px] font-semibold text-rose-700">
-                      FDA Recall &amp; Obsolescence Risk
+                    <div className="text-[11px] font-medium text-rose-700 dark:text-rose-400">
+                      FDA recall &amp; obsolescence risk
                     </div>
-                    <p className="text-slate-700 mt-1 leading-relaxed">
+                    <p className="text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
                       {item.fdaRecallSummary}
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {item.eolTimelineNote}
                     </p>
                   </div>
 
-                  <div className="lg:border-l lg:border-slate-100 lg:pl-4">
-                    <div className="text-[11px] font-semibold text-amber-700">
-                      Clinical &amp; Operational Vulnerability
+                  <div className="lg:border-l lg:border-slate-100 dark:lg:border-slate-800 lg:pl-4">
+                    <div className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                      Clinical &amp; operational vulnerability
                     </div>
-                    <p className="text-slate-700 mt-1 leading-relaxed">
+                    <p className="text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
                       {item.clinicalVulnerability}
                     </p>
                   </div>
 
-                  <div className="lg:border-l lg:border-slate-100 lg:pl-4">
-                    <div className="text-[11px] font-semibold text-emerald-700">
-                      ZOLL Clinical &amp; Financial Advantage ({item.zollEquivalent})
+                  <div className="lg:border-l lg:border-slate-100 dark:lg:border-slate-800 lg:pl-4">
+                    <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                      ZOLL clinical &amp; financial advantage ({item.zollEquivalent})
                     </div>
-                    <p className="text-slate-700 mt-1 leading-relaxed">
+                    <p className="text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
                       {item.zollClinicalAdvantage}
                     </p>
-                    <div className="mt-1.5 font-mono text-[11px] text-[#0F172A] font-semibold">
-                      Service Savings: ${(item.incumbentAnnualServicePerUnit - item.zollAnnualServicePerUnit).toLocaleString()}/unit/yr · Trade-In: ${item.zollTradeInCreditPerUnit.toLocaleString()}/unit
+                    <div className="mt-1.5 text-xs text-slate-900 dark:text-white font-medium tabular-nums">
+                      Service savings: ${(item.incumbentAnnualServicePerUnit - item.zollAnnualServicePerUnit).toLocaleString()}/device/yr &middot; Trade-in: ${item.zollTradeInCreditPerUnit.toLocaleString()}/device
                     </div>
                   </div>
                 </div>
@@ -593,15 +593,15 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
 
       {/* TAB 3: COOPERATIVE PURCHASING & GRANT VEHICLES DIRECTORY */}
       {activeSection === 'coop' && (
-        <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-          <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <FileCheck2 className="w-4 h-4 text-[#1E3A8A]" />
-                <span>Pre-Competed Cooperative Purchasing Contracts &amp; Grant Vehicles</span>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
+                <span>Pre-competed cooperative purchasing contracts &amp; vehicles</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Authorized national cooperative master agreements enabling municipal Fire &amp; EMS agencies to bypass 6-to-9 month sealed RFP cycles.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Authorized national cooperative master agreements enabling municipal Fire &amp; EMS agencies to bypass sealed RFP cycles.
               </p>
             </div>
           </div>
@@ -609,42 +609,42 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Contract Vehicle &amp; ID</th>
-                  <th className="py-3 px-4">Eligible Municipal Agencies</th>
-                  <th className="py-3 px-4">Discount Ceiling &amp; Terms</th>
-                  <th className="py-3 px-4">Procurement Time Saved</th>
-                  <th className="py-3 px-4">Legal Piggyback Exemption Clause</th>
+                <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <th className="py-3 px-4">Contract vehicle</th>
+                  <th className="py-3 px-4">Eligible agencies</th>
+                  <th className="py-3 px-4">Discount terms</th>
+                  <th className="py-3 px-4">Procurement time saved</th>
+                  <th className="py-3 px-4">Legal piggyback clause</th>
                   <th className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {COOPERATIVE_CONTRACTS.map(contract => (
-                  <tr key={contract.id} className="hover:bg-slate-50/80 align-top">
+                  <tr key={contract.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 align-top">
                     <td className="py-4 px-4">
-                      <div className="font-bold text-[#0F172A]">{contract.contractName}</div>
-                      <div className="font-mono font-semibold text-[#1E3A8A] mt-0.5">{contract.contractNumber}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Valid thru {contract.expirationDate}</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">{contract.contractName}</div>
+                      <div className="font-medium text-[#1E3A8A] dark:text-blue-400 mt-0.5">{contract.contractNumber}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">Valid thru {contract.expirationDate}</div>
                     </td>
-                    <td className="py-4 px-4 text-slate-700 max-w-xs">
+                    <td className="py-4 px-4 text-slate-700 dark:text-slate-300 max-w-xs">
                       {contract.eligibleAgencies}
                     </td>
-                    <td className="py-4 px-4 font-semibold text-emerald-700 max-w-xs">
+                    <td className="py-4 px-4 font-medium text-emerald-700 dark:text-emerald-400 max-w-xs">
                       {contract.discountCeiling}
                     </td>
-                    <td className="py-4 px-4 font-mono text-[#0F172A]">
+                    <td className="py-4 px-4 text-slate-800 dark:text-slate-200 font-medium">
                       {contract.rfpMonthsSaved}
                     </td>
-                    <td className="py-4 px-4 text-slate-600 max-w-md leading-relaxed">
+                    <td className="py-4 px-4 text-slate-600 dark:text-slate-300 max-w-md leading-relaxed">
                       {contract.piggybackClauseText}
                     </td>
                     <td className="py-4 px-4 text-right whitespace-nowrap">
                       <button
                         onClick={() => handleCopyText(contract.id, `${contract.contractNumber}: ${contract.piggybackClauseText}`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F172A] cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 cursor-pointer"
                       >
-                        {copiedKey === contract.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#1E3A8A]" />}
-                        <span>{copiedKey === contract.id ? 'Copied Clause' : 'Copy Clause'}</span>
+                        {copiedKey === contract.id ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />}
+                        <span>{copiedKey === contract.id ? 'Copied clause' : 'Copy clause'}</span>
                       </button>
                     </td>
                   </tr>
@@ -662,58 +662,58 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
           <QualityScorecard agency={referenceAgency} onOpenRfpGenerator={onOpenRfpGenerator} />
 
           {/* HCPCS & GADCS Table */}
-          <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-            <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-emerald-700" />
-                  <span>Granular HCPCS Ambulance Fee Schedule &amp; CMS GADCS 10% Penalty Risk — {referenceAgency.name}</span>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                  <span>HCPCS ambulance fee schedule &amp; CMS audit exposure &mdash; {referenceAgency.name}</span>
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Procedure-level reimbursement breakdown across {referenceAgency.annual911Transports.toLocaleString()} annual transports and CMS Ground Ambulance Data Collection System (GADCS) audit exposure.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+                  Procedure reimbursement breakdown across {referenceAgency.annual911Transports.toLocaleString()} annual transports and CMS Ground Ambulance Data Collection System (GADCS) exposure.
                 </p>
               </div>
 
-              <div className="text-xs font-mono bg-rose-50 border border-rose-200 text-rose-800 px-3 py-1.5 rounded-lg font-semibold">
-                GADCS 10% Medicare Penalty Exposure: -${hcpcsModel.gadcs.gadcs10PctPenaltyExposure.toLocaleString()}/yr ({hcpcsModel.gadcs.cohortWave})
+              <div className="text-xs bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 px-3 py-1.5 rounded-lg font-medium tabular-nums">
+                GADCS 10% penalty exposure: -${hcpcsModel.gadcs.gadcs10PctPenaltyExposure.toLocaleString()}/yr ({hcpcsModel.gadcs.cohortWave})
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">HCPCS Code</th>
-                    <th className="py-3 px-4">Procedure &amp; Clinical Trigger</th>
-                    <th className="py-3 px-4 text-right">CMS Base Rate</th>
-                    <th className="py-3 px-4 text-right">Est. Annual Claims</th>
-                    <th className="py-3 px-4 text-right">Gross Annual Billing</th>
-                    <th className="py-3 px-4 text-right">Denial Exposure</th>
-                    <th className="py-3 px-4">ZOLL Automated Documentation Mitigation</th>
+                  <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <th className="py-3 px-4">HCPCS code</th>
+                    <th className="py-3 px-4">Procedure &amp; clinical trigger</th>
+                    <th className="py-3 px-4 text-right">CMS base rate</th>
+                    <th className="py-3 px-4 text-right">Est. annual claims</th>
+                    <th className="py-3 px-4 text-right">Gross annual billing</th>
+                    <th className="py-3 px-4 text-right">Denial exposure</th>
+                    <th className="py-3 px-4">ZOLL documentation mitigation</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {hcpcsModel.procedures.map(proc => (
-                    <tr key={proc.code} className="hover:bg-slate-50/80">
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#1E3A8A]">{proc.code}</td>
+                    <tr key={proc.code} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
+                      <td className="py-3.5 px-4 font-medium text-[#1E3A8A] dark:text-blue-400 tabular-nums">{proc.code}</td>
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-[#0F172A]">{proc.descriptor}</div>
-                        <div className="text-[11px] text-slate-500">{proc.clinicalTrigger}</div>
+                        <div className="font-medium text-slate-900 dark:text-white">{proc.descriptor}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{proc.clinicalTrigger}</div>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-700">
+                      <td className="py-3.5 px-4 text-right tabular-nums text-slate-700 dark:text-slate-300">
                         ${proc.nationalMedicareBaseRate.toFixed(2)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-[#0F172A] font-semibold">
+                      <td className="py-3.5 px-4 text-right tabular-nums text-slate-900 dark:text-white font-medium">
                         {proc.estimatedAnnualClaims.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-[#0F172A] font-semibold">
+                      <td className="py-3.5 px-4 text-right tabular-nums text-slate-900 dark:text-white font-medium">
                         ${proc.grossAnnualBilling.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-rose-700 font-semibold">
+                      <td className="py-3.5 px-4 text-right tabular-nums text-rose-700 dark:text-rose-400 font-medium">
                         -${proc.annualRevenueAtRisk.toLocaleString()}
-                        <div className="text-[10px] text-slate-400">{proc.denialRiskPct}% risk</div>
+                        <div className="text-[11px] text-slate-400 tabular-nums">{proc.denialRiskPct}% risk</div>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 max-w-md">
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 max-w-md">
                         {proc.zollDocumentationMitigation}
                       </td>
                     </tr>
@@ -724,15 +724,15 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
           </section>
 
           {/* Regional Clinical Protocols & Receiving Hospital Network */}
-          <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-            <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                  <Stethoscope className="w-4 h-4 text-[#1E3A8A]" />
-                  <span>Regional EMS Clinical Protocols &amp; Receiving Hospital Telemetry Alignment</span>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400" />
+                  <span>Regional EMS clinical protocols &amp; telemetry alignment</span>
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Primary Receiving Center: <strong className="text-[#0F172A]">{protocolModel.receivingHospitalNetwork}</strong> · Target: {protocolModel.stemiDoorToBalloonTarget}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Receiving center: <strong className="text-slate-800 dark:text-slate-200 font-medium">{protocolModel.receivingHospitalNetwork}</strong> &middot; Target: {protocolModel.stemiDoorToBalloonTarget}
                 </p>
               </div>
             </div>
@@ -740,26 +740,26 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Regional Clinical Protocol</th>
-                    <th className="py-3 px-4">Clinical Target Benchmark</th>
-                    <th className="py-3 px-4">Incumbent Fleet Limitation</th>
-                    <th className="py-3 px-4">ZOLL Enabling Clinical Technology</th>
+                  <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <th className="py-3 px-4">Regional clinical protocol</th>
+                    <th className="py-3 px-4">Target benchmark</th>
+                    <th className="py-3 px-4">Incumbent hardware limitation</th>
+                    <th className="py-3 px-4">ZOLL clinical technology</th>
                     <th className="py-3 px-4 text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {protocolModel.protocols.map(proto => (
-                    <tr key={proto.id} className="hover:bg-slate-50/80">
+                    <tr key={proto.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50">
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-[#0F172A]">{proto.protocolName}</div>
-                        <div className="text-[11px] text-slate-500">{proto.governingStandard}</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">{proto.protocolName}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{proto.governingStandard}</div>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-700 max-w-xs">{proto.clinicalTargetMetric}</td>
-                      <td className="py-3.5 px-4 text-rose-800 max-w-xs">{proto.incumbentHardwareGap}</td>
-                      <td className="py-3.5 px-4 text-slate-700 max-w-sm">{proto.zollEnablingTechnology}</td>
-                      <td className="py-3.5 px-4 text-right font-semibold whitespace-nowrap">
-                        <span className={proto.agencyComplianceStatus === 'Standardized' ? 'text-emerald-700' : 'text-amber-700'}>
+                      <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 max-w-xs">{proto.clinicalTargetMetric}</td>
+                      <td className="py-3.5 px-4 text-rose-800 dark:text-rose-400 max-w-xs">{proto.incumbentHardwareGap}</td>
+                      <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300 max-w-sm">{proto.zollEnablingTechnology}</td>
+                      <td className="py-3.5 px-4 text-right font-medium whitespace-nowrap">
+                        <span className={proto.agencyComplianceStatus === 'Standardized' ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}>
                           {proto.agencyComplianceStatus}
                         </span>
                       </td>

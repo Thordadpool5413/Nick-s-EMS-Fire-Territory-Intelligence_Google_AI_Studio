@@ -4,13 +4,12 @@
  */
 
 import React from 'react';
-import { 
-  ListOrdered, 
-  Scale, 
-  Car,
+import {
+  Home,
+  Building2,
+  TrendingUp,
   Globe,
-  LayoutDashboard,
-  Home
+  Briefcase
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -28,91 +27,86 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onGoHome,
   dayRouteCount
 }) => {
-  const isHome = activeTab === 'home' || activeTab === 'tm_dashboard';
-  const isTerritory = ['states_directory', 'geo', 'gis', 'pulseiq', 'map'].includes(activeTab);
-  const isQueue = activeTab === 'queue';
-  const isSavings = ['knowledge', 'contracts', 'grants', 'claims'].includes(activeTab);
-  const isField = ['field', '3d_studio'].includes(activeTab);
+  const isHome = activeTab === 'home';
+  const isAccounts = activeTab === 'queue';
+  const isOpportunities = ['contracts', 'grants', 'pulseiq', 'knowledge', 'claims'].includes(activeTab);
+  const isTerritory = ['states_directory', 'geo', 'gis', 'map', 'google_maps'].includes(activeTab);
+  const isMyWork = ['field', 'tm_dashboard', '3d_studio'].includes(activeTab);
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-[#E5E4DF] dark:border-slate-800 shadow-lg">
+    <nav
+      aria-label="Mobile Primary Workspaces"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0B1728] text-slate-300 border-t border-[#172D49] shadow-lg"
+    >
       <div className="grid grid-cols-5 items-center h-16 px-1">
-        
-        {/* Home Screen (Executive Hub & TM Onboarding) */}
+        {/* 1. Home */}
         <button
+          type="button"
           onClick={() => {
             if (onGoHome) onGoHome();
             else setActiveTab('home');
           }}
           className={`min-h-[48px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
-            isHome 
-              ? 'text-[#1E3A8A] dark:text-blue-400 font-bold' 
-              : 'text-[#6B7280] dark:text-slate-400 hover:text-[#111827] dark:hover:text-slate-200'
-          }`}
-          title="Return to Executive Home & TM Onboarding Hub"
-        >
-          <Home className="w-4 h-4" />
-          <span className="text-[10px] tracking-tight mt-1 font-semibold">Home</span>
-        </button>
-
-        {/* Step 1: Territory Explorer */}
-        <button
-          onClick={() => setActiveTab('states_directory')}
-          className={`min-h-[48px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
-            isTerritory 
-              ? 'text-[#1E3A8A] dark:text-blue-400 font-bold' 
-              : 'text-[#6B7280] dark:text-slate-400 hover:text-[#111827] dark:hover:text-slate-200'
+            isHome ? 'text-white font-semibold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Globe className="w-4 h-4" />
-          <span className="text-[10px] tracking-tight mt-1">Territory</span>
+          <Home className={`w-4 h-4 ${isHome ? 'text-[#285EE8]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-1">Home</span>
         </button>
 
-        {/* Step 2: Priority Accounts */}
+        {/* 2. Accounts */}
         <button
+          type="button"
           onClick={() => setActiveTab('queue')}
           className={`min-h-[48px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
-            isQueue 
-              ? 'text-[#1E3A8A] dark:text-blue-400 font-bold' 
-              : 'text-[#6B7280] dark:text-slate-400 hover:text-[#111827] dark:hover:text-slate-200'
+            isAccounts ? 'text-white font-semibold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <ListOrdered className="w-4 h-4" />
+          <Building2 className={`w-4 h-4 ${isAccounts ? 'text-[#285EE8]' : ''}`} />
           <span className="text-[10px] tracking-tight mt-1">Accounts</span>
         </button>
 
-        {/* Step 3: Savings, Recalls & Grants */}
+        {/* 3. Opportunities */}
         <button
-          onClick={() => setActiveTab('knowledge')}
+          type="button"
+          onClick={() => setActiveTab('contracts')}
           className={`min-h-[48px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
-            isSavings 
-              ? 'text-[#1E3A8A] dark:text-blue-400 font-bold' 
-              : 'text-[#6B7280] dark:text-slate-400 hover:text-[#111827] dark:hover:text-slate-200'
+            isOpportunities ? 'text-white font-semibold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Scale className="w-4 h-4" />
-          <span className="text-[10px] tracking-tight mt-1">Savings</span>
+          <TrendingUp className={`w-4 h-4 ${isOpportunities ? 'text-[#285EE8]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-1">Opportunities</span>
         </button>
 
-        {/* Step 4: Field Visit & 3D Demo */}
+        {/* 4. Territory */}
         <button
-          onClick={() => setActiveTab('field')}
-          className={`min-h-[48px] flex flex-col items-center justify-center relative transition-colors cursor-pointer ${
-            isField 
-              ? 'text-[#1E3A8A] dark:text-blue-400 font-bold' 
-              : 'text-[#6B7280] dark:text-slate-400 hover:text-[#111827] dark:hover:text-slate-200'
+          type="button"
+          onClick={() => setActiveTab('states_directory')}
+          className={`min-h-[48px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
+            isTerritory ? 'text-white font-semibold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Car className="w-4 h-4" />
-          <span className="text-[10px] tracking-tight mt-1">Route</span>
+          <Globe className={`w-4 h-4 ${isTerritory ? 'text-[#285EE8]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-1">Territory</span>
+        </button>
+
+        {/* 5. My Work */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('field')}
+          className={`min-h-[48px] flex flex-col items-center justify-center relative transition-colors cursor-pointer ${
+            isMyWork ? 'text-white font-semibold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Briefcase className={`w-4 h-4 ${isMyWork ? 'text-[#285EE8]' : ''}`} />
+          <span className="text-[10px] tracking-tight mt-1">My Work</span>
           {dayRouteCount > 0 && (
-            <span className="absolute top-1 right-2.5 w-4 h-4 rounded-full bg-[#1E3A8A] dark:bg-blue-600 text-white font-mono text-[9px] font-bold tabular-nums flex items-center justify-center shadow-2xs">
+            <span className="absolute top-1.5 right-3 w-4 h-4 rounded-full bg-[#285EE8] text-white font-mono text-[9px] font-bold tabular-nums flex items-center justify-center">
               {dayRouteCount}
             </span>
           )}
         </button>
-
       </div>
-    </div>
+    </nav>
   );
 };

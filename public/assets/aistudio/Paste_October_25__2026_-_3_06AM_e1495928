@@ -1,0 +1,1061 @@
+# PRECISION COMMAND
+## COMPLETE ENTERPRISE FRONTEND TRANSFORMATION
+### Nick's EMS & Fire Territory Intelligence
+
+**Assignment:** Redesign, refactor, implement, and validate the existing application frontend.
+
+**Design direction:** The precision of a high-end financial intelligence platform, the clarity and craftsmanship of an exceptional Apple application, and the operational usefulness of an elite sales command center.
+
+**Target:** An existing React/TypeScript EMS and fire territory intelligence application.
+
+**Required outcome:** A premium, professional, responsive, fully functional intelligence workspace built from the existing application, not a replacement prototype.
+
+---
+
+# 1. EXECUTION CONTRACT
+
+You are acting as a principal product designer, staff frontend engineer, interaction designer, accessibility specialist, and enterprise application architect.
+
+You have responsibility for both the appearance and actual behavior of the application.
+
+**Your job is to modify the code, not merely explain how the code could be modified.**
+
+This task includes:
+
+- Existing frontend architecture
+- Visual design system
+- Application navigation
+- Homepage
+- Account discovery
+- Individual EMS/fire agency profiles
+- Account 360
+- Opportunity intelligence
+- Territory intelligence
+- Saved work
+- Responsive/mobile functionality
+- User interaction states
+- Accessibility
+- CSS cleanup
+- Regression testing
+
+Execute the work incrementally, but do not mistake completion of an audit or design plan for completion of the implementation.
+
+If execution limits prevent finishing every phase in the current session, leave the project in a recoverable state and identify the exact unfinished phase, files, tests, and next implementation steps. Never falsely declare the entire redesign complete.
+
+# 2. CRITICAL: VERIFY THE ACTUAL SOURCE CODE FIRST
+
+There are two related but materially different versions of this application.
+
+**GitHub repository:**
+
+https://github.com/Thordadpool5413/Nick-s-EMS-Fire-Territory-Intelligence_Google_AI_Studio
+
+This repository has used components including:
+
+- `HomeHubView`
+- `FocusedProviderProfile`
+- `GisTerritoryHeatmap`
+- `PredictiveLeadQueue`
+- `TopBar`
+- `MobileBottomNav`
+
+**Current AppDeploy application:**
+
+https://ems-territory-intelligence-pw2fyb.v2.appdeploy.ai/
+
+The separately developed AppDeploy version has used components including:
+
+- `ExpertHome`
+- `AccountFinder`
+- `UnifiedAccountResearch`
+- `Account360`
+- `ProviderCommandDashboard`
+- `AccountDecisionBrief`
+- `TerritoryDashboard`
+
+**These codebases must not be assumed identical.**
+
+Before changing anything:
+
+1. Inspect the actual files available in this Google AI Studio workspace.
+2. Identify the repository, branch, and current code version where possible.
+3. Identify the existing frontend entry point, layout, routes, components, styles, and service integration.
+4. Determine whether this workspace contains the latest target frontend or an older version.
+5. Identify missing AppDeploy components and integration dependencies.
+6. Check the existing build configuration and package dependencies.
+7. Record which application version can actually be modified and tested.
+
+If only the older GitHub version is available, do not pretend that redesigning it will update the current AppDeploy application.
+
+**If the goal is to redesign the current AppDeploy frontend and that code is absent, stop before making destructive or large-scale changes. Report the source mismatch and identify precisely which files or export are required.**
+
+Do not recreate unavailable production components from guesses.
+
+Do not treat viewing the public application URL as equivalent to having its editable source.
+
+# 3. PROTECT THE EXISTING APPLICATION
+
+This is a frontend modernization project, not authorization to rebuild or replace the business infrastructure.
+
+Preserve:
+
+- Verified agency identities and source identifiers
+- State, county, city, and ZIP relationships
+- EMS and fire department records
+- Account-to-source matching rules
+- Existing API contracts
+- Medicare and government source connectors
+- Procurement evidence and original citations
+- Protected user accounts and authorization
+- Saved account research
+- Notes and follow-up plans
+- Data provenance and verification logic
+- Existing logo and branding assets
+- Existing Illinois-specific restrictions
+- Existing export and search functions
+
+**Do not modify, delete, or regenerate production datasets to make a visual component look complete.**
+
+Do not introduce:
+
+- Firebase
+- Firestore
+- Google Maps
+- Gemini runtime services
+- Google authentication
+- Google Analytics
+- New paid services
+- Invented equipment or contract data
+- Placeholder production accounts
+- Fabricated metrics, scores, or opportunity amounts
+
+Google AI Studio is the development environment, not a required dependency of the finished application.
+
+If the project relies on `@appdeploy/client` or another hosting-specific SDK, preserve its integration. Do not replace unavailable runtime services with simulated implementations and claim the application is working.
+
+Isolated development fixtures are permitted only for testing visual components. They must remain clearly separated from production data and never silently appear as real agency intelligence.
+
+Create a recoverable development checkpoint before major structural changes.
+
+Do not publish over the live AppDeploy application or overwrite existing production data without explicit authorization.
+
+# 4. THE PRODUCT PHILOSOPHY
+
+Build an intelligence workspace, not a conventional dashboard.
+
+The product should look and feel:
+
+**Precise.** Every measurement, label, and source has a clear purpose.
+
+**Intelligent.** Important account developments receive appropriate attention.
+
+**Minimal.** Complexity is organized and accessible, not dumped onto the screen.
+
+**Confident.** The design feels mature, consistent, and trustworthy.
+
+**Fast.** Common workflows require minimal effort.
+
+**Professional.** Appropriate for enterprise sales teams, field representatives, regional leaders, and executive users.
+
+**Human-centered.** The product guides users toward decisions instead of making them interpret raw datasets.
+
+The experience must answer:
+
+1. What matters?
+2. Why does it matter?
+3. What should I do next?
+4. What evidence supports that decision?
+
+The five-second, thirty-second, and two-minute comprehension goals are usability design targets, not claims to make without testing.
+
+Do not imitate proprietary designs from Apple, Bloomberg, or another vendor. Apply the qualities of clarity, disciplined information density, and exceptional craftsmanship in an original interface.
+
+# 5. EXACT VISUAL DESIGN DIRECTION
+
+## Color and surfaces
+
+Establish one authoritative set of design tokens.
+
+Use these starting values:
+
+| Purpose | Color |
+|---|---|
+| Main navigation | `#0B1728` |
+| Secondary navy | `#172D49` |
+| Primary actions | `#285EE8` |
+| Primary hover | `#194BC8` |
+| Application background | `#F5F7FA` |
+| Main content | `#FFFFFF` |
+| Primary text | `#14283F` |
+| Secondary text | `#53657B` |
+| Borders | `#DFE6EF` |
+
+Use subtle green, amber, and red only when communicating meaningful statuses.
+
+Do not use multiple competing primary colors.
+
+Avoid excessive gradients, glowing panels, decorative icon backgrounds, oversized shadows, fake dashboards, and 3D charts.
+
+The interface should feel valuable because it is controlled and useful, not because everything is decorated.
+
+## Typography
+
+Use a professional sans-serif family such as Inter, bundled or loaded through a permitted non-Google method with reliable system fallbacks.
+
+Typography scale:
+
+- Major page title: 32–38px desktop
+- Secondary page title: 24–28px
+- Section heading: 19–22px
+- Account/card title: 16–18px
+- Standard content: 14–16px
+- Secondary content: 13–14px
+- Metadata: approximately 12px
+
+Use consistent line heights.
+
+Use tabular numerals for financial values and measurements.
+
+Avoid unnecessary all-caps, unusually small labels, and excessive bolding.
+
+Long account names must wrap naturally without overlap.
+
+## Layout
+
+Use an 8px-based spacing system with appropriate 4px increments.
+
+At desktop sizes:
+
+- Fixed, well-structured primary navigation
+- Stable application toolbar
+- Main content with disciplined margins
+- Readable content width
+- Appropriate multi-column layouts
+- Optional contextual evidence drawer
+- No unexpected horizontal or vertical overflow within the toolbar
+
+Respect the existing logo's visual prominence. Do not shrink or replace the brand asset merely to solve navigation spacing.
+
+Keep the primary navigation accessible without requiring users to scroll through a long list of everyday destinations on a typical desktop display.
+
+## Cards and containers
+
+Do not turn every piece of text into a card.
+
+Use cards for distinct decisions, important findings, and reusable interactive objects.
+
+Use tables and concise rows for detailed datasets.
+
+Use separators, typography, and white space for lower-priority information.
+
+Maintain consistent:
+
+- Border thickness
+- Corner radius
+- Padding
+- Hover styles
+- Focus indicators
+- Icon sizes
+- Button heights
+- Metadata presentation
+
+# 6. BUILD A REAL DESIGN SYSTEM
+
+Audit the existing CSS architecture.
+
+Where present, inspect:
+
+- `app.css`
+- `premium-theme.css`
+- `field-experience.css`
+- `territory-design-system.css`
+- All account-related styles
+- All component-specific stylesheets
+
+The current AppDeploy frontend has accumulated many separate CSS files and conflicting presentation layers.
+
+Do not add another global stylesheet simply to override the previous ones.
+
+Create:
+
+- One shared token foundation
+- One consistent typography system
+- One spacing system
+- One shared interactive component standard
+- A predictable responsive system
+- Scoped styles for specialist components
+
+Prefer reusable React components and locally scoped styling.
+
+Remove conflicting selectors only after identifying which components depend on them.
+
+Keep existing functional styles until their replacements are validated.
+
+Avoid unnecessary `!important` declarations, deep selector chains, and one-off fixes that create regressions elsewhere.
+
+**The result should be one coherent application, not several generations of frontend design fighting over CSS precedence.**
+
+# 7. RESTRUCTURE PRIMARY NAVIGATION
+
+The daily application should have five top-level workspaces:
+
+**Home**
+
+What needs attention today?
+
+**Accounts**
+
+Find and understand individual agencies.
+
+**Opportunities**
+
+Find and evaluate documented purchasing activity.
+
+**Territory**
+
+Understand geography, service coverage, and market context.
+
+**My Work**
+
+Saved accounts, meeting preparation, notes, and follow-ups.
+
+Retain specialized tools under a secondary Advanced Research/Data area.
+
+Before implementing the new navigation, create a mapping from every existing route to its new destination.
+
+Do not remove existing functional routes without providing equivalent access.
+
+## Navigation requirements
+
+- All navigation elements must work.
+- The active page must be obvious.
+- Browser Back and Forward must behave predictably.
+- Account deep links should remain valid where supported.
+- Unsaved account work must be protected.
+- Returning to search must preserve filters and selected territory.
+- Global search must be accessible from the main toolbar.
+- Mobile navigation must support opening, closing, keyboard access, and focus management.
+- No duplicated or contradictory navigation controls.
+- No oversized menus obstructing the workspace.
+
+Preserve any existing independent-product or vendor-affiliation disclosures.
+
+# 8. EXACT HOMEPAGE SPECIFICATION
+
+The homepage is not a marketing landing page.
+
+It is the representative's daily starting point.
+
+At 1440px desktop width, design the first viewport to prioritize:
+
+**Top: Compact workspace heading**
+
+Example:
+
+"Your territory. Your next move."
+
+Include a concise contextual description, not several paragraphs.
+
+**Immediately below: Universal search**
+
+Search by agency name, available official ID, city, county, state, or ZIP.
+
+Provide a clear primary search action.
+
+**Main intelligence section: What deserves attention**
+
+Show real, evidence-supported developments and next actions.
+
+Potential categories:
+
+- Active procurement
+- Documented capital equipment plans
+- Grants or funding
+- Pending follow-ups
+- New research findings
+- Unresolved high-value information gaps
+
+Do not display fabricated summaries simply to fill the interface.
+
+**Secondary: Saved and recent accounts**
+
+Show agency name, location, relevant next action, and current research state.
+
+**Additional: Territory context**
+
+Show the user's current territory selection and direct navigation to its agencies.
+
+The homepage should support repeat daily use without forcing the user through an onboarding tutorial.
+
+If the user has no saved work, use a concise first-use state with direct account discovery.
+
+# 9. EXACT ACCOUNT FINDER SPECIFICATION
+
+Maintain the required geographic controls:
+
+State → County → City → ZIP.
+
+Provide direct agency-name and official-identifier searching.
+
+## Search rules
+
+- A change to State must appropriately reset dependent County, City, and ZIP selections.
+- A change to County must appropriately reset incompatible City and ZIP selections.
+- Preserve compatible user-entered search text rather than unnecessarily erasing it.
+- Do not silently change the selected source identity.
+- Show loading and unavailable-source states clearly.
+- Do not represent a failed source lookup as zero matching agencies.
+- Maintain sensible pagination.
+- Support keyboard navigation and visible focus.
+- Preserve the selected geography when opening an account and returning.
+
+## Search result design
+
+Each result must communicate, at a glance:
+
+- Official or source-reported agency name
+- EMS/fire organization classification
+- City, county, and state
+- Source identity and verification context
+- One or two meaningful, actually available findings
+- One clear **Open Account** action
+
+Do not overload the primary result row with methodology, archived records, and multiple competing buttons.
+
+Place technical source details in a secondary disclosure or evidence drawer.
+
+Keep official EMS license identities, fire registry identities, and Medicare NPI billing organizations distinguishable.
+
+Two similarly named entities must remain separate unless reliable identity matching supports a relationship.
+
+# 10. ACCOUNT 360: THE SIGNATURE PRODUCT EXPERIENCE
+
+This is the most important page.
+
+It must be substantially better than a generic analytics dashboard.
+
+The user should not need to read long research descriptions to understand an account.
+
+## Above-the-fold layout
+
+On desktop, prioritize this order:
+
+### A. Agency identity
+
+Show the verified or reported organization name, location, agency type, identifiers, and source status.
+
+Provide concise actions:
+
+- Save
+- Prepare visit
+- Add follow-up
+- View sources
+
+Avoid an oversized identity banner that consumes the first screen.
+
+### B. Recommended next action
+
+Provide one prominently displayed, justified action.
+
+Include:
+
+- What to do
+- Why it matters
+- What evidence supports it
+- Whether it is a confirmed opportunity or a research task
+- One appropriate action control
+
+Do not present a speculative opportunity as a verified need.
+
+### C. Essential account intelligence
+
+Show a maximum of three high-value account findings when sufficient evidence exists.
+
+Each finding should make clear:
+
+**Fact → Meaning → Next action**
+
+Examples:
+
+- Documented purchasing approval
+- Identified existing equipment
+- Published grant award
+- Known procurement stage
+- Publicly identified decision-making authority
+- Significant unresolved research gap
+
+If no important evidence exists, show a useful qualification checklist.
+
+Do not fill empty spaces with invented metrics.
+
+## Primary account information architecture
+
+Use clearly labeled sections:
+
+1. Overview
+2. Equipment & Technology
+3. Buying & Funding
+4. Decision Makers
+5. Operations & Clinical
+6. Medicare & Financial
+7. Evidence & Sources
+
+Use tabs or similarly clear navigation, with valid keyboard behavior and accessible relationships between controls and panels.
+
+Avoid excessive nested accordions.
+
+Avoid duplicating the same account summary inside several independently expandable components.
+
+### Equipment section
+
+Use a structured evidence-based inventory or event table.
+
+Show when available:
+
+- Manufacturer
+- Product
+- Model
+- Quantity
+- Source date
+- Purchase or lifecycle stage
+- Relevant buyer
+- Supporting record
+
+Clearly distinguish purchased, approved, planned, installed, and unknown equipment.
+
+### Buying and funding section
+
+Present significant dates and events chronologically.
+
+Clearly distinguish:
+
+- Proposal
+- Budget request
+- Approval
+- Solicitation
+- Award
+- Purchase
+- Contract
+- Expiration
+
+Do not invent a replacement deadline from a historical purchase.
+
+### Decision-maker section
+
+Display published professional roles and contacts.
+
+Keep verified purchasing authority separate from a probable operational influencer.
+
+Do not fabricate contacts.
+
+### Operations and clinical section
+
+Use readable numbers, small purposeful charts, and source context.
+
+Respect reporting periods and denominators.
+
+Do not compare incompatible clinical cohorts.
+
+### Medicare and financial section
+
+Use structured tables and clear units.
+
+Separate exact provider NPI findings from county-level Medicare context and general fee schedule values.
+
+Never attribute county payment totals to a selected agency.
+
+### Evidence and sources section
+
+Provide a searchable, organized evidence view.
+
+Allow the user to inspect original documents and field-level provenance without leaving the account workflow.
+
+## Account source drawer
+
+Implement or refine a contextual source panel.
+
+When users inspect a fact, display:
+
+- Exact fact being supported
+- Source publisher
+- Original record or document
+- Agency or legal entity the record belongs to
+- Publication date
+- Reporting period
+- Retrieval date
+- Verification classification
+- Limitations
+- Direct source link
+
+The drawer must never claim an unmatched or indirect source directly verifies the selected provider.
+
+## Saved-work panel
+
+Preserve existing authenticated notes and follow-up plans.
+
+Support:
+
+- Save
+- Edit
+- Cancel
+- Follow-up stage
+- Follow-up date
+- Return to account
+
+All state changes must use the existing authorized persistence layer.
+
+Show save success only after confirmed completion.
+
+Never expose another user's protected research.
+
+# 11. OPPORTUNITIES WORKSPACE
+
+Create a professional opportunity intelligence view.
+
+Favor a structured, sortable list over dozens of oversized cards.
+
+Relevant columns or fields:
+
+- Agency
+- Event or opportunity
+- Product relevance
+- Evidence level
+- Purchasing stage
+- Important date
+- Amount, if documented
+- Next action
+
+Use understandable filter controls.
+
+Separate actual open solicitations from historical awards and unverified research leads.
+
+Do not assign a fabricated opportunity score.
+
+When an evidence-based ranking is available, explain the criteria rather than disguising a guess as a precise number.
+
+# 12. TERRITORY WORKSPACE
+
+The Territory workspace should support geography-first exploration without becoming another disconnected research application.
+
+Prioritize:
+
+- State, county, city, ZIP selection
+- Real accounts within scope
+- Published agency locations and legitimate service boundaries
+- Relevant demographic and operational context
+- Source-backed purchasing signals
+- Comparisons between agencies
+- Clear access to Account 360
+
+Use maps only where appropriate and with lawfully accessible data.
+
+Do not introduce Google Maps.
+
+Do not display invented agency service territories.
+
+A headquarters point is not a verified response boundary.
+
+Maintain one continuous workflow from territory selection to agency discovery to account intelligence.
+
+# 13. MY WORK WORKSPACE
+
+Make saved work practical for a field salesperson.
+
+Show:
+
+- Saved agencies
+- Upcoming follow-ups
+- Research in progress
+- Recently viewed accounts
+- Meeting preparation
+- Notes and action plans
+
+Prioritize due and actionable work.
+
+Use concise rows, timelines, and clear progress states.
+
+Do not create a second conflicting persistence system.
+
+If the current code lacks a supported feature, preserve the available workflow and identify the limitation instead of fabricating saved data or fake functionality.
+
+# 14. RESPONSIVE DESIGN CONTRACT
+
+Develop desktop and mobile experiences deliberately.
+
+Test at:
+
+- 320px
+- 375px
+- 390px
+- 768px
+- 1024px
+- 1440px
+- 1920px
+
+Also inspect a typical desktop height of approximately 768px.
+
+## Mobile design
+
+Mobile Account 360 should prioritize:
+
+1. Organization identity
+2. Next action
+3. Key findings
+4. Core topic navigation
+5. Follow-up action
+
+Use a single-column hierarchy where appropriate.
+
+Avoid desktop tables that become unreadable when compressed.
+
+Provide mobile-friendly source inspection.
+
+Keep primary controls reachable without excessive scrolling.
+
+## Non-negotiable responsive rules
+
+- No horizontal page overflow.
+- No overlapping content.
+- No clipped buttons or titles.
+- No inaccessible menus.
+- No invisible primary action.
+- No text shrinking to unreadable sizes.
+- No nested scrolling that prevents normal navigation.
+- No hidden important data solely to satisfy a breakpoint.
+- Touch targets should meet practical accessibility requirements, generally at least 44px for primary touch controls.
+- The top toolbar must remain usable without requiring users to scroll its content vertically.
+
+Maintain the original logo asset and meaningful brand presence.
+
+Do not shrink the logo as a shortcut for fixing the surrounding layout.
+
+If a compact treatment is needed on mobile, use a separate responsive brand presentation while preserving the actual logo.
+
+# 15. REAL USER INTERACTION REQUIREMENTS
+
+Every visible control must do what its label promises.
+
+Do not introduce decorative or nonfunctional buttons.
+
+## Search
+
+- Real input state
+- Correct filtering
+- Clear results
+- Error handling
+- Retry
+- Selected-filter persistence
+
+## Navigation
+
+- Correct destination
+- Active state
+- Browser history
+- Escape-to-close behavior
+- Keyboard access
+- Preserved work
+
+## Source inspection
+
+- Opens the relevant source
+- Returns to the prior context
+- Displays correct field provenance
+- Never opens unrelated documents
+
+## Account actions
+
+- Correct selected provider
+- Actual persistence
+- Clear success/failure feedback
+- Draft protection
+- No accidental data overwrite
+
+## Loading
+
+Support partial asynchronous data loading without blanking already available account intelligence.
+
+Avoid showing fabricated "live" or "complete" statuses.
+
+Display what is ready, what is loading, what failed, and what is unavailable.
+
+## Long-content handling
+
+Support long organization names, large research histories, numerous source records, and dense evidence tables without layout breakage.
+
+Use pagination, progressive disclosure, or virtualization where justified.
+
+# 16. DATA TRUST MUST BE VISIBLE
+
+The redesign must preserve the distinction between:
+
+- Verified
+- Reported
+- Calculated
+- Estimated
+- Unknown
+- Conflicting
+
+Never use one agency-level verification badge to imply that every equipment, financial, or clinical field is verified.
+
+Keep source ownership clear.
+
+Do not convert historical data into current data.
+
+Do not show a zero where the source contains no reported value.
+
+Do not claim a source integration is successful simply because a request was initiated.
+
+Do not invent opportunity narratives to make the interface more visually compelling.
+
+A premium intelligence application must feel trustworthy because it is accurate.
+
+# 17. ACCESSIBILITY AND PERFORMANCE
+
+Target WCAG 2.2 AA practices.
+
+Verify:
+
+- Semantic headings and landmarks
+- Accessible names for inputs and controls
+- Proper form labels
+- Keyboard navigation
+- Visible focus
+- Correct dialog focus management
+- Escape handling
+- Tab relationships
+- Screen-reader status announcements
+- Text and non-text contrast
+- Responsive text scaling
+- Reduced-motion support
+
+Use real semantic buttons rather than clickable noninteractive containers where possible.
+
+For performance:
+
+- Preserve fast first rendering
+- Avoid unnecessary large dependency additions
+- Lazy-load specialist panels when practical
+- Avoid mounting expensive data-heavy components unnecessarily
+- Prevent duplicate network requests where possible
+- Keep filter changes responsive
+- Avoid unnecessary layout shifting
+- Use loading placeholders only where they accurately reflect real loading activity
+
+Measure actual performance where tooling permits.
+
+Do not fabricate Lighthouse scores or claim tests were completed without running them.
+
+# 18. DEVELOPMENT AND IMPLEMENTATION SEQUENCE
+
+Work in controlled phases.
+
+## Phase 0: Source and baseline verification
+
+Confirm source version.
+
+Inventory routes, components, dependencies, CSS, and data integrations.
+
+Identify known build blockers.
+
+Create a recoverable checkpoint.
+
+## Phase 1: Shared design system
+
+Implement foundational tokens, typography, component styles, spacing, and responsive principles.
+
+Confirm existing screens still work.
+
+## Phase 2: Application shell
+
+Implement professional navigation, sidebar, toolbar, page layout, global search placement, and mobile navigation.
+
+Test navigation before continuing.
+
+## Phase 3: Homepage and Account Finder
+
+Transform the homepage and account-discovery experience.
+
+Verify geographic filtering and account selection.
+
+## Phase 4: Account 360
+
+Implement the new account hierarchy, next-best-action briefing, concise insights, topic navigation, evidence inspection, and saved-work interaction.
+
+This phase deserves the most design and functional attention.
+
+## Phase 5: Remaining workspaces
+
+Apply the system to Opportunities, Territory, My Work, and advanced research screens.
+
+## Phase 6: CSS consolidation and regression repair
+
+Remove confirmed obsolete styles.
+
+Ensure no new CSS overrides break components elsewhere.
+
+## Phase 7: Full verification
+
+Run the available build, type checking, tests, and visual inspection.
+
+Correct defects.
+
+Do not stop after generating a visually attractive homepage.
+
+At each phase, preserve the last working state.
+
+If a phase introduces errors, repair or revert it before proceeding.
+
+# 19. REQUIRED REGRESSION TEST SCENARIOS
+
+At minimum, test:
+
+**Scenario A: Find a fire department**
+
+Open Home → Select State → Select County → Select City or ZIP → Select a real fire department → Open the correct account.
+
+**Scenario B: Find an EMS provider**
+
+Search a licensed EMS provider → Confirm the original provider identity → Open Account 360 → Ensure fire registry and Medicare billing identities are not incorrectly merged.
+
+**Scenario C: Preserve territory**
+
+Select a geography → Open an account → Return to search → Confirm appropriate filters remain intact.
+
+**Scenario D: Source transparency**
+
+Open an account fact → Inspect the supporting source → Confirm the publisher, record owner, reporting period, and source classification are correct.
+
+**Scenario E: Missing data**
+
+Open an account without published equipment inventory → Confirm the interface states that the inventory is not publicly verified rather than inventing equipment.
+
+**Scenario F: Protected saved work**
+
+Sign in where supported → Save a follow-up → Reload → Verify persistence → Confirm account ownership protections remain in place.
+
+**Scenario G: Source failure**
+
+Simulate or encounter an unavailable external source → Confirm already available information remains visible → Confirm a meaningful error/retry state.
+
+**Scenario H: Mobile usability**
+
+Repeat the core discovery and account-review workflows at 375px and 390px widths.
+
+**Scenario I: Navigation**
+
+Test sidebar, toolbar, tabs, keyboard navigation, Escape behavior, Back, Forward, and deep links.
+
+**Scenario J: Visual regression**
+
+Compare desktop and mobile layouts before and after the redesign.
+
+Check typography, content hierarchy, overflow, button alignment, active states, and source visibility.
+
+Use actual project test tools and browser previews when available.
+
+If any scenario cannot be executed because of missing source code, unavailable backend services, authentication, or external tooling, explicitly mark it **Not tested** and state the reason.
+
+# 20. STRICT DEFINITION OF DONE
+
+You may report the entire project complete only when all of the following are true:
+
+- The correct target source code was used.
+- The primary user workflows were actually redesigned.
+- The visual system is cohesive across the application.
+- Account discovery remains functional.
+- Correct provider identities remain connected to correct account records.
+- Account 360 communicates meaningful, evidence-based next actions.
+- Saved-user research and authentication behavior remain intact.
+- The original logo and brand identity are preserved.
+- Desktop, tablet, and mobile layouts meet the responsive criteria.
+- No major overlapping, clipped, or unreadable elements remain in tested views.
+- Existing functional routes remain accessible.
+- Existing APIs have not been broken or silently replaced.
+- No new fabricated production data has been introduced.
+- The application builds successfully in its supported environment.
+- Relevant tests have actually been run.
+- Remaining integration, visual, performance, and accessibility limitations are honestly documented.
+
+**A successful build alone does not satisfy this contract.**
+
+**A polished screenshot alone does not satisfy this contract.**
+
+**A statement that everything is fixed does not satisfy this contract.**
+
+# 21. REQUIRED HANDOFF
+
+When implementation is complete, provide:
+
+### A. Actual changes
+
+Identify the modified frontend files and major components.
+
+### B. Design improvements
+
+Explain the new visual system, navigation, homepage, search experience, and Account 360 hierarchy.
+
+### C. Functional preservation
+
+Identify how the existing agency search, source matching, data integrity, authentication, and saved work were protected.
+
+### D. Test results
+
+Report which build, functional, responsive, and accessibility checks passed, failed, or could not be run.
+
+### E. Visual verification
+
+Provide actual before/after screenshots or preview references if the environment supports them.
+
+Never present conceptual images as screenshots of completed implementation.
+
+### F. Outstanding work
+
+Identify incomplete items with precise affected files or components.
+
+### G. Deployment readiness
+
+State whether the changes are:
+
+- Implemented in the current development workspace
+- Synced to a repository
+- Tested in a supported runtime
+- Ready for integration
+- Actually deployed
+
+Do not conflate these stages.
+
+Do not claim that modifications made in Google AI Studio have automatically changed the separate AppDeploy production deployment.
+
+# FINAL EXECUTION DIRECTIVE
+
+Build this as an original, premium professional intelligence product.
+
+Make every screen intentional.
+
+Make important information immediately recognizable.
+
+Make research complexity manageable.
+
+Make actions obvious.
+
+Make navigation effortless.
+
+Make source evidence transparent.
+
+Make the mobile experience exceptional.
+
+Make visual consistency non-negotiable.
+
+Preserve working functionality and validated data.
+
+**Your objective is not to make the application look more impressive. Your objective is to make it dramatically more useful while achieving the visual quality, clarity, precision, and professionalism expected of an elite enterprise intelligence platform.**
+
+Inspect the actual project, verify the source, create a recoverable checkpoint, and then perform the implementation in the prescribed order.
+
+Do not stop at design suggestions.
+
+Do not create a disconnected replacement application.
+
+Do not conceal unfinished work.
+
+**Deliver real, tested frontend changes and demonstrate that the most important EMS/fire territory workflows still work.**

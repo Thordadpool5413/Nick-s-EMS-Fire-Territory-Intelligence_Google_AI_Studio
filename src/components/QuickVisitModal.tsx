@@ -80,7 +80,7 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
 
     onAddFieldNote(targetId, {
       date: new Date().toISOString().split('T')[0],
-      repName: 'Sarah Jenkins (TM)',
+      repName: 'Territory Account Manager',
       meetingType,
       notes: notes.trim(),
       nextAction: nextAction.trim(),

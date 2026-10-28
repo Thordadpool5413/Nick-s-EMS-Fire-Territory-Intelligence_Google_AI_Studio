@@ -46,6 +46,7 @@ import {
 import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
 import { PulseIqScoreExplainerHub } from './PulseIqScoreExplainerHub';
+import { formatCurrency } from '../utils/formatters';
 
 interface ZollMobileDashboardProps {
   agencies: Agency[];
@@ -195,7 +196,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
     if (!quickNoteText.trim()) return;
     onAddFieldNote(agencyId, {
       date: new Date().toISOString().split('T')[0],
-      repName: 'Sarah Jenkins (TM)',
+      repName: 'Territory Account Manager',
       meetingType: quickNoteMeetingType,
       notes: quickNoteText.trim(),
       nextAction: quickNextAction,
@@ -217,7 +218,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-full space-y-4 pb-12 transition-colors duration-200">
+    <div className="workspace-view-container min-w-0 w-full pb-12 transition-colors duration-200">
       
       {/* 1. MINIMALIST EXECUTIVE FIELD COCKPIT HEADER */}
       <motion.div 
@@ -241,32 +242,18 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
 
             <div>
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Field Territory Manager</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Field Account Management</span>
                 <span aria-hidden="true">·</span>
                 <span className="font-medium">{isOnline ? 'Cloud Synced' : 'Offline Field'}</span>
               </div>
               <h1 className="text-lg font-bold text-[#0F172A] dark:text-slate-100 tracking-tight">
-                Sarah Jenkins <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Southwest Territory)</span>
+                Territory Executive Operations <span className="text-xs font-normal text-slate-500 dark:text-slate-400">(Emergency Medical Systems)</span>
               </h1>
             </div>
           </div>
 
           {/* Quick Actions & Dark Mode Toggle */}
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            {/* Network Simulator Button */}
-            <button
-              onClick={toggleNetwork}
-              className={`h-9 px-2.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                isOnline 
-                  ? 'bg-[#F8F7F4] dark:bg-slate-800 text-[#374151] dark:text-slate-300 border-[#E5E4DF] dark:border-slate-700 hover:bg-[#F1EFEA]' 
-                  : 'bg-amber-50 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-700'
-              }`}
-              title={isOnline ? 'Online with cloud live sync' : 'Field offline mode'}
-            >
-              {isOnline ? <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
-              <span className="hidden md:inline">{isOnline ? 'Online' : 'Offline'}</span>
-            </button>
-
             {/* Dark Mode Switcher with Motion */}
             <motion.button
               whileTap={{ scale: 0.92 }}
@@ -325,49 +312,49 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
         {/* Executive KPI Overview Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4 pt-3.5 border-t border-slate-200/80 dark:border-slate-800">
           <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
-              Active Accounts
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Active accounts
             </span>
-            <span className="text-xl font-bold text-[#0F172A] dark:text-slate-100 font-mono tabular-nums block mt-0.5">
+            <span className="text-2xl font-[650] text-[#0F172A] dark:text-slate-100 tabular-nums block mt-0.5">
               {territoryStats.total}
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-medium mt-0.5">
-              100% Verified CRM
+            <span className="text-xs text-slate-500 dark:text-slate-400 block font-normal mt-0.5">
+              100% verified CRM
             </span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
-              Critical (&le;90d Expiry)
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Expiring contracts (&le;90d)
             </span>
-            <span className="text-xl font-bold text-rose-700 dark:text-rose-400 font-mono tabular-nums block mt-0.5">
-              {territoryStats.criticalCount} Leads
+            <span className="text-2xl font-[650] text-rose-700 dark:text-rose-400 tabular-nums block mt-0.5">
+              {territoryStats.criticalCount}
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-              Contract cliff urgent
+            <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
+              Urgent renewal window
             </span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
-              Conversion Pipeline
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Conversion pipeline
             </span>
-            <span className="text-xl font-bold text-[#1D4ED8] dark:text-blue-400 font-mono tabular-nums block mt-0.5">
+            <span className="text-2xl font-[650] text-[#1D4ED8] dark:text-blue-400 tabular-nums block mt-0.5">
               ${(territoryStats.totalPipelineValue / 1000000).toFixed(1)}M
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
               {territoryStats.competitorUnits} defib units
             </span>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
-            <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
-              Today's Field Stops
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+              Today's field stops
             </span>
-            <span className="text-xl font-bold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums block mt-0.5">
-              {territoryStats.dayRouteCount} Stops
+            <span className="text-2xl font-[650] text-emerald-700 dark:text-emerald-400 tabular-nums block mt-0.5">
+              {territoryStats.dayRouteCount}
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+            <span className="text-xs text-slate-500 dark:text-slate-400 block mt-0.5">
               {territoryStats.dayRouteCount > 0 ? 'Ready for navigation' : 'Tap to add station'}
             </span>
           </div>
@@ -389,11 +376,11 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-full">
-                    Urgent Status Alert: {urgentLead.competitorContract?.renewalWindowDays ?? 60} Days Left
+                  <span className="text-xs font-medium text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/60 px-2.5 py-0.5 rounded-md">
+                    Urgent status: {urgentLead.competitorContract?.renewalWindowDays ?? 60} days remaining
                   </span>
-                  <span className="text-xs text-[#6B7280] dark:text-slate-400 font-mono">
-                    Priority Score {urgentLead.zollOpportunity?.pulseIqScore ?? 85}
+                  <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                    Priority score {urgentLead.zollOpportunity?.pulseIqScore ?? 85}
                   </span>
                 </div>
                 <h2 className="text-sm font-bold text-[#111827] dark:text-slate-100 mt-1">
@@ -460,7 +447,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <Radio className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400 animate-pulse" />
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
+              <span className="text-[12px] font-semibold text-[#1E3A8A] dark:text-blue-400">
                 Real-Time Geographic Intelligence
               </span>
             </div>
@@ -517,45 +504,45 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
             >
               <div className="p-3 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold text-[#111827] dark:text-slate-200">Metro High-Volume Cluster</span>
-                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded">
-                    HIGH TARGET
+                  <span className="font-semibold text-[#111827] dark:text-slate-200">Metro High-Volume Cluster</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">
+                    High priority
                   </span>
                 </div>
-                <div className="text-xl font-bold font-mono text-[#1E3A8A] dark:text-blue-400 tabular-nums">
-                  18 Agencies
+                <div className="text-xl font-[650] text-[#1E3A8A] dark:text-blue-400 tabular-nums">
+                  18 agencies
                 </div>
-                <p className="text-[11px] text-[#6B7280] dark:text-slate-400 mt-1">
+                <p className="text-xs text-[#6B7280] dark:text-slate-400 mt-1">
                   Avg 6.2 miles between stations. Optimal for clustered on-site clinical demonstrations and trade-in presentations.
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold text-[#111827] dark:text-slate-200">Suburban / County Districts</span>
-                  <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.5 rounded">
-                    EXPIRING 2026/27
+                  <span className="font-semibold text-[#111827] dark:text-slate-200">Suburban / County Districts</span>
+                  <span className="text-xs text-amber-700 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/80 px-2 py-0.5 rounded-md">
+                    Expiring 2026/27
                   </span>
                 </div>
-                <div className="text-xl font-bold font-mono text-[#111827] dark:text-slate-200 tabular-nums">
-                  24 Agencies
+                <div className="text-xl font-[650] text-[#111827] dark:text-slate-200 tabular-nums">
+                  24 agencies
                 </div>
-                <p className="text-[11px] text-[#6B7280] dark:text-slate-400 mt-1">
+                <p className="text-xs text-[#6B7280] dark:text-slate-400 mt-1">
                   Higher Medicare transport volumes. 14 agencies currently navigating CMS GADCS cost collection audits.
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold text-[#111827] dark:text-slate-200">Rural / Critical Access</span>
-                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-950/80 px-1.5 py-0.5 rounded">
-                    AFG FUNDING
+                  <span className="font-semibold text-[#111827] dark:text-slate-200">Rural / Critical Access</span>
+                  <span className="text-xs text-blue-700 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md">
+                    AFG awarded
                   </span>
                 </div>
-                <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  $480,000 Awarded
+                <div className="text-xl font-[650] text-emerald-700 dark:text-emerald-400 tabular-nums">
+                  $480,000 awarded
                 </div>
-                <p className="text-[11px] text-[#6B7280] dark:text-slate-400 mt-1">
+                <p className="text-xs text-[#6B7280] dark:text-slate-400 mt-1">
                   Federal AFG grant funding secured by 4 volunteer &amp; combination fire districts for monitor upgrades.
                 </p>
               </div>
@@ -572,8 +559,8 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               className="space-y-3 p-3 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800"
             >
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-[#111827] dark:text-slate-200">Territory Defibrillator Fleet Installed Base</span>
-                <span className="font-mono text-[11px] text-[#6B7280] dark:text-slate-400">Total: {territoryStats.competitorUnits} Monitor Units</span>
+                <span className="font-semibold text-[#111827] dark:text-slate-200">Territory Defibrillator Fleet Installed Base</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">Total: {territoryStats.competitorUnits} monitor units</span>
               </div>
 
               {/* Stacked Percentage Bar */}
@@ -622,9 +609,9 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               className="grid grid-cols-1 sm:grid-cols-2 gap-3"
             >
               <div className="p-3 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800">
-                <div className="text-[11px] font-mono text-[#6B7280] dark:text-slate-400 uppercase">Avg Transport Latency</div>
-                <div className="text-xl font-bold font-mono text-[#111827] dark:text-slate-100 mt-0.5">
-                  14.8 Minutes
+                <div className="text-[12px] font-medium text-[#6B7280] dark:text-slate-400">Average transport latency</div>
+                <div className="text-xl font-semibold tabular-nums text-[#111827] dark:text-slate-100 mt-0.5">
+                  14.8 minutes
                 </div>
                 <p className="text-[11px] text-[#374151] dark:text-slate-400 mt-1">
                   Long transit times make ZOLL Real BVM Help &amp; CPR dashboard continuous telemetry mission-critical.
@@ -632,9 +619,9 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               </div>
 
               <div className="p-3 rounded-xl bg-[#F8F7F4] dark:bg-slate-800/60 border border-[#E5E4DF] dark:border-slate-800">
-                <div className="text-[11px] font-mono text-[#6B7280] dark:text-slate-400 uppercase">STEMI PCI Cath Lab Distance</div>
-                <div className="text-xl font-bold font-mono text-[#047857] dark:text-emerald-400 mt-0.5">
-                  18.2 Miles Avg
+                <div className="text-[12px] font-medium text-[#6B7280] dark:text-slate-400">STEMI PCI Cath Lab distance</div>
+                <div className="text-xl font-semibold tabular-nums text-[#047857] dark:text-emerald-400 mt-0.5">
+                  18.2 miles avg
                 </div>
                 <p className="text-[11px] text-[#374151] dark:text-slate-400 mt-1">
                   Pre-hospital 12-lead transmission directly to hospital STEMI team saves an average of 22 minutes door-to-balloon.
@@ -684,8 +671,8 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
             )}
           </div>
 
-          <div className="text-xs font-mono text-[#6B7280] dark:text-slate-400 shrink-0 self-end sm:self-auto">
-            Showing <span className="font-bold text-[#111827] dark:text-slate-100">{filteredAgencies.length}</span> of {agencies.length} Accounts
+          <div className="text-xs tabular-nums text-[#6B7280] dark:text-slate-400 shrink-0 self-end sm:self-auto">
+            Showing <span className="font-semibold text-[#111827] dark:text-slate-100">{filteredAgencies.length}</span> of {agencies.length} accounts
           </div>
         </div>
 
@@ -763,9 +750,9 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                       {/* Left: Score Badge & Identity */}
                       <div className="flex items-start gap-3 min-w-0">
                         {/* Polished Executive Score Badge */}
-                        <div className="w-11 h-11 rounded-xl bg-[#0F172A] dark:bg-slate-800 text-white flex flex-col items-center justify-center font-mono font-bold shrink-0 border border-slate-700/80 shadow-xs">
-                          <span className="text-sm font-bold tabular-nums leading-none">{pulseScore}</span>
-                          <span className="text-[7.5px] uppercase tracking-wider font-sans font-semibold text-slate-400 mt-0.5">PulseIQ</span>
+                        <div className="w-11 h-11 rounded-xl bg-[#0F172A] dark:bg-slate-800 text-white flex flex-col items-center justify-center font-bold shrink-0 border border-slate-700/80 shadow-xs">
+                          <span className="text-sm font-[650] tabular-nums leading-none">{pulseScore}</span>
+                          <span className="text-[10px] font-medium text-slate-400 mt-0.5">Score</span>
                         </div>
 
                         <div className="min-w-0">
@@ -824,31 +811,31 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                     </div>
 
                     {/* Operational & Installed Base Quick Telemetry */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-[#E5E4DF] dark:border-slate-800/80 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-[#E5E4DF] dark:border-slate-800/80 text-xs">
                       <div>
-                        <span className="text-[10px] font-mono uppercase text-[#6B7280] dark:text-slate-400 block">Current Defib Fleet</span>
-                        <span className="font-bold text-[#111827] dark:text-slate-200 truncate block">
-                          {agency.installedFleet?.defibUnitsCount || 0}x {agency.installedFleet?.defibBrand || 'LIFEPAK 15'}
+                        <span className="text-xs font-normal text-[#6B7280] dark:text-slate-400 block">Current defib fleet</span>
+                        <span className="font-semibold text-[#111827] dark:text-slate-200 truncate block mt-0.5">
+                          {agency.installedFleet?.defibUnitsCount || 0} {agency.installedFleet?.defibBrand || 'LIFEPAK 15'} devices
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[10px] font-mono uppercase text-[#6B7280] dark:text-slate-400 block">Contract Vendor</span>
-                        <span className="font-bold text-[#111827] dark:text-slate-200 truncate block">
+                        <span className="text-xs font-normal text-[#6B7280] dark:text-slate-400 block">Contract vendor</span>
+                        <span className="font-semibold text-[#111827] dark:text-slate-200 truncate block mt-0.5">
                           {agency.competitorContract?.vendor || 'Stryker'}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[10px] font-mono uppercase text-[#6B7280] dark:text-slate-400 block">Est. ZOLL Deal Size</span>
-                        <span className="font-bold text-[#047857] dark:text-emerald-400 font-mono tabular-nums block">
-                          ${(agency.zollOpportunity?.projectedPipelineValue || 120000).toLocaleString()}
+                        <span className="text-xs font-normal text-[#6B7280] dark:text-slate-400 block">Est. ZOLL deal size</span>
+                        <span className="font-semibold text-[#047857] dark:text-emerald-400 tabular-nums block mt-0.5">
+                          {formatCurrency(agency.zollOpportunity?.projectedPipelineValue || 120000)}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[10px] font-mono uppercase text-[#6B7280] dark:text-slate-400 block">Key Official</span>
-                        <span className="font-bold text-[#111827] dark:text-slate-200 truncate block">
+                        <span className="text-xs font-normal text-[#6B7280] dark:text-slate-400 block">Key official</span>
+                        <span className="font-semibold text-[#111827] dark:text-slate-200 truncate block mt-0.5">
                           {chiefContact ? `${chiefContact.title || 'Chief'}: ${chiefContact.name || 'Official'}` : 'Fire / EMS Chief'}
                         </span>
                       </div>
@@ -856,8 +843,8 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
 
                     {/* Mobile Visual Intelligence Action Bar */}
                     <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-[#E5E4DF] dark:border-slate-800/80">
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-0.5">
-                        Intel:
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-0.5">
+                        Intelligence:
                       </span>
 
                       <button
@@ -1018,7 +1005,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                               <Sparkles className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
                               Log Rapid Field Visit Note ({agency.name})
                             </span>
-                            <span className="text-[11px] font-mono text-[#6B7280] dark:text-slate-400">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
                               Auto-syncs to central CRM
                             </span>
                           </div>

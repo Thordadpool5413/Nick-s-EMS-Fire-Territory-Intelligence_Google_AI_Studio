@@ -952,50 +952,46 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
   }, []);
 
   return (
-    <div className="relative w-full h-[620px] rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-slate-950 shadow-md select-none">
+    <div className="relative w-full h-[620px] rounded-xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-slate-950 shadow-md select-none">
       
       {/* 3D WebGL Canvas Container */}
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Top Left: 3D Studio Identity & Active Specification HUD with Crosshair Corner Ticks */}
+      {/* Top Left: 3D Studio Identity & Active Specification Panel */}
       <div className="absolute top-4 left-4 z-10 pointer-events-none">
-        <div className="relative flex items-center gap-2.5 backdrop-blur-md bg-slate-950/85 border border-white/10 px-4 py-2.5 rounded-xl shadow-lg text-white">
-          <span className="absolute top-0 left-0 w-2 h-2 border-t border-l border-sky-400/60 pointer-events-none" />
-          <span className="absolute top-0 right-0 w-2 h-2 border-t border-r border-sky-400/60 pointer-events-none" />
-          <span className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-sky-400/60 pointer-events-none" />
-          <span className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-sky-400/60 pointer-events-none" />
+        <div className="flex items-center gap-2.5 backdrop-blur-md bg-slate-950/85 border border-white/10 px-4 py-2.5 rounded-xl shadow-lg text-white">
           <Box className="w-4 h-4 text-sky-400 shrink-0" />
           <div>
-            <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 font-mono">
+            <div className="text-xs font-semibold text-white flex items-center gap-2">
               <span>ZOLL Hardware &amp; Apparatus 3D CAD Studio</span>
-              <span className="text-[10px] text-sky-400 font-mono">· Three.js PBR</span>
+              <span className="text-[11px] text-sky-400 font-medium">· Three.js PBR</span>
             </div>
-            <div className="text-[11px] text-slate-300 font-mono mt-0.5">
+            <div className="text-xs text-slate-300 mt-0.5">
               {apparatusType === 'ambulance' && 'Type III Modular ALS Transport Unit · Stryker/ZOLL Interface'}
               {apparatusType === 'engine' && 'Class A Rescue Pumper · NFPA 1901 Spec · High-Pressure Foam'}
               {apparatusType === 'defib' && 'ZOLL X Series Advanced · Real CPR Help · 12-Lead ECG · AutoPulse Ready'}
             </div>
             {activeAccount && (
-              <div className="mt-1 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
-                <span>Account Spec: <strong>{activeAccount.name}</strong> ({activeAccount.fleet?.currentDefibVendor || activeAccount.installedFleet?.defibBrand || 'Competitor'} fleet)</span>
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-400">
+                <span>Account Spec: <strong className="font-semibold text-white">{activeAccount.name}</strong> ({activeAccount.fleet?.currentDefibVendor || activeAccount.installedFleet?.defibBrand || 'Competitor'} fleet)</span>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Top Right: CAD Telemetry Badge & Turntable HUD */}
+      {/* Top Right: CAD Telemetry Badge & Turntable Controls */}
       <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2 pointer-events-auto">
-        {/* CAD Telemetry HUD Readout */}
-        <div className="backdrop-blur-md bg-slate-950/85 border border-white/10 rounded-xl px-2.5 py-1.5 shadow-2xl flex items-center gap-2.5 text-[9.5px] font-mono text-slate-300">
-          <span className="text-sky-400 font-bold flex items-center gap-1.5">
+        {/* CAD Telemetry Readout */}
+        <div className="backdrop-blur-md bg-slate-950/85 border border-white/10 rounded-xl px-3 py-1.5 shadow-2xl flex items-center gap-2 text-xs text-slate-300">
+          <span className="text-sky-400 font-semibold flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            CAD SPEC 1:1
+            CAD 1:1 Scale
           </span>
           <span className="text-white/20">|</span>
-          <span>PITCH: <span className="tabular-nums text-white font-semibold">-14°</span></span>
+          <span>Pitch: <span className="tabular-nums text-white font-semibold">-14°</span></span>
           <span className="text-white/20">·</span>
-          <span>YAW: <span className="tabular-nums text-white font-semibold">122°</span></span>
+          <span>Yaw: <span className="tabular-nums text-white font-semibold">122°</span></span>
           <span className="text-white/20">·</span>
           <span>FOV: <span className="tabular-nums text-white font-semibold">45mm</span></span>
         </div>
@@ -1003,7 +999,7 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsRotating(!isRotating)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs backdrop-blur-md cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs backdrop-blur-md cursor-pointer ${
               isRotating 
                 ? 'bg-sky-600/90 text-white border border-sky-400/40 shadow-sky-950/50' 
                 : 'bg-slate-950/85 text-slate-200 hover:text-white border border-white/10'
@@ -1011,25 +1007,25 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
             title="Toggle Turntable Rotation"
           >
             <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'animate-spin' : ''}`} />
-            <span>{isRotating ? 'Auto-Orbiting' : 'Paused'}</span>
+            <span>{isRotating ? 'Auto-orbiting' : 'Paused'}</span>
           </button>
 
           <button
             onClick={() => setExplodedFactor(explodedFactor > 0.05 ? 0 : 1)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs backdrop-blur-md cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs backdrop-blur-md cursor-pointer ${
               explodedFactor > 0.05
-                ? 'bg-amber-600/90 text-white border border-amber-400/40 shadow-amber-950/50'
+                ? 'bg-amber-600/90 text-white border border-amber-400/40 shadow-amber-950/50' 
                 : 'bg-slate-950/85 text-slate-200 hover:text-white border border-white/10'
             }`}
             title="Exploded View Toggle"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>{explodedFactor > 0.05 ? 'Collapse Parts' : 'Explode Spec'}</span>
+            <span>{explodedFactor > 0.05 ? 'Collapse parts' : 'Explode spec'}</span>
           </button>
         </div>
       </div>
 
-      {/* Ergonomic Collapsible Bottom Control Dock HUD */}
+      {/* Ergonomic Collapsible Bottom Control Dock */}
       <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[94%] max-w-4xl transition-all duration-300 pointer-events-auto ${
         isControlsCollapsed ? 'translate-y-[calc(100%-36px)]' : 'translate-y-0'
       }`}>
@@ -1038,28 +1034,23 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
         <div className="flex justify-center mb-1">
           <button
             onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
-            className="px-4 py-1 rounded-t-lg backdrop-blur-md bg-slate-950/85 border-t border-x border-white/10 text-[11px] font-semibold text-slate-200 hover:text-white flex items-center gap-1.5 shadow-sm cursor-pointer"
+            className="px-4 py-1 rounded-t-lg backdrop-blur-md bg-slate-950/85 border-t border-x border-white/10 text-xs font-medium text-slate-200 hover:text-white flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
             {isControlsCollapsed ? <ChevronUp className="w-3 h-3 text-sky-400" /> : <ChevronDown className="w-3 h-3 text-sky-400" />}
-            <span>{isControlsCollapsed ? 'Expand 3D CAD Controls' : 'Cinema Mode (Hide)'}</span>
+            <span>{isControlsCollapsed ? 'Expand 3D CAD controls' : 'Cinema mode (hide)'}</span>
           </button>
         </div>
 
         {/* Main Dock Container */}
-        <div className="relative backdrop-blur-md bg-slate-950/85 border border-white/10 rounded-2xl p-3 shadow-2xl space-y-2.5 text-white">
-          <span className="absolute top-0 left-0 w-2 h-2 border-t border-l border-sky-400/60 pointer-events-none" />
-          <span className="absolute top-0 right-0 w-2 h-2 border-t border-r border-sky-400/60 pointer-events-none" />
-          <span className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-sky-400/60 pointer-events-none" />
-          <span className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-sky-400/60 pointer-events-none" />
-          
+        <div className="backdrop-blur-md bg-slate-950/85 border border-white/10 rounded-xl p-3 shadow-2xl space-y-2.5 text-white">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             
             {/* Subject Selector Buttons */}
             <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-bold mr-1">Apparatus:</span>
+              <span className="text-xs text-slate-400 font-medium mr-1">Apparatus:</span>
               <button
                 onClick={() => { setApparatusType('ambulance'); setActiveHotspotId(null); }}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
                   apparatusType === 'ambulance'
                     ? 'bg-sky-600 text-white shadow-md border border-sky-400/50'
                     : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
@@ -1071,7 +1062,7 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
 
               <button
                 onClick={() => { setApparatusType('engine'); setActiveHotspotId(null); }}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
                   apparatusType === 'engine'
                     ? 'bg-rose-600 text-white shadow-md border border-rose-400/50'
                     : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
@@ -1083,7 +1074,7 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
 
               <button
                 onClick={() => { setApparatusType('defib'); setActiveHotspotId(null); }}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-all cursor-pointer text-xs ${
                   apparatusType === 'defib'
                     ? 'bg-amber-600 text-white shadow-md border border-amber-400/50'
                     : 'bg-slate-900/80 text-slate-300 hover:bg-slate-800 border border-white/10'
@@ -1095,8 +1086,8 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
             </div>
 
             {/* Exploded View Slider */}
-            <div className="flex items-center gap-2 w-full sm:w-64 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-bold whitespace-nowrap">Explode:</span>
+            <div className="flex items-center gap-2 w-full sm:w-64 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-white/10">
+              <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Explode:</span>
               <input
                 type="range"
                 min="0"
@@ -1106,7 +1097,7 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
                 onChange={(e) => setExplodedFactor(parseFloat(e.target.value))}
                 className="w-full accent-sky-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
-              <span className="text-[10px] font-mono text-sky-400 font-bold tabular-nums w-9 text-right">
+              <span className="text-xs text-sky-400 font-semibold tabular-nums w-9 text-right">
                 {Math.round(explodedFactor * 100)}%
               </span>
             </div>
@@ -1116,9 +1107,9 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
           {/* Interactive 3D Subsystem Callout Hotspots Bar */}
           <div className="pt-2 border-t border-white/10 space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-mono uppercase font-bold text-slate-400 mr-1 flex items-center gap-1">
+              <span className="text-xs font-medium text-slate-400 mr-1 flex items-center gap-1">
                 <Crosshair className="w-3 h-3 text-sky-400" />
-                CAD Reticle Hotspots:
+                Subsystem hotspots:
               </span>
               {APPARATUS_HOTSPOTS[apparatusType].map((spot, idx) => {
                 const isSelected = activeHotspotId === spot.id;
@@ -1135,13 +1126,13 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
                         setIsRotating(false);
                       }
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all border cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all border cursor-pointer ${
                       isSelected
                         ? 'bg-sky-500/20 text-sky-200 border-sky-400/60 shadow-xs'
                         : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border-white/10'
                     }`}
                   >
-                    <span className={`w-4 h-4 rounded-full font-mono text-[9px] font-bold flex items-center justify-center ${
+                    <span className={`w-4 h-4 rounded-full text-[10px] font-semibold tabular-nums flex items-center justify-center ${
                       isSelected ? 'bg-sky-400 text-slate-950' : 'bg-slate-800 text-slate-300 border border-white/10'
                     }`}>
                       {idx + 1}
@@ -1157,29 +1148,28 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
                     setActiveHotspotId(null);
                     setIsRotating(true);
                   }}
-                  className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-white/10 transition-colors cursor-pointer ml-auto"
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-white/10 transition-colors cursor-pointer ml-auto"
                 >
-                  Reset Orbit
+                  Reset orbit
                 </button>
               )}
             </div>
 
             {/* Active Subsystem Clinical vs. Competitor Callout Banner */}
             {activeHotspot && (
-              <div className="p-2.5 rounded-xl bg-slate-900/90 text-white border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs relative">
-                <span className="absolute top-1 right-2 text-[8px] font-mono text-sky-400 uppercase">RETICLE LOCKED</span>
+              <div className="p-3 rounded-xl bg-slate-900/90 text-white border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs relative">
                 <div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold">
+                  <div className="text-xs text-sky-400 font-semibold">
                     {activeHotspot.label} &bull; {activeHotspot.subsystem}
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-200 leading-relaxed">
-                    <strong className="text-emerald-400">ZOLL Engineering Advantage: </strong>
+                  <div className="mt-1 text-xs text-slate-200 leading-relaxed">
+                    <strong className="text-emerald-400 font-medium">ZOLL Engineering Advantage: </strong>
                     {activeHotspot.zollAdvantage}
                   </div>
                 </div>
                 <div className="md:border-l md:border-white/10 md:pl-3 flex flex-col justify-center">
-                  <div className="text-[11px] text-slate-300 leading-relaxed">
-                    <strong className="text-rose-400">Competitor Vulnerability: </strong>
+                  <div className="text-xs text-slate-300 leading-relaxed">
+                    <strong className="text-rose-400 font-medium">Competitor Vulnerability: </strong>
                     {activeHotspot.competitorGap}
                   </div>
                 </div>
@@ -1187,24 +1177,24 @@ export const ThreeApparatusStudio: React.FC<ThreeApparatusStudioProps> = ({ acti
             )}
           </div>
 
-          {/* Secondary Controls Bar: Material Finishes & Specs */}
-          <div className="pt-1.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-mono">
+          {/* Secondary Controls Bar: Material Finishes & Guidance */}
+          <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-600">PBR Environment:</span>
-              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                Studio ACES Filmic Tone • PMREM Room HDR
+              <span className="font-medium text-slate-300">PBR Environment:</span>
+              <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-white/10">
+                Studio ACES filmic tone &middot; PMREM room HDR
               </span>
-              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                Radial Contact Shadow Grounding
+              <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-white/10">
+                Radial contact shadow grounding
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-slate-500">
+            <div className="flex items-center gap-1.5 text-slate-400">
               <span>Drag to orbit</span>
               <span>&bull;</span>
               <span>Scroll to zoom</span>
               <span>&bull;</span>
-              <span className="text-sky-600 font-semibold">60 FPS Lossless</span>
+              <span className="text-sky-400 font-medium">60 FPS Lossless</span>
             </div>
           </div>
 

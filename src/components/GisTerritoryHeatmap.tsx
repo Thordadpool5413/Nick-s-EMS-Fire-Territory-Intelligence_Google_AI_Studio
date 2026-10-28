@@ -85,6 +85,7 @@ interface GisTerritoryHeatmapProps {
   onSelectCounty?: (county: string) => void;
   onSelectCity?: (city: string) => void;
   onSelectCategory?: (category: 'all' | 'ems' | 'fire') => void;
+  onSwitchToGoogleMaps?: () => void;
 }
 
 export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
@@ -102,7 +103,8 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   onSelectState,
   onSelectCounty,
   onSelectCity,
-  onSelectCategory
+  onSelectCategory,
+  onSwitchToGoogleMaps
 }) => {
   const [selectedLayer, setSelectedLayer] = useState<'nemsis_cardiac' | 'cardiac' | 'aed' | 'transport' | 'cms'>('nemsis_cardiac');
   const [nemsisAcuityFilter, setNemsisAcuityFilter] = useState<'all' | 'high' | 'critical'>('all');
@@ -151,6 +153,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   const [showCorridors, setShowCorridors] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [showLegend, setShowLegend] = useState<boolean>(true);
 
   // Escape key closes Theater Mode
   React.useEffect(() => {
@@ -1272,63 +1275,79 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     <div className="workspace-section-grid">
       
       {/* Top GIS Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-2xs min-w-0">
+      <div className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-4 sm:p-6 shadow-2xs min-w-0">
         <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] items-start xl:items-center justify-between gap-4 min-w-0">
           <div>
-            <div className="text-xs font-mono text-sky-700 dark:text-sky-400 font-semibold uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-              Geographic Information System (GIS) &amp; Spatial Acuity Telemetry
+            <div className="text-xs text-[#285EE8] dark:text-blue-400 font-semibold flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[#285EE8] dark:text-blue-400" />
+              <span>Geographic Information System (GIS) · Spatial Acuity Telemetry</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-1 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#14283F] dark:text-white mt-1 tracking-tight">
               High-Potential Territory Clusters &amp; Product Demand Hotspots
             </h1>
-            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
+            <p className="text-xs text-[#53657B] dark:text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
               Synthesizing emergency call locations, cardiac arrest survival rates, transport distance isochrones, and senior population density across all 50 states, 3,143 counties, and 5,389+ cities for EMS Providers &amp; Fire Departments.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">GIS Layer:</span>
-            <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1 text-xs gap-1">
+            {onSwitchToGoogleMaps && (
               <button
+                type="button"
+                onClick={onSwitchToGoogleMaps}
+                className="px-3.5 py-1.5 rounded-lg border border-[#DFE6EF] dark:border-[#1E2D42] bg-[#EEF3FE] dark:bg-blue-950/70 text-[#285EE8] dark:text-blue-300 font-semibold text-xs hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+                title="Switch to Google Maps Live Territory Explorer"
+              >
+                <MapPin className="w-3.5 h-3.5 text-[#285EE8] dark:text-blue-400 shrink-0" />
+                <span>Google Maps Live</span>
+              </button>
+            )}
+            <span className="text-xs text-[#53657B] dark:text-slate-400 font-medium shrink-0">GIS Layer:</span>
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-1 text-xs max-w-full">
+              <button
+                type="button"
                 onClick={() => setSelectedLayer('nemsis_cardiac')}
-                className={`px-3 py-1.5 rounded-lg transition-all font-semibold flex items-center gap-1.5 cursor-pointer ${
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg transition-all font-semibold flex items-center gap-1.5 cursor-pointer ${
                   selectedLayer === 'nemsis_cardiac' 
                     ? 'bg-rose-600 text-white font-bold shadow-xs' 
-                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
-                <HeartPulse className="w-3.5 h-3.5" />
+                <HeartPulse className="w-3.5 h-3.5 shrink-0" />
                 <span>NEMSIS Cardiac Acuity</span>
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedLayer('cardiac')}
-                className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'cardiac' ? 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg transition-colors font-semibold cursor-pointer ${
+                  selectedLayer === 'cardiac' ? 'bg-white dark:bg-[#111C2D] text-rose-700 dark:text-rose-400 font-bold shadow-2xs' : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
                 Survival Deficit
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedLayer('aed')}
-                className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'aed' ? 'bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg transition-colors font-semibold cursor-pointer ${
+                  selectedLayer === 'aed' ? 'bg-white dark:bg-[#111C2D] text-[#285EE8] dark:text-blue-400 font-bold shadow-2xs' : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
                 AED Need
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedLayer('transport')}
-                className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'transport' ? 'bg-white dark:bg-slate-900 text-amber-800 dark:text-amber-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg transition-colors font-semibold cursor-pointer ${
+                  selectedLayer === 'transport' ? 'bg-white dark:bg-[#111C2D] text-amber-800 dark:text-amber-400 font-bold shadow-2xs' : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
                 Long Transport (&gt;20 min)
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedLayer('cms')}
-                className={`px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                  selectedLayer === 'cms' ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-400 font-bold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg transition-colors font-semibold cursor-pointer ${
+                  selectedLayer === 'cms' ? 'bg-white dark:bg-[#111C2D] text-emerald-800 dark:text-emerald-400 font-bold shadow-2xs' : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
                 CMS Denial Zones
@@ -1338,21 +1357,22 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         </div>
 
         {/* Strategic Corridor Summary — Flush 1px Hairline Ledger Grid */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="mt-4 pt-3 border-t border-[#DFE6EF] dark:border-[#1E2D42] flex items-center justify-between">
           <button
+            type="button"
             onClick={() => setShowCorridors(prev => !prev)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#14283F] dark:text-slate-300 hover:text-[#285EE8] dark:hover:text-blue-400 cursor-pointer transition-colors"
           >
-            <span className="font-bold text-sky-800 dark:text-sky-400">Strategic High-Volume Corridors ({TERRITORY_CLUSTERS.length})</span>
+            <span className="font-semibold text-[#285EE8] dark:text-blue-400">Strategic High-Volume Corridors ({TERRITORY_CLUSTERS.length})</span>
             {showCorridors ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
-          <span className="text-[11px] text-slate-400 font-mono">
+          <span className="text-xs text-[#53657B] dark:text-slate-400">
             {showCorridors ? 'Click corridor to filter map' : 'Collapsed for full-screen map visibility'}
           </span>
         </div>
 
         {showCorridors && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[#DFE6EF] dark:bg-[#1E2D42] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg overflow-hidden mt-3">
             {TERRITORY_CLUSTERS.map((cluster) => {
               const isSelected = selectedClusterId === cluster.id;
               return (
@@ -1364,43 +1384,43 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   }}
                   className={`p-4 cursor-pointer transition-colors ${
                     isSelected 
-                      ? 'bg-slate-900 text-white dark:bg-blue-950' 
-                      : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/70'
+                      ? 'bg-[#0B1728] text-white dark:bg-blue-950' 
+                      : 'bg-white dark:bg-[#111C2D] hover:bg-[#F5F7FA] dark:hover:bg-slate-800/70'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[11px] font-mono">
-                    <span className={`font-bold ${isSelected ? 'text-sky-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={`font-semibold ${isSelected ? 'text-blue-300' : 'text-[#14283F] dark:text-slate-300'}`}>
                       {cluster.states.join(' · ')}
                     </span>
-                    <span className={isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}>
+                    <span className={`tabular-nums ${isSelected ? 'text-slate-300' : 'text-[#53657B] dark:text-slate-400'}`}>
                       {cluster.highPriorityAgencyCount} Accounts
                     </span>
                   </div>
 
-                  <h3 className={`font-bold text-xs mt-1.5 leading-snug ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+                  <h3 className={`font-semibold text-xs mt-1.5 leading-snug ${isSelected ? 'text-white' : 'text-[#14283F] dark:text-slate-100'}`}>
                     {cluster.name}
                   </h3>
 
-                  <p className={`text-[11px] mt-1 line-clamp-2 ${isSelected ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <p className={`text-xs mt-1 line-clamp-2 ${isSelected ? 'text-slate-300' : 'text-[#53657B] dark:text-slate-400'}`}>
                     {cluster.description}
                   </p>
 
-                  <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${isSelected ? 'border-slate-700' : 'border-slate-100 dark:border-slate-800'}`}>
+                  <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-xs ${isSelected ? 'border-slate-700' : 'border-[#DFE6EF] dark:border-[#1E2D42]'}`}>
                     <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-mono">Pipeline</span>
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">Pipeline</span>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
                         ${(cluster.totalPipelineValue / 1000000).toFixed(2)}M
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-mono">Survival</span>
-                      <span className="font-mono font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                      <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">Survival</span>
+                      <span className="font-semibold text-rose-700 dark:text-rose-400 tabular-nums">
                         {cluster.averageSurvivalRate}%
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-mono">Transport</span>
-                      <span className="font-mono font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+                      <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">Transport</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
                         {cluster.averageTransportMinutes} min
                       </span>
                     </div>
@@ -1416,13 +1436,13 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start w-full min-w-0">
         
         {/* Interactive GIS Spatial Visualizer */}
-        <div className={`${isExpandedView ? 'lg:col-span-12' : 'lg:col-span-8'} min-w-0 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs flex flex-col text-slate-900 dark:text-white transition-all`}>
+        <div className={`${isExpandedView ? 'lg:col-span-12' : 'lg:col-span-8'} min-w-0 bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl overflow-hidden shadow-2xs flex flex-col text-[#14283F] dark:text-white transition-all`}>
           {/* Interactive Jurisdiction Navigation & Geographic Filter Bar */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/90 dark:bg-slate-900">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+          <div className="p-3.5 sm:p-4 border-b border-[#DFE6EF] dark:border-[#1E2D42] flex flex-wrap items-center justify-between gap-3 bg-[#F5F7FA] dark:bg-[#16243A]">
+            <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <MapPin className="w-4 h-4 text-[#285EE8] dark:text-blue-400 shrink-0" />
+                <h2 className="text-sm font-semibold text-[#14283F] dark:text-white tracking-tight truncate">
                   {selectedLayer === 'nemsis_cardiac'
                     ? `NEMSIS Cardiac Acuity Intensity (${filteredAgencies.length.toLocaleString()} Providers)`
                     : selectedLayer === 'cardiac'
@@ -1434,7 +1454,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           : `CMS Billing Denials (${filteredAgencies.length.toLocaleString()} Providers)`}
                 </h2>
               </div>
-              <span className="text-[11px] font-mono text-sky-700 dark:text-sky-400">
+              <span className="text-xs text-[#53657B] dark:text-slate-400 truncate">
                 · {selectedCity !== 'all' ? `${selectedCity}, ${selectedState}` : selectedCounty !== 'all' ? `${selectedCounty}, ${selectedState}` : selectedState !== 'all' ? `${ALL_50_STATES_SUMMARIES[selectedState]?.state || selectedState} (${selectedState})` : 'US Nationwide (50 States + DC)'}
               </span>
             </div>
@@ -1444,7 +1464,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               
               {/* State Dropdown */}
               <div className="flex items-center gap-1">
-                <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase">State:</span>
+                <span className="text-xs text-[#53657B] dark:text-slate-400 font-medium">State:</span>
                 <select
                   value={selectedState}
                   onChange={(e) => {
@@ -1456,7 +1476,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     if (onSelectCounty) onSelectCounty('all');
                     if (onSelectCity) onSelectCity('all');
                   }}
-                  className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
+                  className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1 text-xs text-[#14283F] dark:text-slate-200 font-semibold focus:outline-none focus:border-[#285EE8] shadow-2xs cursor-pointer"
                 >
                   <option value="all">All 50 States (National)</option>
                   {availableStates.map(sc => (
@@ -1470,7 +1490,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {/* County Dropdown (Active when a state is selected) */}
               {selectedState !== 'all' && (
                 <div className="flex items-center gap-1">
-                  <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase">County:</span>
+                  <span className="text-xs text-[#53657B] dark:text-slate-400 font-medium">County:</span>
                   <select
                     value={selectedCounty}
                     onChange={(e) => {
@@ -1480,7 +1500,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       if (onSelectCounty) onSelectCounty(c);
                       if (onSelectCity) onSelectCity('all');
                     }}
-                    className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer max-w-[160px]"
+                    className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1 text-xs text-[#14283F] dark:text-slate-200 font-semibold focus:outline-none focus:border-[#285EE8] shadow-2xs cursor-pointer max-w-[160px]"
                   >
                     <option value="all">All Counties in {selectedState}</option>
                     {availableCounties.map(c => (
@@ -1492,8 +1512,8 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
               {/* City Dropdown (Active when a county is selected) */}
               {selectedState !== 'all' && availableCities.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase">City:</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs text-[#53657B] dark:text-slate-400 font-medium">City:</span>
                   <select
                     value={selectedCity}
                     onChange={(e) => {
@@ -1501,7 +1521,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       setSelectedCity(city);
                       if (onSelectCity) onSelectCity(city);
                     }}
-                    className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer max-w-[140px]"
+                    className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1 text-xs text-[#14283F] dark:text-slate-200 font-semibold focus:outline-none focus:border-[#285EE8] shadow-2xs cursor-pointer max-w-[150px]"
                   >
                     <option value="all">All Cities</option>
                     {availableCities.map(city => (
@@ -1512,15 +1532,17 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               )}
 
               {/* Provider Category Toggle */}
-              <div className="flex items-center bg-white border border-slate-300 rounded-lg p-0.5 shadow-2xs">
+              <div className="flex items-center bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg p-0.5 shadow-2xs shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedCategory('all');
                     if (onSelectCategory) onSelectCategory('all');
                   }}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                    selectedCategory === 'all' ? 'bg-sky-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                    selectedCategory === 'all'
+                      ? 'bg-[#285EE8] text-white shadow-2xs font-semibold'
+                      : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                   }`}
                 >
                   All
@@ -1531,8 +1553,10 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     setSelectedCategory('ems');
                     if (onSelectCategory) onSelectCategory('ems');
                   }}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                    selectedCategory === 'ems' ? 'bg-sky-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                    selectedCategory === 'ems'
+                      ? 'bg-[#285EE8] text-white shadow-2xs font-semibold'
+                      : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                   }`}
                 >
                   EMS
@@ -1543,8 +1567,10 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     setSelectedCategory('fire');
                     if (onSelectCategory) onSelectCategory('fire');
                   }}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-                    selectedCategory === 'fire' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                    selectedCategory === 'fire'
+                      ? 'bg-rose-600 text-white shadow-2xs font-semibold'
+                      : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                   }`}
                 >
                   Fire
@@ -1566,7 +1592,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     if (onSelectCity) onSelectCity('all');
                     if (onSelectCategory) onSelectCategory('all');
                   }}
-                  className="px-2.5 py-1 text-xs text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg font-semibold cursor-pointer transition-colors"
+                  className="px-2.5 py-1 text-xs text-[#285EE8] bg-[#285EE8]/10 hover:bg-[#285EE8]/15 border border-[#285EE8]/30 rounded-lg font-medium cursor-pointer transition-colors whitespace-nowrap shrink-0"
                   title="Reset to nationwide 50-state coverage"
                 >
                   Reset Jurisdiction
@@ -1574,13 +1600,13 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               )}
 
               {/* Full Width (12-Col) and Theater Fullscreen Buttons */}
-              <div className="flex items-center gap-1.5 ml-auto">
+              <div className="flex items-center gap-1.5 ml-auto shrink-0">
                 <button
                   onClick={() => setIsExpandedView(prev => !prev)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
                     isExpandedView
-                      ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 shadow-2xs'
+                      ? 'bg-[#285EE8] text-white border-[#285EE8] shadow-xs'
+                      : 'bg-white dark:bg-[#111C2D] text-[#14283F] dark:text-slate-200 border-[#DFE6EF] dark:border-[#1E2D42] hover:bg-[#F5F7FA] dark:hover:bg-[#16243A] shadow-2xs'
                   }`}
                   title={isExpandedView ? 'Switch to split layout (8 cols map + 4 cols intelligence)' : 'Expand map across full screen width (12 cols)'}
                 >
@@ -1590,7 +1616,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
                 <button
                   onClick={() => setIsTheaterModal(true)}
-                  className="px-2.5 py-1 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="px-2.5 py-1 text-xs font-semibold text-white bg-[#14283F] hover:bg-[#0D1B2A] rounded-lg border border-[#1E2D42] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap shrink-0"
                   title="Open dedicated Full-Screen Theater GIS Command Center (Esc to exit)"
                 >
                   <Eye className="w-3.5 h-3.5 text-sky-400" />
@@ -1601,16 +1627,16 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
           </div>
 
           {/* Dynamic GIS Telemetry & Layer Filter Strip (Active across all 5 layers) */}
-          <div className={`p-4 text-white border-b ${
+          <div className={`p-4 sm:p-5 text-white border-b min-w-0 ${
             selectedLayer === 'nemsis_cardiac' ? 'bg-gradient-to-r from-rose-950 via-slate-900 to-slate-950 border-rose-900/40' :
             selectedLayer === 'cardiac' ? 'bg-gradient-to-r from-red-950 via-slate-900 to-slate-950 border-red-900/40' :
             selectedLayer === 'aed' ? 'bg-gradient-to-r from-fuchsia-950 via-slate-900 to-slate-950 border-fuchsia-900/40' :
             selectedLayer === 'transport' ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 border-amber-900/40' :
             'bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border-emerald-900/40'
           }`}>
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className={`p-2 border rounded-xl ${
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className={`p-2.5 border rounded-xl shrink-0 ${
                   selectedLayer === 'nemsis_cardiac' ? 'bg-rose-600/30 border-rose-500/40 text-rose-400' :
                   selectedLayer === 'cardiac' ? 'bg-red-600/30 border-red-500/40 text-red-400' :
                   selectedLayer === 'aed' ? 'bg-fuchsia-600/30 border-fuchsia-500/40 text-fuchsia-400' :
@@ -1623,9 +1649,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                    selectedLayer === 'transport' ? <Clock className="w-5 h-5 text-amber-400 animate-pulse" /> :
                    <DollarSign className="w-5 h-5 text-emerald-400 animate-pulse" />}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm text-white tracking-tight flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-sm sm:text-base text-white tracking-tight flex items-center gap-1.5 flex-wrap">
                       <span>
                         {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS High-Acuity Cardiac Telemetry' :
                          selectedLayer === 'cardiac' ? 'Cardiac Arrest Survival Deficit Zones' :
@@ -1633,7 +1659,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                          selectedLayer === 'transport' ? 'Extended Transport Isochrones (>20 min)' :
                          'CMS Medicare Claim Denial Concentrations'}
                       </span>
-                      <span className="text-[10px] font-mono text-slate-400 font-medium tracking-wider uppercase">
+                      <span className="text-xs text-slate-300 font-normal">
                         · {selectedLayer === 'nemsis_cardiac' ? 'v3.5 Live Dataset' :
                            selectedLayer === 'cardiac' ? 'Utstein Resuscitation Registry' :
                            selectedLayer === 'aed' ? 'GIS PAD Census' :
@@ -1642,7 +1668,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </span>
                     </h3>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed max-w-3xl">
                     {selectedLayer === 'nemsis_cardiac' && `Territory-wide Out-of-Hospital Cardiac Arrest (OHCA) call volume, STEMI transmissions & Utstein survival telemetry across ${selectedCounty !== 'all' ? selectedCounty : selectedState !== 'all' ? selectedState : 'all 50 states'}.`}
                     {selectedLayer === 'cardiac' && `Identifying severe survival deficits (<26% Utstein survival rate) where ZOLL AutoPulse and ResQCPR generate highest clinical resuscitation impact.`}
                     {selectedLayer === 'aed' && `Mapping public access AED deficits and age 65+ demographic vulnerability to deploy ZOLL AED 3 community networks.`}
@@ -1652,19 +1678,19 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 </div>
               </div>
 
-              {/* Acuity Level Filters & Controls */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 text-xs">
-                  <span className="text-[10px] font-mono uppercase text-slate-400 px-1.5 font-bold">Filter:</span>
+              {/* Acuity Level Filters & Controls (Scrollable strip on mobile) */}
+              <div className="overflow-x-auto no-scrollbar py-0.5 max-w-full flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 text-xs shrink-0">
+                  <span className="text-xs text-slate-300 font-medium px-1.5 shrink-0">Filter:</span>
                   
                   {/* Layer: nemsis_cardiac */}
                   {selectedLayer === 'nemsis_cardiac' && (
                     <>
                       <button
                         onClick={() => setNemsisAcuityFilter('all')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                           nemsisAcuityFilter === 'all'
-                            ? 'bg-white text-slate-900 font-bold shadow-xs'
+                            ? 'bg-white text-slate-900 font-semibold shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
@@ -1672,25 +1698,25 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </button>
                       <button
                         onClick={() => setNemsisAcuityFilter('high')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           nemsisAcuityFilter === 'high'
-                            ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                            ? 'bg-amber-500 text-slate-950 font-semibold shadow-xs'
                             : 'text-amber-300 hover:text-amber-200'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                        <span>≥400 Calls</span>
+                        <span className="tabular-nums">≥400 Calls</span>
                       </button>
                       <button
                         onClick={() => setNemsisAcuityFilter('critical')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           nemsisAcuityFilter === 'critical'
-                            ? 'bg-rose-600 text-white font-bold shadow-xs'
+                            ? 'bg-rose-600 text-white font-semibold shadow-xs'
                             : 'text-rose-400 hover:text-rose-300'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                        <span>≥800 Epicenters</span>
+                        <span className="tabular-nums">≥800 Epicenters</span>
                       </button>
                     </>
                   )}
@@ -1700,9 +1726,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'all'
-                            ? 'bg-white text-slate-900 font-bold shadow-xs'
+                            ? 'bg-white text-slate-900 font-semibold shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
@@ -1710,9 +1736,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('high')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'high'
-                            ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                            ? 'bg-amber-500 text-slate-950 font-semibold shadow-xs'
                             : 'text-amber-300 hover:text-amber-200'
                         }`}
                       >
@@ -1721,9 +1747,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('critical')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'critical'
-                            ? 'bg-red-600 text-white font-bold shadow-xs'
+                            ? 'bg-red-600 text-white font-semibold shadow-xs'
                             : 'text-red-400 hover:text-red-300'
                         }`}
                       >
@@ -1738,9 +1764,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'all'
-                            ? 'bg-white text-slate-900 font-bold shadow-xs'
+                            ? 'bg-white text-slate-900 font-semibold shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
@@ -1748,25 +1774,25 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('high')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'high'
-                            ? 'bg-sky-500 text-white font-bold shadow-xs'
+                            ? 'bg-sky-500 text-white font-semibold shadow-xs'
                             : 'text-sky-300 hover:text-sky-200'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-                        <span>≥45% Deficit</span>
+                        <span className="tabular-nums">≥45% Deficit</span>
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('critical')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'critical'
-                            ? 'bg-fuchsia-600 text-white font-bold shadow-xs'
+                            ? 'bg-fuchsia-600 text-white font-semibold shadow-xs'
                             : 'text-fuchsia-400 hover:text-fuchsia-300'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-ping"></span>
-                        <span>≥55% Severe</span>
+                        <span className="tabular-nums">≥55% Severe</span>
                       </button>
                     </>
                   )}
@@ -1776,9 +1802,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'all'
-                            ? 'bg-white text-slate-900 font-bold shadow-xs'
+                            ? 'bg-white text-slate-900 font-semibold shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
@@ -1786,25 +1812,25 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('high')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'high'
-                            ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                            ? 'bg-amber-500 text-slate-950 font-semibold shadow-xs'
                             : 'text-amber-300 hover:text-amber-200'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                        <span>≥20 min Prolonged</span>
+                        <span className="tabular-nums">≥20 min Prolonged</span>
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('critical')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'critical'
-                            ? 'bg-orange-600 text-white font-bold shadow-xs'
+                            ? 'bg-orange-600 text-white font-semibold shadow-xs'
                             : 'text-orange-400 hover:text-orange-300'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping"></span>
-                        <span>≥28 min Extreme</span>
+                        <span className="tabular-nums">≥28 min Extreme</span>
                       </button>
                     </>
                   )}
@@ -1814,9 +1840,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'all'
-                            ? 'bg-white text-slate-900 font-bold shadow-xs'
+                            ? 'bg-white text-slate-900 font-semibold shadow-xs'
                             : 'text-slate-300 hover:text-white'
                         }`}
                       >
@@ -1824,186 +1850,184 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('high')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'high'
-                            ? 'bg-purple-500 text-white font-bold shadow-xs'
+                            ? 'bg-purple-500 text-white font-semibold shadow-xs'
                             : 'text-purple-300 hover:text-purple-200'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                        <span>≥18% High</span>
+                        <span className="tabular-nums">≥18% High</span>
                       </button>
                       <button
                         onClick={() => setLayerThresholdFilter('critical')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
                           layerThresholdFilter === 'critical'
-                            ? 'bg-rose-600 text-white font-bold shadow-xs'
+                            ? 'bg-rose-600 text-white font-semibold shadow-xs'
                             : 'text-rose-400 hover:text-rose-300'
                         }`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span>
-                        <span>≥21% Severe</span>
+                        <span className="tabular-nums">≥21% Severe</span>
                       </button>
                     </>
                   )}
                 </div>
 
                 {/* Map Display Mode: Thermal KDE, H3 Hexbins, Choropleth, Tactical Pins & Kernel Tuning */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1 bg-slate-900/95 border border-slate-700/80 rounded-xl p-1 text-[11px]">
-                    <button
-                      onClick={() => setMapDisplayMode('kde')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        mapDisplayMode === 'kde'
-                          ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white font-bold shadow-xs'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                      title="2D Gaussian Kernel Density Estimation (KDE) continuous thermal field"
-                    >
-                      <Flame className="w-3.5 h-3.5" />
-                      <span>Thermal KDE</span>
-                    </button>
-                    <button
-                      onClick={() => setMapDisplayMode('hexbin')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        mapDisplayMode === 'hexbin'
-                          ? 'bg-purple-600 text-white font-bold shadow-xs'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                      title="H3 Spatial Hexagonal Tessellation & Binning"
-                    >
-                      <Hexagon className="w-3.5 h-3.5" />
-                      <span>H3 Hexbins</span>
-                    </button>
-                    <button
-                      onClick={() => setMapDisplayMode('choropleth')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        mapDisplayMode === 'choropleth'
-                          ? 'bg-blue-600 text-white font-bold shadow-xs'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                      title="State-level choropleth intensity shading based on active layer"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Choropleth</span>
-                    </button>
-                    <button
-                      onClick={() => setMapDisplayMode('pins')}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        mapDisplayMode === 'pins'
-                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                      title="Tactical EMS/Fire station vector markers"
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>Station Vectors</span>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-1 bg-slate-900/95 border border-slate-700/80 rounded-xl p-1 text-xs shrink-0">
+                  <button
+                    onClick={() => setMapDisplayMode('kde')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      mapDisplayMode === 'kde'
+                        ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white font-semibold shadow-xs'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="2D Gaussian Kernel Density Estimation (KDE) continuous thermal field"
+                  >
+                    <Flame className="w-3.5 h-3.5" />
+                    <span>Thermal KDE</span>
+                  </button>
+                  <button
+                    onClick={() => setMapDisplayMode('hexbin')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      mapDisplayMode === 'hexbin'
+                        ? 'bg-purple-600 text-white font-semibold shadow-xs'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="H3 Spatial Hexagonal Tessellation & Binning"
+                  >
+                    <Hexagon className="w-3.5 h-3.5" />
+                    <span>H3 Hexbins</span>
+                  </button>
+                  <button
+                    onClick={() => setMapDisplayMode('choropleth')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      mapDisplayMode === 'choropleth'
+                        ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="State-level choropleth intensity shading based on active layer"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Choropleth</span>
+                  </button>
+                  <button
+                    onClick={() => setMapDisplayMode('pins')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                      mapDisplayMode === 'pins'
+                        ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                    title="Tactical EMS/Fire station vector markers"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>Station Vectors</span>
+                  </button>
+                </div>
 
-                  {/* Scientific Spectrum & Basemap Controls */}
-                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-2.5 py-1 text-[11px] text-slate-300">
-                    {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
-                      <>
-                        <div className="flex items-center gap-1 pr-2 border-r border-slate-700/80">
-                          <span className="text-[10px] font-mono uppercase text-slate-400">Spectrum:</span>
-                          {(['inferno', 'plasma', 'viridis'] as const).map((ramp) => (
-                            <button
-                              key={ramp}
-                              onClick={() => setColorSpectrum(ramp)}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase transition-colors cursor-pointer ${
-                                colorSpectrum === ramp
-                                  ? 'bg-sky-500/25 text-sky-300 border border-sky-400/40 font-bold'
-                                  : 'text-slate-400 hover:text-white'
-                              }`}
-                            >
-                              {ramp}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                {/* Scientific Spectrum & Basemap Controls */}
+                <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs text-slate-300 shrink-0">
+                  {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
+                    <>
+                      <div className="flex items-center gap-1 pr-2 border-r border-slate-700/80 shrink-0">
+                        <span className="text-xs text-slate-400 font-medium">Spectrum:</span>
+                        {(['inferno', 'plasma', 'viridis'] as const).map((ramp) => (
+                          <button
+                            key={ramp}
+                            onClick={() => setColorSpectrum(ramp)}
+                            className={`px-1.5 py-0.5 rounded text-xs capitalize transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                              colorSpectrum === ramp
+                                ? 'bg-sky-500/25 text-sky-300 border border-sky-400/40 font-semibold'
+                                : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {ramp}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
 
-                    {mapDisplayMode === 'kde' && (
-                      <>
-                        <div className="flex items-center gap-1.5 pr-2 border-r border-slate-700/80" title="Gaussian Kernel Bandwidth (Sigma)">
-                          <span className="text-[10px] font-mono text-slate-400">σ={kdeBandwidth}px</span>
-                          <input
-                            type="range"
-                            min={18}
-                            max={56}
-                            step={2}
-                            value={kdeBandwidth}
-                            onChange={(e) => setKdeBandwidth(Number(e.target.value))}
-                            className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                          />
-                        </div>
-                        <button
-                          onClick={() => setShowIsoContours(prev => !prev)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer ${
-                            showIsoContours ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold' : 'text-slate-400 hover:text-white'
-                          }`}
-                          title="Toggle topographic iso-density contour bands"
-                        >
-                          Iso-Contours: {showIsoContours ? 'ON' : 'OFF'}
-                        </button>
-                        <button
-                          onClick={() => setShowStationOverlay(prev => !prev)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer ${
-                            showStationOverlay ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold' : 'text-slate-400 hover:text-white'
-                          }`}
-                          title="Overlay EMS/Fire station vectors atop KDE thermal field"
-                        >
-                          Stations: {showStationOverlay ? 'ON' : 'OFF'}
-                        </button>
-                      </>
-                    )}
+                  {mapDisplayMode === 'kde' && (
+                    <>
+                      <div className="flex items-center gap-1.5 pr-2 border-r border-slate-700/80 shrink-0" title="Gaussian Kernel Bandwidth (Sigma)">
+                        <span className="text-xs text-slate-400 tabular-nums">σ={kdeBandwidth}px</span>
+                        <input
+                          type="range"
+                          min={18}
+                          max={56}
+                          step={2}
+                          value={kdeBandwidth}
+                          onChange={(e) => setKdeBandwidth(Number(e.target.value))}
+                          className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500 shrink-0"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setShowIsoContours(prev => !prev)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                          showIsoContours ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Toggle topographic iso-density contour bands"
+                      >
+                        Iso-Contours: {showIsoContours ? 'ON' : 'OFF'}
+                      </button>
+                      <button
+                        onClick={() => setShowStationOverlay(prev => !prev)}
+                        className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                          showStationOverlay ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Overlay EMS/Fire station vectors atop KDE thermal field"
+                      >
+                        Stations: {showStationOverlay ? 'ON' : 'OFF'}
+                      </button>
+                    </>
+                  )}
 
-                    <button
-                      onClick={() => setShowGraticule(prev => !prev)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors cursor-pointer ${
-                        showGraticule ? 'bg-slate-800 text-slate-200 font-bold' : 'text-slate-500 hover:text-white'
-                      }`}
-                      title="Toggle Geodetic Lat/Lon Graticule Grid"
-                    >
-                      Grid
-                    </button>
+                  <button
+                    onClick={() => setShowGraticule(prev => !prev)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      showGraticule ? 'bg-slate-800 text-slate-200 font-semibold' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Toggle Geodetic Lat/Lon Graticule Grid"
+                  >
+                    Grid
+                  </button>
 
-                    <button
-                      onClick={() => setBasemapTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                      className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Switch between Tactical Dark and Daylight Survey cartography"
-                    >
-                      {basemapTheme === 'dark' ? <Moon className="w-3 h-3 text-sky-400" /> : <Sun className="w-3 h-3 text-amber-400" />}
-                      <span>{basemapTheme === 'dark' ? 'Tactical Dark' : 'Daylight'}</span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setBasemapTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+                    className="px-2 py-0.5 rounded text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 cursor-pointer transition-colors whitespace-nowrap shrink-0"
+                    title="Switch between Tactical Dark and Daylight Survey cartography"
+                  >
+                    {basemapTheme === 'dark' ? <Moon className="w-3 h-3 text-sky-400" /> : <Sun className="w-3 h-3 text-amber-400" />}
+                    <span>{basemapTheme === 'dark' ? 'Dark' : 'Daylight'}</span>
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Telemetry Metric KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-800/80">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-800/80 min-w-0">
               
               {/* CARD 1 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-mono text-slate-400 font-semibold block">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                <div className="min-w-0">
+                  <span className="text-xs text-slate-400 font-medium truncate block">
                     {selectedLayer === 'nemsis_cardiac' ? 'Total Cardiac Arrests' :
                      selectedLayer === 'cardiac' ? 'Avg Utstein Survival' :
                      selectedLayer === 'aed' ? 'Avg Public Access Deficit' :
                      selectedLayer === 'transport' ? 'Avg Emergency Transit' :
                      'Avg Claim Denial Rate'}
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base sm:text-lg font-mono font-bold text-rose-400 tabular-nums">
+                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                    <span className="text-xl sm:text-2xl font-semibold text-rose-400 tabular-nums">
                       {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.totalCardiacCalls.toLocaleString()}`}
                       {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.avgSurvival}%`}
                       {selectedLayer === 'aed' && `${nemsisTerritoryStats.avgAedDeficit}%`}
                       {selectedLayer === 'transport' && `${nemsisTerritoryStats.avgTransportTime} min`}
                       {selectedLayer === 'cms' && `${nemsisTerritoryStats.avgDenialRate}%`}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400 truncate">
                       {selectedLayer === 'nemsis_cardiac' ? 'OHCA/yr' :
                        selectedLayer === 'cardiac' ? 'vs 29.7% bench' :
                        selectedLayer === 'aed' ? 'community gap' :
@@ -2012,7 +2036,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     </span>
                   </div>
                 </div>
-                <div className="mt-2 pt-1 border-t border-slate-800">
+                <div className="mt-2.5 pt-1 border-t border-slate-800">
                   <InteractiveSparkline
                     data={
                       selectedLayer === 'nemsis_cardiac' ? [
@@ -2059,29 +2083,29 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
 
               {/* CARD 2 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-mono text-slate-400 font-semibold block">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                <div className="min-w-0">
+                  <span className="text-xs text-slate-400 font-medium truncate block">
                     {selectedLayer === 'nemsis_cardiac' ? 'STEMI Pre-Hospital Alerts' :
                      selectedLayer === 'cardiac' ? 'Critical Deficits (<22%)' :
                      selectedLayer === 'aed' ? 'High Need AED Zones (≥50%)' :
                      selectedLayer === 'transport' ? 'Prolonged Routes (≥20 min)' :
                      'High Denial Providers (≥19%)'}
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base sm:text-lg font-mono font-bold text-amber-400 tabular-nums">
+                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                    <span className="text-xl sm:text-2xl font-semibold text-amber-400 tabular-nums">
                       {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.totalStemiTransmissions.toLocaleString()}`}
                       {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.criticalSurvivalCount}`}
                       {selectedLayer === 'aed' && `${nemsisTerritoryStats.highAedNeedCount}`}
                       {selectedLayer === 'transport' && `${nemsisTerritoryStats.longTransportCount}`}
                       {selectedLayer === 'cms' && `${nemsisTerritoryStats.highDenialCount}`}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400 truncate">
                       {selectedLayer === 'nemsis_cardiac' ? 'transmissions' : 'agencies'}
                     </span>
                   </div>
                 </div>
-                <div className="mt-2 pt-1 border-t border-slate-800">
+                <div className="mt-2.5 pt-1 border-t border-slate-800">
                   <InteractiveSparkline
                     data={[
                       Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.82),
@@ -2098,24 +2122,24 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
 
               {/* CARD 3 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-mono text-slate-400 font-semibold block">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                <div className="min-w-0">
+                  <span className="text-xs text-slate-400 font-medium truncate block">
                     {selectedLayer === 'nemsis_cardiac' ? 'Active 911 Call Load' :
                      selectedLayer === 'cardiac' ? 'AutoPulse CPR Need' :
                      selectedLayer === 'aed' ? 'Total Population Served' :
                      selectedLayer === 'transport' ? 'Extreme Rural Routes (≥28 min)' :
                      'Estimated Recoverable Revenue'}
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base sm:text-lg font-mono font-bold text-emerald-400 tabular-nums">
+                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                    <span className="text-xl sm:text-2xl font-semibold text-emerald-400 tabular-nums">
                       {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.total911Transports.toLocaleString()}`}
                       {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.autoPulseNeedCount}`}
                       {selectedLayer === 'aed' && `${nemsisTerritoryStats.total911Transports.toLocaleString()}`}
                       {selectedLayer === 'transport' && `${nemsisTerritoryStats.extremeTransportCount}`}
                       {selectedLayer === 'cms' && `$${(nemsisTerritoryStats.totalRecoverableRevenue / 1000000).toFixed(1)}M`}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400 truncate">
                       {selectedLayer === 'cardiac' ? 'agencies without mech CPR' :
                        selectedLayer === 'transport' ? 'extended transit zones' :
                        selectedLayer === 'cms' ? 'recoverable cash' :
@@ -2123,7 +2147,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     </span>
                   </div>
                 </div>
-                <div className="mt-2 pt-1 border-t border-slate-800">
+                <div className="mt-2.5 pt-1 border-t border-slate-800">
                   <InteractiveSparkline
                     data={[
                       Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.85),
@@ -2140,29 +2164,29 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
 
               {/* CARD 4 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-mono text-rose-300 font-semibold block">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                <div className="min-w-0">
+                  <span className="text-xs text-rose-300 font-medium truncate block">
                     {selectedLayer === 'nemsis_cardiac' ? 'High-Acuity Defib Deficit' :
                      selectedLayer === 'cardiac' ? 'Aging Fleets in Deficit' :
                      selectedLayer === 'aed' ? 'AED 3 Upgrade Target' :
                      selectedLayer === 'transport' ? 'Ventilator Expansion Need' :
                      'Avg Denial Recovery / Agency'}
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-base sm:text-lg font-mono font-bold text-rose-300 tabular-nums">
+                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                    <span className="text-xl sm:text-2xl font-semibold text-rose-300 tabular-nums">
                       {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.agingFleetInCardiacZonesCount}`}
                       {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.agingDefibCount}`}
                       {selectedLayer === 'aed' && `${Math.round(nemsisTerritoryStats.avgAedDeficit * 16.5)}`}
                       {selectedLayer === 'transport' && `${nemsisTerritoryStats.ventOpportunityCount}`}
                       {selectedLayer === 'cms' && `$${Math.round(nemsisTerritoryStats.totalRecoverableRevenue / Math.max(1, filteredAgencies.length) / 1000)}k`}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400 truncate">
                       {selectedLayer === 'cms' ? '/agency upside' : 'priority replacements'}
                     </span>
                   </div>
                 </div>
-                <div className="mt-2 pt-1 border-t border-slate-800">
+                <div className="mt-2.5 pt-1 border-t border-slate-800">
                   <InteractiveSparkline
                     data={[
                       Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.70)),
@@ -2193,12 +2217,6 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
             {/* Interactive Map Zoom, Pan & Opacity Control Cluster */}
             <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-auto">
               <div className="relative backdrop-blur-md bg-slate-950/85 border border-white/10 text-slate-100 rounded-xl shadow-2xl overflow-hidden p-0.5">
-                {/* Tactical corner ticks */}
-                <span className="absolute top-0.5 left-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute top-0.5 right-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute bottom-0.5 left-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute bottom-0.5 right-1 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-
                 <div className="flex flex-col">
                   <button 
                     onClick={() => setZoomLevel(z => Math.min(3.5, +(z + 0.35).toFixed(2)))} 
@@ -2217,29 +2235,44 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   <button 
                     onClick={() => { setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }} 
                     title="Reset Nationwide View" 
-                    className="p-2 hover:bg-sky-500/20 hover:text-sky-400 transition-colors text-[10px] font-mono font-bold cursor-pointer text-slate-200"
+                    className="p-2 hover:bg-sky-500/20 hover:text-sky-400 transition-colors cursor-pointer text-slate-200"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="px-2 py-0.5 text-[8.5px] font-mono text-slate-400 border-t border-white/10 flex items-center justify-between gap-1.5 bg-slate-900/60">
-                  <span className="text-sky-400 font-bold">MAG</span>
+                <div className="px-2 py-1 text-xs font-medium text-slate-300 border-t border-white/10 flex items-center justify-between gap-1.5 bg-slate-900/60">
+                  <span className="text-sky-400 font-semibold">Zoom</span>
                   <span className="tabular-nums text-slate-200 font-semibold">{zoomLevel.toFixed(1)}x</span>
                 </div>
               </div>
+
+              {/* Legend Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowLegend(prev => !prev)}
+                className={`px-2.5 py-1.5 rounded-xl border text-xs font-medium shadow-2xl flex items-center gap-1.5 cursor-pointer transition-all backdrop-blur-md ${
+                  showLegend
+                    ? 'bg-slate-900/90 border-sky-400/40 text-sky-300'
+                    : 'bg-slate-950/85 border-white/10 text-slate-400 hover:text-slate-200'
+                }`}
+                title="Toggle Spatial Legend"
+              >
+                <Layers className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden sm:inline">Legend</span>
+              </button>
 
               {/* Active Geodesic Route Corridors Toggle */}
               {activeRouteCorridorPoints.length > 0 && (
                 <button
                   onClick={() => setShowCorridors(prev => !prev)}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-mono font-bold uppercase tracking-wider shadow-2xl flex items-center gap-1.5 cursor-pointer transition-all backdrop-blur-md ${
+                  className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold shadow-2xl flex items-center gap-1.5 cursor-pointer transition-all backdrop-blur-md ${
                     showCorridors
                       ? 'bg-emerald-950/85 border-emerald-500/60 text-emerald-300'
                       : 'bg-slate-950/85 border-white/10 text-slate-400 hover:text-slate-200'
                   }`}
-                  title="Toggle active field route geodesic vector corridor"
+                  title="Toggle active field route corridor"
                 >
-                  <Navigation className="w-3 h-3 text-emerald-400" />
+                  <Navigation className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Route ({activeRouteCorridorPoints.length})</span>
                 </button>
               )}
@@ -2754,188 +2787,184 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
             </svg>
 
             {/* Scientific Spectrum & Layer Telemetry Legend Overlay */}
-            <div className="absolute top-4 right-4 z-10 backdrop-blur-md bg-slate-950/85 border border-white/10 text-white rounded-xl p-3 shadow-2xl text-[11px] pointer-events-auto min-w-[225px] relative">
-              {/* Tactical corner ticks */}
-              <span className="absolute top-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-              <span className="absolute top-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-              <span className="absolute bottom-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-              <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
+            {showLegend && (
+              <div className="absolute top-4 right-4 z-10 backdrop-blur-md bg-slate-950/90 border border-white/15 text-white rounded-xl p-3 shadow-2xl text-xs pointer-events-auto max-w-[260px] sm:min-w-[230px]">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-2 pb-1.5 border-b border-white/10 font-medium">
+                  <span className="font-semibold text-slate-200">Layer details</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLegend(false)}
+                    className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
+                    title="Close legend"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-              {/* Tactical Telemetry Ribbon */}
-              <div className="flex items-center justify-between text-[8px] font-mono text-sky-400/80 mb-1.5 pb-1 border-b border-white/10 tracking-widest uppercase">
-                <span>HUD TELEMETRY</span>
-                <span>KDE BW: {kdeBandwidth}KM</span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="font-semibold text-xs flex items-center gap-1.5 text-white">
+                    {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3.5 h-3.5 text-rose-500" /> :
+                     selectedLayer === 'cardiac' ? <Activity className="w-3.5 h-3.5 text-red-500" /> :
+                     selectedLayer === 'aed' ? <Zap className="w-3.5 h-3.5 text-fuchsia-400" /> :
+                     selectedLayer === 'transport' ? <Clock className="w-3.5 h-3.5 text-amber-400" /> :
+                     <DollarSign className="w-3.5 h-3.5 text-emerald-400" />}
+                    {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS OHCA Density' :
+                     selectedLayer === 'cardiac' ? 'Utstein Deficit Surface' :
+                     selectedLayer === 'aed' ? 'Public AED Deficit' :
+                     selectedLayer === 'transport' ? 'Transit Isochrones' :
+                     'CMS Claim Denials'}
+                  </span>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/40 font-semibold">
+                    {mapDisplayMode === 'kde' ? 'KDE' : mapDisplayMode === 'hexbin' ? 'H3' : mapDisplayMode === 'choropleth' ? 'State' : 'Pins'}
+                  </span>
+                </div>
+
+                {/* Continuous Scientific Color Ramp Bar for KDE & Hexbin Modes */}
+                {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
+                  <div className="mb-2.5 pb-2 border-b border-slate-700/50">
+                    <div
+                      className="h-2 w-full rounded-full border border-white/15"
+                      style={{
+                        background:
+                          colorSpectrum === 'inferno'
+                            ? 'linear-gradient(90deg, #0a0722 0%, #420a68 25%, #932667 50%, #dd513a 75%, #fca50a 90%, #fcffa4 100%)'
+                            : colorSpectrum === 'plasma'
+                            ? 'linear-gradient(90deg, #0d0887 0%, #6a00a8 25%, #b12a90 50%, #e16462 75%, #fca636 90%, #f0f921 100%)'
+                            : 'linear-gradient(90deg, #440154 0%, #3b528b 25%, #21918c 50%, #5ec962 75%, #fde725 100%)'
+                      }}
+                    />
+                    <div className="flex justify-between text-xs text-slate-400 mt-1 font-medium">
+                      <span>Baseline</span>
+                      <span>Median</span>
+                      <span className="text-amber-300 font-semibold">Peak</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLayer === 'nemsis_cardiac' && (
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
+                      <span className="font-semibold text-slate-100">≥800 Calls (Critical)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
+                      <span className="text-slate-300">400–799 Calls (High)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                      <span className="text-slate-400">200–399 Calls (Moderate)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0"></span>
+                      <span className="text-slate-400">&lt;200 Calls (Baseline)</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLayer === 'cardiac' && (
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/40 shrink-0"></span>
+                      <span className="font-semibold text-slate-100">&lt;22% Survival (Critical)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
+                      <span className="text-slate-300">22–26% Survival (High)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                      <span className="text-slate-400">26–30% Survival (Moderate)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span className="text-slate-400">&gt;30% Survival (Benchmark)</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLayer === 'aed' && (
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
+                      <span className="font-semibold text-slate-100">≥55% Deficit (Severe)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                      <span className="text-slate-300">45–54% Deficit (High)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shrink-0"></span>
+                      <span className="text-slate-400">35–44% Deficit (Moderate)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+                      <span className="text-slate-400">&lt;35% Deficit (Adequate)</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLayer === 'transport' && (
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/40 shrink-0"></span>
+                      <span className="font-semibold text-slate-100">≥28 min (Severe Delay)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0"></span>
+                      <span className="text-slate-300">20–27 min (Long Transit)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                      <span className="text-slate-400">14–19 min (Standard)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span className="text-slate-400">&lt;14 min (Metro Rapid)</span>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLayer === 'cms' && (
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
+                      <span className="font-semibold text-slate-100">≥21% Denials (Severe)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
+                      <span className="text-slate-300">18–20.9% Denials (High)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                      <span className="text-slate-400">14–17.9% Denials (Moderate)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span className="text-slate-400">&lt;14% Denials (Compliant)</span>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="font-bold uppercase text-[9.5px] tracking-wider flex items-center gap-1.5 font-mono text-white">
-                  {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3.5 h-3.5 text-rose-500" /> :
-                   selectedLayer === 'cardiac' ? <Activity className="w-3.5 h-3.5 text-red-500" /> :
-                   selectedLayer === 'aed' ? <Zap className="w-3.5 h-3.5 text-fuchsia-400" /> :
-                   selectedLayer === 'transport' ? <Clock className="w-3.5 h-3.5 text-amber-400" /> :
-                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />}
-                  {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS OHCA Density' :
-                   selectedLayer === 'cardiac' ? 'Utstein Deficit Surface' :
-                   selectedLayer === 'aed' ? 'Public AED Deficit' :
-                   selectedLayer === 'transport' ? 'Transit Isochrones' :
-                   'CMS Claim Denials'}
-                </span>
-                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/40 font-bold">
-                  {mapDisplayMode.toUpperCase()}
-                </span>
-              </div>
-
-              {/* Continuous Scientific Color Ramp Bar for KDE & Hexbin Modes */}
-              {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
-                <div className="mb-2.5 pb-2 border-b border-slate-700/50">
-                  <div
-                    className="h-2.5 w-full rounded-full border border-white/15"
-                    style={{
-                      background:
-                        colorSpectrum === 'inferno'
-                          ? 'linear-gradient(90deg, #0a0722 0%, #420a68 25%, #932667 50%, #dd513a 75%, #fca50a 90%, #fcffa4 100%)'
-                          : colorSpectrum === 'plasma'
-                          ? 'linear-gradient(90deg, #0d0887 0%, #6a00a8 25%, #b12a90 50%, #e16462 75%, #fca636 90%, #f0f921 100%)'
-                          : 'linear-gradient(90deg, #440154 0%, #3b528b 25%, #21918c 50%, #5ec962 75%, #fde725 100%)'
-                    }}
-                  />
-                  <div className="flex justify-between text-[9px] font-mono text-slate-400 mt-1">
-                    <span>Baseline (0.1σ)</span>
-                    <span>Median (0.5σ)</span>
-                    <span className="text-amber-300 font-bold">Peak Epicenter (1.0σ)</span>
-                  </div>
-                </div>
-              )}
-
-              {selectedLayer === 'nemsis_cardiac' && (
-                <div className="space-y-1 font-mono text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40"></span>
-                    <span className="font-semibold">≥800 Calls (Critical Epicenter)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                    <span className="opacity-90">400–799 Calls (High Acuity)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                    <span className="opacity-75">200–399 Calls (Moderate)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-                    <span className="opacity-65">&lt;200 Calls (Baseline)</span>
-                  </div>
-                </div>
-              )}
-
-              {selectedLayer === 'cardiac' && (
-                <div className="space-y-1 font-mono text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/40"></span>
-                    <span className="font-semibold">&lt;22% Survival (Critical Deficit)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                    <span className="opacity-90">22–26% Survival (High Deficit)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                    <span className="opacity-75">26–30% Survival (Moderate)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span className="opacity-65">&gt;30% Survival (Benchmark)</span>
-                  </div>
-                </div>
-              )}
-
-              {selectedLayer === 'aed' && (
-                <div className="space-y-1 font-mono text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-500 ring-2 ring-fuchsia-400/40"></span>
-                    <span className="font-semibold">≥55% Deficit (Severe Shortage)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-                    <span className="opacity-90">45–54% Deficit (High ZOLL Need)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
-                    <span className="opacity-75">35–44% Deficit (Moderate Need)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                    <span className="opacity-65">&lt;35% Deficit (Adequate)</span>
-                  </div>
-                </div>
-              )}
-
-              {selectedLayer === 'transport' && (
-                <div className="space-y-1 font-mono text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/40"></span>
-                    <span className="font-semibold">≥28 min (Extreme Isochrone)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
-                    <span className="opacity-90">22–27 min (Prolonged Route)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                    <span className="opacity-75">16–21 min (Standard Transit)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-                    <span className="opacity-65">&lt;16 min (Rapid Dispatch)</span>
-                  </div>
-                </div>
-              )}
-
-              {selectedLayer === 'cms' && (
-                <div className="space-y-1 font-mono text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40"></span>
-                    <span className="font-semibold">≥21% Denials (Severe Zone)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
-                    <span className="opacity-90">18–20.9% Denials (High AR)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-                    <span className="opacity-75">14–17.9% Denials (Moderate)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                    <span className="opacity-65">&lt;14% Denials (Compliant)</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Interactive Floating Hover Telemetry Card for Agency */}
             {hoveredAgency && (
-              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/85 border border-white/15 text-white rounded-xl p-3.5 shadow-2xl max-w-sm pointer-events-auto transition-all animate-in fade-in duration-150 relative">
-                {/* Tactical corner ticks */}
-                <span className="absolute top-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute top-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute bottom-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-
+              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/90 border border-white/15 text-white rounded-xl p-3.5 shadow-2xl max-w-sm pointer-events-auto transition-all animate-in fade-in duration-150">
                 <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2 mb-2">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider">
-                      <HeartPulse className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
-                      <span>{getAgencyLayerVisual(hoveredAgency, selectedLayer).tierLabel}</span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-400">
+                      <HeartPulse className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />
+                      <span className="truncate">{getAgencyLayerVisual(hoveredAgency, selectedLayer).tierLabel}</span>
                     </div>
-                    <h4 className="font-bold text-xs text-white leading-tight mt-0.5">
+                    <h4 className="font-semibold text-sm text-white leading-tight mt-0.5 truncate">
                       {hoveredAgency.name}
                     </h4>
-                    <p className="text-[11px] text-slate-400 font-mono">
-                      {hoveredAgency.city}, {hoveredAgency.stateCode} · LAT {hoveredAgency.latitude.toFixed(2)}°N · LON {Math.abs(hoveredAgency.longitude).toFixed(2)}°W
+                    <p className="text-xs text-slate-400 mt-0.5 tabular-nums">
+                      {hoveredAgency.city}, {hoveredAgency.stateCode} · Lat {hoveredAgency.latitude.toFixed(2)}° · Lon {Math.abs(hoveredAgency.longitude).toFixed(2)}°
                     </p>
                   </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0 ${
+                  <span className={`text-xs px-2 py-0.5 rounded font-semibold shrink-0 tabular-nums ${
                     getAgencyLayerVisual(hoveredAgency, selectedLayer).isCritical
                       ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
@@ -2946,26 +2975,26 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
                 <div className="grid grid-cols-3 gap-2 py-1 text-center bg-slate-900/80 rounded-lg p-2 border border-white/10 mb-2.5">
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Annual OHCA</span>
-                    <span className="text-xs font-mono font-bold text-rose-400">
+                    <span className="text-xs text-slate-400 block font-medium">Annual OHCA</span>
+                    <span className="text-xs font-semibold text-rose-400 tabular-nums">
                       {(hoveredAgency.annualCardiacArrestCalls || Math.round((hoveredAgency.annual911Transports || 3000) * 0.12)).toLocaleString()}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Utstein Survival</span>
-                    <span className="text-xs font-mono font-bold text-emerald-400">
+                    <span className="text-xs text-slate-400 block font-medium">Utstein Survival</span>
+                    <span className="text-xs font-semibold text-emerald-400 tabular-nums">
                       {hoveredAgency.utsteinSurvivalRate || 10.8}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 uppercase block font-semibold">Priority Score</span>
-                    <span className="text-xs font-mono font-bold text-amber-400">
-                      {hoveredAgency.zollOpportunity.pulseIqScore}/100
+                    <span className="text-xs text-slate-400 block font-medium">Priority Score</span>
+                    <span className="text-xs font-semibold text-amber-400 tabular-nums">
+                      {hoveredAgency.zollOpportunity.pulseIqScore} / 100
                     </span>
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-300 space-y-1 mb-2.5 leading-snug">
+                <div className="text-xs text-slate-300 space-y-1 mb-2.5 leading-snug">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Incumbent Defib:</span>
                     <span className="font-semibold text-white">{hoveredAgency.installedFleet.defibBrand} ({hoveredAgency.installedFleet.defibAgeYears} yrs)</span>
@@ -2978,16 +3007,18 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
                 <div className="flex items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={() => onSelectAgency(hoveredAgency)}
-                    className="flex-1 py-1.5 px-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-md"
+                    className="flex-1 py-1.5 px-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-md"
                   >
-                    <span>Battlecard</span>
+                    <span>Inspect Account</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                   {onToggleRoute && (
                     <button
+                      type="button"
                       onClick={() => onToggleRoute(hoveredAgency.id)}
-                      className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1 ${
+                      className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer flex items-center gap-1 ${
                         hoveredAgency.inDayRoute
                           ? 'bg-emerald-600/30 border-emerald-500 text-emerald-300'
                           : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
@@ -2999,9 +3030,10 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
                   {onOpenRfpGenerator && (
                     <button
+                      type="button"
                       onClick={() => onOpenRfpGenerator(hoveredAgency)}
-                      className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-                      title="Generate RFP Response"
+                      className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                      title="Generate RFP Specification"
                     >
                       <FileText className="w-3 h-3 text-sky-400" />
                       <span>RFP</span>
@@ -3013,32 +3045,28 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
             {/* Interactive Floating Hover Card for H3 Hexagonal Spatial Bin */}
             {hoveredHexCell && !hoveredAgency && (
-              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/85 border border-purple-500/40 text-white rounded-xl p-3.5 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150 relative">
-                {/* Tactical corner ticks */}
-                <span className="absolute top-1 left-1.5 text-[8px] font-mono text-purple-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute top-1 right-1.5 text-[8px] font-mono text-purple-400/70 leading-none select-none pointer-events-none">+</span>
-
+              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/90 border border-purple-500/40 text-white rounded-xl p-3.5 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150">
                 <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1.5 mb-2">
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-purple-300 font-bold">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300">
                     <Hexagon className="w-3.5 h-3.5 text-purple-400" />
-                    <span>H3 Spatial Bin · {hoveredHexCell.id.toUpperCase()}</span>
+                    <span>H3 Spatial Cluster</span>
                   </div>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-bold">
+                  <span className="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-semibold tabular-nums">
                     {hoveredHexCell.agencyCount} {hoveredHexCell.agencyCount === 1 ? 'Agency' : 'Agencies'}
                   </span>
                 </div>
-                <div className="space-y-1 text-xs font-mono mb-2">
+                <div className="space-y-1.5 text-xs mb-2">
                   <div className="flex justify-between">
-                    <span className="text-slate-400 font-sans">Cluster Metric:</span>
-                    <span className="font-bold text-amber-300">{hoveredHexCell.metricSummary}</span>
+                    <span className="text-slate-400">Cluster Metric:</span>
+                    <span className="font-semibold text-amber-300">{hoveredHexCell.metricSummary}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400 font-sans">Avg Utstein ROSC:</span>
-                    <span className="font-bold text-emerald-400">{hoveredHexCell.avgSurvival}%</span>
+                    <span className="text-slate-400">Avg Utstein Survival:</span>
+                    <span className="font-semibold text-emerald-400 tabular-nums">{hoveredHexCell.avgSurvival}%</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400 font-sans">Lead Epicenter:</span>
-                    <span className="font-bold text-white truncate max-w-[145px]">{hoveredHexCell.topAgency.name}</span>
+                    <span className="text-slate-400">Lead Epicenter:</span>
+                    <span className="font-semibold text-white truncate max-w-[145px]">{hoveredHexCell.topAgency.name}</span>
                   </div>
                 </div>
               </div>
@@ -3046,21 +3074,17 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
             {/* Interactive Floating Hover State Card (when no agency or hex is hovered) */}
             {hoveredStateCode && !hoveredAgency && !hoveredHexCell && stateAcuityMap[hoveredStateCode] && (
-              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/85 border border-white/15 text-white rounded-xl p-3 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150 relative">
-                {/* Tactical corner ticks */}
-                <span className="absolute top-1 left-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-                <span className="absolute top-1 right-1.5 text-[8px] font-mono text-sky-400/70 leading-none select-none pointer-events-none">+</span>
-
+              <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/90 border border-white/15 text-white rounded-xl p-3 shadow-2xl max-w-xs pointer-events-auto transition-all animate-in fade-in duration-150">
                 <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-1.5 mb-1.5">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold block">
+                    <span className="text-xs font-semibold text-sky-400 block">
                       {ALL_50_STATES_SUMMARIES[hoveredStateCode]?.region || 'US'} Region · {hoveredStateCode}
                     </span>
-                    <h4 className="font-bold text-sm text-white leading-tight">
+                    <h4 className="font-semibold text-sm text-white leading-tight">
                       {stateAcuityMap[hoveredStateCode].name}
                     </h4>
                   </div>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase shrink-0 ${
+                  <span className={`text-xs px-2 py-0.5 rounded font-semibold uppercase shrink-0 ${
                     stateAcuityMap[hoveredStateCode].tier === 'critical'
                       ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       : stateAcuityMap[hoveredStateCode].tier === 'high'
@@ -3071,18 +3095,19 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   </span>
                 </div>
 
-                <div className="space-y-1 text-xs text-slate-300 mb-2 font-mono">
+                <div className="space-y-1 text-xs text-slate-300 mb-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-[11px] font-sans">{stateAcuityMap[hoveredStateCode].metricLabel}:</span>
-                    <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].metricValue}</span>
+                    <span className="text-slate-400">{stateAcuityMap[hoveredStateCode].metricLabel}:</span>
+                    <span className="font-semibold text-white tabular-nums">{stateAcuityMap[hoveredStateCode].metricValue}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-[11px] font-sans">EMS / Fire Agencies:</span>
-                    <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].agencyCount.toLocaleString()}</span>
+                    <span className="text-slate-400">EMS &amp; Fire Agencies:</span>
+                    <span className="font-semibold text-white tabular-nums">{stateAcuityMap[hoveredStateCode].agencyCount.toLocaleString()}</span>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     const next = selectedState === hoveredStateCode ? 'all' : hoveredStateCode;
                     setSelectedState(next);
@@ -3092,7 +3117,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     if (onSelectCounty) onSelectCounty('all');
                     if (onSelectCity) onSelectCity('all');
                   }}
-                  className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="w-full py-1.5 px-3 bg-[#285EE8] hover:bg-[#194BC8] text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
                   <span>{selectedState === hoveredStateCode ? 'Reset to All States' : `Filter to ${stateAcuityMap[hoveredStateCode].name}`}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -3100,33 +3125,29 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
             )}
 
-            {/* Bottom Cartographic Geodetic Telemetry & Scale Bar HUD */}
-            <div className="mt-2 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md bg-slate-950/85 text-white flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono shadow-2xl relative">
-              {/* Tactical corner ticks */}
-              <span className="absolute top-0.5 left-1.5 text-[8px] font-mono text-sky-400/60 leading-none select-none pointer-events-none">+</span>
-              <span className="absolute top-0.5 right-1.5 text-[8px] font-mono text-sky-400/60 leading-none select-none pointer-events-none">+</span>
-
+            {/* Bottom Cartographic Geodetic Scale Bar HUD */}
+            <div className="mt-2 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md bg-slate-950/85 text-white flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xl">
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1 text-sky-400 font-bold">
+                <span className="flex items-center gap-1 text-sky-400 font-semibold">
                   <Compass className="w-3.5 h-3.5" />
-                  <span>EPSG:4326 · ALBERS US COMPOSITE</span>
+                  <span>Albers Equal-Area Projection</span>
                 </span>
                 <span className="hidden sm:inline text-white/20">|</span>
                 <span className="hidden sm:flex items-center gap-1">
                   <Crosshair className="w-3 h-3 text-emerald-400" />
                   {cursorGeoCoords ? (
-                    <span className="text-white font-semibold">
-                      LAT {cursorGeoCoords.lat.toFixed(3)}°N · LON {Math.abs(cursorGeoCoords.lon).toFixed(3)}°W
+                    <span className="text-white font-medium tabular-nums">
+                      Lat {cursorGeoCoords.lat.toFixed(3)}°N · Lon {Math.abs(cursorGeoCoords.lon).toFixed(3)}°W
                     </span>
                   ) : (
-                    <span className="text-slate-400">LAT 31.968°N · LON 99.901°W · KDE BANDWIDTH: {kdeBandwidth}KM</span>
+                    <span className="text-slate-400 tabular-nums">Spatial Telemetry Active</span>
                   )}
                 </span>
               </div>
 
               <div className="flex items-center gap-4">
                 <span className="hidden md:inline text-slate-400">
-                  KERNEL: <span className="text-sky-300 font-bold">{mapDisplayMode === 'kde' ? `2D GAUSSIAN (σ=${kdeBandwidth}px, ${colorSpectrum.toUpperCase()})` : mapDisplayMode === 'hexbin' ? `H3 HEXBIN (${hexBinCells.length} CELLS)` : mapDisplayMode.toUpperCase()}</span>
+                  Model: <span className="text-sky-300 font-medium">{mapDisplayMode === 'kde' ? `2D Gaussian KDE (σ=${kdeBandwidth}px)` : mapDisplayMode === 'hexbin' ? `H3 Hexbin (${hexBinCells.length} cells)` : mapDisplayMode === 'choropleth' ? 'State Choropleth' : 'Station Vectors'}</span>
                 </span>
                 {/* Dynamic Cartographic Scale Bar */}
                 <div className="flex items-center gap-1.5 text-slate-300">
@@ -3134,7 +3155,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   <div className="w-16 h-1.5 border border-white/30 flex">
                     <div className="w-1/2 h-full bg-white/70" />
                   </div>
-                  <span className="font-semibold text-white">{Math.round(500 / zoomLevel)} mi</span>
+                  <span className="font-semibold text-white tabular-nums">{Math.round(500 / zoomLevel)} mi</span>
                 </div>
               </div>
             </div>
@@ -3142,50 +3163,50 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         </div>
 
         {/* Right Side Panel: NEMSIS High-Acuity Call Epicenters & Product Demand Matrix */}
-        <div className={`${isExpandedView ? 'lg:col-span-12' : 'lg:col-span-4'} min-w-0 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4 transition-all`}>
-          <div className="border-b border-slate-100 pb-3">
+        <div className={`${isExpandedView ? 'lg:col-span-12' : 'lg:col-span-4'} min-w-0 bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-4 sm:p-5 shadow-2xs space-y-4 transition-all overflow-hidden`}>
+          <div className="border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-                Territory Intelligence
+              <span className="text-xs text-[#53657B] dark:text-slate-400 font-medium">
+                Territory intelligence
               </span>
-              <span className="text-[10px] font-mono bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-xs font-semibold bg-[#285EE8]/10 text-[#285EE8] border border-[#285EE8]/20 px-2.5 py-0.5 rounded-full tabular-nums">
                 {filteredAgencies.length} Accounts
               </span>
             </div>
 
             {/* Sidebar Tab Switcher */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+            <div className="flex items-center bg-[#F5F7FA] dark:bg-[#16243A] p-1 rounded-lg gap-1 border border-[#DFE6EF] dark:border-[#1E2D42] overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setSidebarTab('nemsis_epicenters')}
-                className={`flex-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                   sidebarTab === 'nemsis_epicenters'
-                    ? 'bg-white text-rose-700 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-[#111C2D] text-rose-600 dark:text-rose-400 font-semibold shadow-2xs'
+                    : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
-                <Flame className="w-3.5 h-3.5 text-rose-600" />
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
                 <span>Epicenters</span>
               </button>
               <button
                 onClick={() => setSidebarTab('acuity_distribution')}
-                className={`flex-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                   sidebarTab === 'acuity_distribution'
-                    ? 'bg-white text-indigo-700 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-[#111C2D] text-indigo-600 dark:text-indigo-400 font-semibold shadow-2xs'
+                    : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
-                <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
                 <span>Acuity Dist.</span>
               </button>
               <button
                 onClick={() => setSidebarTab('product_matrix')}
-                className={`flex-1 py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                   sidebarTab === 'product_matrix'
-                    ? 'bg-white text-sky-800 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-[#111C2D] text-[#285EE8] font-semibold shadow-2xs'
+                    : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                <Sparkles className="w-3.5 h-3.5 text-[#285EE8]" />
                 <span>Products</span>
               </button>
             </div>
@@ -3193,10 +3214,10 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
           {sidebarTab === 'nemsis_epicenters' ? (
             /* Ranked High-Acuity Cardiac Epicenters in Territory */
-            <div className="space-y-3">
+            <div className="space-y-3 min-w-0">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800">Top High-Acuity Resuscitation Hotspots</span>
-                <span className="text-[10px] text-slate-400 font-mono">By OHCA Volume</span>
+                <span className="font-semibold text-[#14283F] dark:text-white">Top High-Acuity Resuscitation Hotspots</span>
+                <span className="text-xs text-[#53657B] dark:text-slate-400">By OHCA Volume</span>
               </div>
 
               <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
@@ -3211,63 +3232,63 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     <div
                       key={`epicenter-${agency.id}`}
                       onClick={() => onSelectAgency(agency)}
-                      className="p-3 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50/40 bg-slate-50/70 transition-all cursor-pointer group space-y-1.5"
+                      className="p-3 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] hover:border-[#285EE8] hover:bg-[#F5F7FA] dark:hover:bg-[#16243A] bg-[#F5F7FA]/50 dark:bg-[#16243A]/30 transition-all cursor-pointer group space-y-2"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold shrink-0 ${
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 tabular-nums ${
                             idx === 0 
                               ? 'bg-rose-600 text-white shadow-xs' 
                               : idx === 1 
-                                ? 'bg-orange-500 text-white' 
-                                : 'bg-slate-200 text-slate-700'
+                                ? 'bg-amber-500 text-white' 
+                                : 'bg-[#DFE6EF] dark:bg-[#1E2D42] text-[#14283F] dark:text-slate-200'
                           }`}>
                             #{idx + 1}
                           </span>
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-900 group-hover:text-rose-700 transition-colors leading-tight line-clamp-1">
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-semibold text-[#14283F] dark:text-white group-hover:text-[#285EE8] transition-colors leading-tight truncate">
                               {agency.name}
                             </h4>
-                            <p className="text-[10px] text-slate-500 font-mono">
+                            <p className="text-xs text-[#53657B] dark:text-slate-400 truncate">
                               {agency.city}, {agency.stateCode} · {agency.county}
                             </p>
                           </div>
                         </div>
 
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold shrink-0 ${
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 tabular-nums ${
                           isExtreme
-                            ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                            ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
                             : isHigh
-                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                              : 'bg-sky-100 text-sky-800'
+                              ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
+                              : 'bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300'
                         }`}>
                           {calls.toLocaleString()} OHCA
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-slate-200/80">
-                        <div>
-                          <span className="text-slate-400 block font-semibold">Incumbent Monitor</span>
-                          <span className={`font-semibold line-clamp-1 ${isOldFleet ? 'text-amber-700 font-bold' : 'text-slate-700'}`}>
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42]">
+                        <div className="min-w-0">
+                          <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Incumbent Monitor</span>
+                          <span className={`font-medium truncate block ${isOldFleet ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-[#14283F] dark:text-slate-200'}`}>
                             {agency.installedFleet.defibBrand} ({agency.installedFleet.defibAgeYears}y)
                           </span>
                         </div>
-                        <div>
-                          <span className="text-slate-400 block font-semibold">Utstein Survival</span>
-                          <span className="font-mono font-bold text-rose-700">
-                            {agency.utsteinSurvivalRate || 10.8}% <span className="text-[9px] text-slate-400 font-normal">(-{(29.7 - (agency.utsteinSurvivalRate || 10.8)).toFixed(1)}% gap)</span>
+                        <div className="min-w-0">
+                          <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Utstein Survival</span>
+                          <span className="font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
+                            {agency.utsteinSurvivalRate || 10.8}% <span className="text-[11px] text-[#53657B] dark:text-slate-400 font-normal">(-{(29.7 - (agency.utsteinSurvivalRate || 10.8)).toFixed(1)}% gap)</span>
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] font-semibold text-sky-700 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-sky-600" />
-                          <span>Target: {agency.zollOpportunity.primaryTargetProduct}</span>
+                        <span className="text-xs font-medium text-[#285EE8] flex items-center gap-1 truncate">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#285EE8] shrink-0" />
+                          <span className="truncate">Target: {agency.zollOpportunity.primaryTargetProduct}</span>
                         </span>
-                        <span className="text-[10px] font-bold text-rose-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                        <span className="text-xs font-medium text-rose-600 dark:text-rose-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0">
                           <span>Inspect Playbook</span>
-                          <ArrowUpRight className="w-3 h-3" />
+                          <ArrowUpRight className="w-3.5 h-3.5" />
                         </span>
                       </div>
                     </div>
@@ -3276,104 +3297,104 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
 
               {/* NEMSIS Clinical Opportunity Callout */}
-              <div className="p-3 bg-rose-50 border border-rose-200/90 rounded-xl text-xs space-y-1">
-                <div className="font-bold text-rose-900 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-rose-600" />
+              <div className="p-3.5 bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-xl text-xs space-y-1.5">
+                <div className="font-semibold text-rose-900 dark:text-rose-300 flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                   <span>Clinical Value Driver: Utstein Deficit Conversion</span>
                 </div>
-                <p className="text-[11px] text-rose-900/80 leading-relaxed">
+                <p className="text-xs text-rose-900/80 dark:text-rose-300/80 leading-relaxed">
                   High-volume departments lose survival points during long manual transport. Presenting the <strong>AutoPulse Mechanical CPR System</strong> alongside <strong>X Series Advanced Real CPR Help</strong> demonstrates measurable ROSC improvement for the EMS Medical Director.
                 </p>
               </div>
             </div>
           ) : sidebarTab === 'acuity_distribution' ? (
             /* Territory Acuity & Volume Distribution Chart */
-            <div className="space-y-4 text-xs">
+            <div className="space-y-4 text-xs min-w-0">
               <div>
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-bold text-slate-800">Cardiac Acuity Tier Breakdown</span>
-                  <span className="text-[10px] text-slate-500 font-mono">{filteredAgencies.length} Accounts</span>
+                  <span className="font-semibold text-[#14283F] dark:text-white">Cardiac Acuity Tier Breakdown</span>
+                  <span className="text-xs text-[#53657B] dark:text-slate-400 tabular-nums">{filteredAgencies.length} Accounts</span>
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-[#53657B] dark:text-slate-400 leading-relaxed">
                   Distribution of departments across NEMSIS cardiac event intensity tiers.
                 </p>
               </div>
 
               {/* Acuity Tiers Progress Stack */}
-              <div className="space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-rose-700 flex items-center gap-1">
+              <div className="space-y-3 bg-[#F5F7FA] dark:bg-[#16243A] p-3.5 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42]">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-rose-600"></span>
                       <span>Critical Epicenter (≥800 OHCA)</span>
                     </span>
-                    <span className="font-mono font-bold text-slate-800 tabular-nums">
+                    <span className="font-semibold text-[#14283F] dark:text-slate-200 tabular-nums">
                       {acuityDistributionStats.criticalCount} ({acuityDistributionStats.criticalPct}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-[#DFE6EF] dark:bg-[#1E2D42] rounded-full h-2 overflow-hidden">
                     <div className="bg-rose-600 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.max(4, acuityDistributionStats.criticalPct)}%` }}></div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-amber-700 flex items-center gap-1">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                       <span>High Acuity (400–799 OHCA)</span>
                     </span>
-                    <span className="font-mono font-bold text-slate-800 tabular-nums">
+                    <span className="font-semibold text-[#14283F] dark:text-slate-200 tabular-nums">
                       {acuityDistributionStats.highCount} ({acuityDistributionStats.highPct}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-[#DFE6EF] dark:bg-[#1E2D42] rounded-full h-2 overflow-hidden">
                     <div className="bg-amber-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.max(4, acuityDistributionStats.highPct)}%` }}></div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-sky-700 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#285EE8] flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#285EE8]"></span>
                       <span>Moderate Acuity (200–399 OHCA)</span>
                     </span>
-                    <span className="font-mono font-bold text-slate-800 tabular-nums">
+                    <span className="font-semibold text-[#14283F] dark:text-slate-200 tabular-nums">
                       {acuityDistributionStats.moderateCount} ({acuityDistributionStats.moderatePct}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                    <div className="bg-sky-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.max(4, acuityDistributionStats.moderatePct)}%` }}></div>
+                  <div className="w-full bg-[#DFE6EF] dark:bg-[#1E2D42] rounded-full h-2 overflow-hidden">
+                    <div className="bg-[#285EE8] h-2 rounded-full transition-all duration-500" style={{ width: `${Math.max(4, acuityDistributionStats.moderatePct)}%` }}></div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-slate-600 flex items-center gap-1">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-[#53657B] dark:text-slate-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-slate-400"></span>
                       <span>Baseline (&lt;200 OHCA)</span>
                     </span>
-                    <span className="font-mono font-bold text-slate-800 tabular-nums">
+                    <span className="font-semibold text-[#14283F] dark:text-slate-200 tabular-nums">
                       {acuityDistributionStats.baselineCount} ({acuityDistributionStats.baselinePct}%)
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-[#DFE6EF] dark:bg-[#1E2D42] rounded-full h-2 overflow-hidden">
                     <div className="bg-slate-400 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.max(4, acuityDistributionStats.baselinePct)}%` }}></div>
                   </div>
                 </div>
               </div>
 
               {/* Defibrillator Fleet Age Risk Callout */}
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5">
+              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="text-xs font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     <span>Incumbent Fleet Replacement Risk</span>
                   </span>
-                  <span className="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded tabular-nums">
                     {acuityDistributionStats.agingPct}% Vulnerable
                   </span>
                 </div>
-                <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed">
                   <strong>{acuityDistributionStats.agingDefibCount} departments</strong> in this territory operate monitor/defibrillator fleets ≥7 years old (primarily Stryker LIFEPAK 15 units approaching or past manufacturer end-of-service).
                 </p>
               </div>
@@ -3381,23 +3402,23 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {/* Regional County Acuity Distribution */}
               {acuityDistributionStats.sortedCounties.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <div className="flex items-center justify-between text-xs font-semibold text-[#14283F] dark:text-white">
                     <span>Top County Resuscitation Volumes</span>
-                    <span className="text-[10px] font-mono text-slate-400">OHCA &amp; Survival</span>
+                    <span className="text-xs text-[#53657B] dark:text-slate-400">OHCA &amp; Survival</span>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {acuityDistributionStats.sortedCounties.map((county) => (
-                      <div key={county.name} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 transition-colors">
+                      <div key={county.name} className="p-3 rounded-xl bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] hover:bg-white dark:hover:bg-[#111C2D] transition-colors">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-800">{county.name}</span>
-                          <span className="font-mono font-bold text-rose-700 tabular-nums">
+                          <span className="font-semibold text-[#14283F] dark:text-white">{county.name}</span>
+                          <span className="font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
                             {county.totalCalls.toLocaleString()} OHCA
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                        <div className="flex items-center justify-between text-xs text-[#53657B] dark:text-slate-400 mt-1">
                           <span>{county.agencyCount} Department{county.agencyCount > 1 ? 's' : ''}</span>
-                          <span className="font-mono text-slate-600">
-                            Avg ROSC: <strong className="text-emerald-700">{county.avgSurvival}%</strong> (vs 29.7% bench)
+                          <span>
+                            Avg ROSC: <strong className="text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">{county.avgSurvival}%</strong> <span className="text-[11px] text-[#53657B] dark:text-slate-500">(vs 29.7% bench)</span>
                           </span>
                         </div>
                       </div>
@@ -3408,68 +3429,68 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
             </div>
           ) : (
             /* Product Demand Matching Matrix */
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-xs min-w-0">
               
               {/* Public Access AEDs */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sky-900">Public Access Defibrillators (ZOLL AED 3)</span>
-                  <span className="text-[10px] font-mono bg-sky-100 text-sky-900 px-2 py-0.5 rounded font-semibold">
+                  <span className="font-semibold text-sm text-[#14283F] dark:text-white">Public Access Defibrillators (ZOLL AED 3)</span>
+                  <span className="text-xs bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 px-2 py-0.5 rounded font-medium">
                     High Demand
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
+                <p className="text-xs text-[#53657B] dark:text-slate-400 leading-relaxed">
                   <strong>Target Profile:</strong> High senior citizen concentration (&gt;20% age 65+), dense residential high-rises, and recreational municipal parks with low bystander CPR rates.
                 </p>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-xs text-[#53657B] dark:text-slate-400">
                   Key Account: Pinellas County EMS (FL) · 26.4% Senior pop · 62% AED Deficit
                 </div>
               </div>
 
               {/* Advanced Resuscitation Hardware */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">X Series Advanced ACLS Monitor</span>
-                  <span className="text-[10px] font-mono bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-semibold">
+                  <span className="font-semibold text-sm text-[#14283F] dark:text-white">X Series Advanced ACLS Monitor</span>
+                  <span className="text-xs bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded font-medium">
                     Core Enterprise
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
+                <p className="text-xs text-[#53657B] dark:text-slate-400 leading-relaxed">
                   <strong>Target Profile:</strong> High 911 ALS call volume, traumatic brain injury (TBI) incidence, and aging Stryker LIFEPAK 15 units (&gt;8 yrs) needing Real BVM Help.
                 </p>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-xs text-[#53657B] dark:text-slate-400">
                   Key Accounts: Cuyahoga County (OH), Miami-Dade (FL), Columbus (OH)
                 </div>
               </div>
 
               {/* AutoPulse Mechanical CPR */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-amber-900">AutoPulse Mechanical CPR System</span>
-                  <span className="text-[10px] font-mono bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-semibold">
+                  <span className="font-semibold text-sm text-[#14283F] dark:text-white">AutoPulse Mechanical CPR System</span>
+                  <span className="text-xs bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded font-medium">
                     Lifesaver Demand
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
+                <p className="text-xs text-[#53657B] dark:text-slate-400 leading-relaxed">
                   <strong>Target Profile:</strong> Extended transport times (&gt;20 mins), 2-person volunteer staffing crews, and multi-story stairwell extrications.
                 </p>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-xs text-[#53657B] dark:text-slate-400">
                   Key Accounts: McDowell County (NC, 34-min transport), Allegheny Volunteer (PA)
                 </div>
               </div>
 
               {/* Z Vent Portable Transport Ventilator */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-indigo-900">Z Vent Transport Ventilator</span>
-                  <span className="text-[10px] font-mono bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded font-semibold">
+                  <span className="font-semibold text-sm text-[#14283F] dark:text-white">Z Vent Transport Ventilator</span>
+                  <span className="text-xs bg-indigo-100 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded font-medium">
                     Critical Transport
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
+                <p className="text-xs text-[#53657B] dark:text-slate-400 leading-relaxed">
                   <strong>Target Profile:</strong> Long distance highway transfers (&gt;30 miles) requiring internal compressor without depleting vehicle oxygen bottles.
                 </p>
-                <div className="text-[10px] text-slate-400 font-mono">
+                <div className="text-xs text-[#53657B] dark:text-slate-400">
                   Key Accounts: Harris County EMS (TX), Denver Health (CO)
                 </div>
               </div>
@@ -3502,70 +3523,70 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       />
 
       {/* Transparent Lead Scoring System Architecture */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-5 sm:p-6 shadow-2xs min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-3.5">
           <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-sky-600" />
+            <h2 className="text-base font-semibold text-[#14283F] dark:text-white flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-[#285EE8]" />
               PulseIQ Multi-Factor Lead Scoring Formula & Weight Architecture
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-0.5">
               Mathematical scoring formula predicting the probability of successful sale based on public data.
             </p>
           </div>
-          <span className="text-xs font-mono text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-md font-semibold">
+          <span className="text-xs font-semibold text-[#285EE8] bg-[#285EE8]/10 border border-[#285EE8]/20 px-2.5 py-1 rounded-md tabular-nums shrink-0 self-start sm:self-auto">
             100 Pt Model
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mt-4 text-xs">
           
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-900 flex items-center justify-between">
+          <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] min-w-0">
+            <div className="font-semibold text-sm text-[#14283F] dark:text-white flex items-center justify-between">
               <span>1. Clinical Acuity</span>
-              <span className="text-sky-700 font-mono font-bold">25 pts</span>
+              <span className="text-[#285EE8] font-semibold tabular-nums">25 pts</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-1.5 leading-relaxed">
               Cardiac arrest volume (OHCA), Utstein ROSC survival rate deficit vs. 29.7% benchmark, and drive times to cath labs.
             </p>
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-900 flex items-center justify-between">
+          <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] min-w-0">
+            <div className="font-semibold text-sm text-[#14283F] dark:text-white flex items-center justify-between">
               <span>2. Rival Fleet Age</span>
-              <span className="text-sky-700 font-mono font-bold">25 pts</span>
+              <span className="text-[#285EE8] font-semibold tabular-nums">25 pts</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-1.5 leading-relaxed">
               Installed LIFEPAK 15 and MRx units older than 7 years, out of warranty, and subject to competitor maintenance price hikes.
             </p>
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-900 flex items-center justify-between">
+          <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] min-w-0">
+            <div className="font-semibold text-sm text-[#14283F] dark:text-white flex items-center justify-between">
               <span>3. CMS Recovery</span>
-              <span className="text-sky-700 font-mono font-bold">20 pts</span>
+              <span className="text-[#285EE8] font-semibold tabular-nums">20 pts</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-1.5 leading-relaxed">
               CMS Medicare Part B claim denial rate (&gt;15%), GADCS penalty risk, and addressable cash recovery via ZOLL Billing.
             </p>
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-900 flex items-center justify-between">
+          <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] min-w-0">
+            <div className="font-semibold text-sm text-[#14283F] dark:text-white flex items-center justify-between">
               <span>4. Demographics</span>
-              <span className="text-sky-700 font-mono font-bold">15 pts</span>
+              <span className="text-[#285EE8] font-semibold tabular-nums">15 pts</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-1.5 leading-relaxed">
               Senior population percentage (age 65+), municipal poverty rates, and public access AED coverage deficit in schools/parks.
             </p>
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-900 flex items-center justify-between">
+          <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] min-w-0">
+            <div className="font-semibold text-sm text-[#14283F] dark:text-white flex items-center justify-between">
               <span>5. Budget & AFG</span>
-              <span className="text-sky-700 font-mono font-bold">15 pts</span>
+              <span className="text-[#285EE8] font-semibold tabular-nums">15 pts</span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-1.5 leading-relaxed">
               Active FEMA Assistance to Firefighters Grant (AFG) award status and municipal fiscal year-end surplus spend timing.
             </p>
           </div>
@@ -3582,13 +3603,13 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-sky-400" />
                 <div>
-                  <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
                     <span>ZOLL Spatial GIS Command Center</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                      FULL THEATER
+                    <span className="text-xs text-sky-400 font-normal">
+                      · Full Theater
                     </span>
                   </h2>
-                  <p className="text-[11px] text-slate-400 font-mono">
+                  <p className="text-xs text-slate-400 font-sans tabular-nums">
                     {filteredAgencies.length.toLocaleString()} Active Accounts · {selectedState === 'all' ? 'Nationwide Coverage' : `${selectedState} (${ALL_50_STATES_SUMMARIES[selectedState]?.state || selectedState})`}
                   </p>
                 </div>
@@ -3596,7 +3617,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
               {/* State Filter Dropdown in Theater Mode */}
               <div className="flex items-center gap-1.5 ml-2 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white">
-                <span className="text-slate-400 font-mono text-[10px] uppercase font-bold">State:</span>
+                <span className="text-slate-400 font-sans text-xs font-medium">State:</span>
                 <select
                   value={selectedState}
                   onChange={(e) => {
@@ -3957,11 +3978,11 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
               {/* Intensity Scale Legend in Theater Mode */}
               <div className="absolute top-4 right-4 z-20 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 shadow-xl text-xs pointer-events-auto">
-                <span className="font-bold text-white uppercase text-[10px] tracking-wider block mb-1.5 flex items-center gap-1.5 font-mono">
+                <span className="font-semibold text-white text-xs block mb-1.5 flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Intensity Scale</span>
+                  <span>Intensity scale</span>
                 </span>
-                <div className="space-y-1 font-mono text-[11px]">
+                <div className="space-y-1 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-rose-400"></span>
                     <span className="text-white font-semibold">Critical Epicenter</span>
@@ -3984,20 +4005,20 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {/* State Hover Telemetry in Theater Mode */}
               {hoveredStateCode && !hoveredAgency && stateAcuityMap[hoveredStateCode] && (
                 <div className="absolute bottom-5 left-5 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 rounded-xl p-3 shadow-2xl max-w-xs animate-in fade-in duration-100">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-bold block">
+                  <span className="text-xs font-semibold text-sky-400 block">
                     {ALL_50_STATES_SUMMARIES[hoveredStateCode]?.region || 'US'} Region · {hoveredStateCode}
                   </span>
-                  <h4 className="font-bold text-sm text-white">
+                  <h4 className="font-semibold text-sm text-white">
                     {stateAcuityMap[hoveredStateCode].name}
                   </h4>
-                  <div className="space-y-1 text-xs text-slate-300 mt-1.5 font-mono">
+                  <div className="space-y-1 text-xs text-slate-300 mt-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-sans">{stateAcuityMap[hoveredStateCode].metricLabel}:</span>
-                      <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].metricValue}</span>
+                      <span className="text-slate-400">{stateAcuityMap[hoveredStateCode].metricLabel}:</span>
+                      <span className="font-semibold text-white tabular-nums">{stateAcuityMap[hoveredStateCode].metricValue}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-sans">EMS / Fire Agencies:</span>
-                      <span className="font-bold text-white">{stateAcuityMap[hoveredStateCode].agencyCount.toLocaleString()}</span>
+                      <span className="text-slate-400">EMS / Fire Agencies:</span>
+                      <span className="font-semibold text-white tabular-nums">{stateAcuityMap[hoveredStateCode].agencyCount.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -4006,9 +4027,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               {/* Agency Hover Telemetry in Theater Mode */}
               {hoveredAgency && (
                 <div className="absolute bottom-5 left-5 z-20 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700 rounded-xl p-3.5 shadow-2xl max-w-sm animate-in fade-in duration-100">
-                  <h4 className="font-bold text-sm text-white">{hoveredAgency.name}</h4>
+                  <h4 className="font-semibold text-sm text-white">{hoveredAgency.name}</h4>
                   <p className="text-xs text-slate-400">{hoveredAgency.city}, {hoveredAgency.stateCode} · {hoveredAgency.county}</p>
-                  <div className="mt-2 text-xs font-mono text-emerald-400">
+                  <div className="mt-2 text-xs text-emerald-400 font-semibold tabular-nums">
                     Target: {hoveredAgency.zollOpportunity.primaryTargetProduct} (${(hoveredAgency.zollOpportunity.estimatedDealValue || hoveredAgency.zollOpportunity.projectedPipelineValue).toLocaleString()})
                   </div>
                   <button
@@ -4016,9 +4037,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       onSelectAgency(hoveredAgency);
                       setIsTheaterModal(false);
                     }}
-                    className="mt-2 w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    className="mt-2 w-full py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    Open Account Battlecard
+                    Open Account Dossier
                   </button>
                 </div>
               )}
@@ -4028,7 +4049,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
             {isDrawerOpen && (
               <div className="w-80 sm:w-96 bg-[#0B1528] border-l border-slate-800 p-4 overflow-y-auto flex flex-col z-30 shadow-2xl animate-in slide-in-from-right duration-200">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <h3 className="font-semibold text-sm text-white flex items-center gap-2">
                     <BarChart3 className="w-4 h-4 text-sky-400" />
                     <span>Territory Telemetry</span>
                   </h3>
@@ -4041,7 +4062,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-[11px] font-mono font-bold text-slate-400 uppercase">Top Layer Hotspots</span>
+                  <span className="text-xs font-semibold text-slate-400">Top Layer Hotspots</span>
                   {topCardiacEpicenters.map((agency) => (
                     <div
                       key={`drawer-${agency.id}`}
@@ -4051,11 +4072,11 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       }}
                       className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-sky-500/50 cursor-pointer transition-all"
                     >
-                      <div className="font-bold text-xs text-white truncate">{agency.name}</div>
-                      <div className="text-[11px] text-slate-400">{agency.city}, {agency.stateCode}</div>
-                      <div className="mt-1 flex items-center justify-between text-[11px] font-mono">
-                        <span className="text-rose-400">{getAgencyLayerVisual(agency, selectedLayer).metricDisplay}</span>
-                        <span className="text-emerald-400">${(agency.zollOpportunity.estimatedDealValue || agency.zollOpportunity.projectedPipelineValue).toLocaleString()}</span>
+                      <div className="font-semibold text-xs text-white truncate">{agency.name}</div>
+                      <div className="text-xs text-slate-400">{agency.city}, {agency.stateCode}</div>
+                      <div className="mt-1 flex items-center justify-between text-xs tabular-nums">
+                        <span className="text-rose-400 font-medium">{getAgencyLayerVisual(agency, selectedLayer).metricDisplay}</span>
+                        <span className="text-emerald-400 font-semibold">${(agency.zollOpportunity.estimatedDealValue || agency.zollOpportunity.projectedPipelineValue).toLocaleString()}</span>
                       </div>
                     </div>
                   ))}

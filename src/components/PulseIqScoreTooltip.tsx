@@ -63,17 +63,17 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
           aria-expanded={isOpen}
         >
           <div className="flex items-center gap-2">
-            <div className="text-3xl font-bold font-mono tabular-nums text-[#111827] group-hover/trigger:text-[#1E3A8A] transition-colors">
+            <div className="text-3xl font-semibold tabular-nums text-[#111827] group-hover/trigger:text-[#1E3A8A] transition-colors">
               {score}
               <span className="text-sm font-medium text-[#6B7280]"> / 100</span>
             </div>
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#E5E4DF]/60 text-[#374151] group-hover/trigger:bg-[#1E3A8A] group-hover/trigger:text-white transition-all shadow-2xs">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#E5E4DF]/60 text-[#374151] group-hover/trigger:bg-[#1E3A8A] group-hover/trigger:text-white transition-all shadow-2xs">
               <HelpCircle className="w-3 h-3" />
               <span>Factor Breakdown</span>
             </span>
           </div>
           {showLabel && (
-            <div className="text-xs font-semibold text-[#6B7280] group-hover/trigger:text-[#1E3A8A] transition-colors mt-0.5">
+            <div className="text-xs font-medium text-[#6B7280] group-hover/trigger:text-[#1E3A8A] transition-colors mt-0.5">
               Upgrade Priority Score · <span className="underline decoration-dotted text-[#1E3A8A]">View weights</span>
             </div>
           )}
@@ -82,7 +82,7 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(prev => !prev)}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md font-mono text-xs font-bold tabular-nums border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] ${
+          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold tabular-nums border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] ${
             score >= 88
               ? 'bg-blue-50/80 border-blue-200 text-[#1E3A8A] hover:bg-blue-100'
               : score >= 78
@@ -104,12 +104,12 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
           aria-expanded={isOpen}
         >
           {showLabel && (
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] flex items-center justify-end gap-1">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] flex items-center justify-end gap-1">
               <span>Priority Score</span>
               <HelpCircle className="w-3 h-3 text-[#6B7280] group-hover/trigger:text-[#1E3A8A] transition-colors" />
             </div>
           )}
-          <div className={`font-mono text-2xl font-bold tabular-nums leading-none mt-0.5 ${getScoreColor(score)} group-hover/trigger:scale-105 transition-transform`}>
+          <div className={`text-2xl font-semibold tabular-nums leading-none mt-0.5 ${getScoreColor(score)} group-hover/trigger:scale-105 transition-transform`}>
             {score}<span className="text-xs font-normal text-slate-400">/100</span>
           </div>
           <div className="text-[10px] font-bold text-emerald-700 mt-0.5">
@@ -136,7 +136,7 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
                 {agency.name}
               </h4>
               <p className="text-[11px] text-[#6B7280] mt-0.5">
-                Composite Pulse IQ Priority Score: <strong className="font-mono tabular-nums text-[#111827]">{score} / 100</strong> ({explanation.priorityTier})
+                Composite Pulse IQ Priority Score: <strong className="tabular-nums text-[#111827] font-semibold">{score} / 100</strong> ({explanation.priorityTier})
               </p>
             </div>
 
@@ -150,8 +150,18 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
             </button>
           </div>
 
+          {/* Explicit Actuarial Formula Disclosure */}
+          <div className="p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono text-[10px] leading-relaxed space-y-1">
+            <div className="text-blue-300 font-bold uppercase tracking-wider">
+              White-Box Actuarial Equation · [FORECAST / PULSEIQ MODEL]
+            </div>
+            <div>
+              PulseIQ = ({weights.fleetAgeWeight}×F_age + {weights.cmsDenialWeight}×F_cms + {weights.cardiacVolumeWeight}×F_ohca + {weights.grantAwardWeight}×F_afg + {weights.softwareWhitespaceWeight}×F_saas) ÷ 100
+            </div>
+          </div>
+
           {/* 5 Weighted Factor Rows */}
-          <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
             {explanation.factors.map(factor => {
               const maxPossible = factor.weightPct;
               const contributed = factor.pointsContributed;
@@ -160,15 +170,22 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
               return (
                 <div key={factor.id} className="p-2.5 rounded-lg bg-[#F8F7F4] border border-[#E5E4DF] space-y-1.5 text-xs">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-bold text-[#111827] leading-tight">
-                      {factor.name}
+                    <div>
+                      <div className="font-semibold text-[#111827] leading-tight">
+                        {factor.name}
+                      </div>
+                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        {factor.id === 'afgGrantFunding' || factor.id === 'cardiacArrestVolume'
+                          ? 'Federal Record + PulseIQ Weight'
+                          : 'PulseIQ Mathematical Index'}
+                      </span>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="font-mono font-bold text-xs tabular-nums text-[#1E3A8A]">
+                      <span className="font-semibold text-xs tabular-nums text-[#1E3A8A]">
                         +{contributed.toFixed(1)} pts
                       </span>
-                      <span className="text-[10px] text-[#6B7280] block font-medium">
-                        ({factor.weightPct}% weight)
+                      <span className="text-[10px] text-[#6B7280] block font-medium tabular-nums">
+                        (Raw {factor.componentScore}/100 × {factor.weightPct}%)
                       </span>
                     </div>
                   </div>
@@ -182,7 +199,7 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
                   </div>
 
                   {/* Real Specific Agency Metric */}
-                  <div className="text-[11px] font-mono font-semibold text-[#374151] pt-0.5">
+                  <div className="text-[11px] font-medium text-[#374151] pt-0.5 tabular-nums">
                     {factor.agencyMetricValue}
                   </div>
 
@@ -197,9 +214,9 @@ export const PulseIqScoreTooltip: React.FC<PulseIqScoreTooltipProps> = ({
 
           {/* Footer Note */}
           <div className="pt-2 border-t border-[#E5E4DF] flex items-center justify-between text-[11px] text-[#6B7280]">
-            <span>Weights sum to 100% of final score</span>
-            <span className="font-bold text-[#1E3A8A]">
-              Total: {score} pts
+            <span>Deterministic 5-Factor Sum (100% Weight)</span>
+            <span className="font-semibold text-[#1E3A8A] tabular-nums">
+              Total: {score} / 100
             </span>
           </div>
         </div>

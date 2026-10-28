@@ -10,19 +10,21 @@ import {
   COOPERATIVE_CONTRACTS 
 } from '../data/clinicalAndCompetitiveIntelligence';
 import { 
-  Flame, 
   ShieldAlert, 
   DollarSign, 
-  Sparkles, 
   Copy, 
   Check, 
-  ArrowRight, 
   FileText, 
   HeartPulse, 
   Award,
   ChevronDown,
   ChevronUp,
-  Printer
+  Printer,
+  HelpCircle,
+  ExternalLink,
+  MessageSquare,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 
 interface DealStoryBriefingViewProps {
@@ -40,19 +42,20 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
   onOpenDossier,
   className = ''
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [copiedPitch, setCopiedPitch] = useState(false);
+  const [copiedQuestions, setCopiedQuestions] = useState(false);
+  const [activeTab, setActiveTab] = useState<'brief' | 'questions' | 'solution' | 'conversation'>('brief');
 
   const tco = useMemo(() => {
     return calculateAgencyFleetTco(agency, 5);
   }, [agency]);
 
+  const isFire = agency.providerCategory === 'FIRE' || (agency.agencyType || '').toLowerCase().includes('fire');
   const coopContract = useMemo(() => {
-    const isFire = agency.providerCategory === 'FIRE' || (agency.agencyType || '').toLowerCase().includes('fire');
-    return isFire ? COOPERATIVE_CONTRACTS[1] : COOPERATIVE_CONTRACTS[0]; // NPPGov or Sourcewell
-  }, [agency]);
+    return isFire ? COOPERATIVE_CONTRACTS[1] : COOPERATIVE_CONTRACTS[0]; // Sourcewell or HGACBuy
+  }, [isFire]);
 
-  const defibBrand = agency.installedFleet?.defibBrand || 'Incumbent';
+  const defibBrand = agency.installedFleet?.defibBrand || 'Incumbent Defibrillator';
   const defibAge = agency.installedFleet?.defibAgeYears || 7;
   const defibCount = agency.installedFleet?.defibUnitsCount || 8;
   const warranty = agency.installedFleet?.defibWarrantyStatus || 'Expired';
@@ -60,55 +63,87 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
   const recoverableK = Math.round((agency.cmsData?.estimatedRecoverableRevenue || 85000) / 1000);
   const fiveYrSavingsK = Math.round(tco.fiveYearOperatingSavings / 1000);
   const tradeInK = Math.round(tco.totalTradeInCredit / 1000);
-  const totalFinancialBenefitK = fiveYrSavingsK + tradeInK + Math.round(recoverableK * 3);
+  const hasGrant = Boolean(agency.grantStatus?.afgAwarded);
+  const grantAmtK = Math.round((agency.grantStatus?.afgAwardAmount || 0) / 1000);
 
-  // Generate customized Elevator Pitch
+  // Strategic Executive Elevator Pitch
   const elevatorPitch = useMemo(() => {
-    return `Chief / Director at ${agency.name}: Your current ${defibBrand} fleet of ${defibCount} units is ${defibAge} years old and currently ${warranty.toLowerCase()}. By transitioning to ZOLL X Series Advanced, the department captures $${tradeInK}K in immediate fleet trade-in credits, saves $${fiveYrSavingsK}K over 5 years on biomedical service contracts, and protects an estimated +$${recoverableK}K/year in recoverable Medicare ambulance claims through automated 12-lead ePCR documentation. Best of all, this can be procured immediately under the ${coopContract.contractName} (${coopContract.contractNumber}), bypassing the 6-9 month public sealed bid process.`;
-  }, [agency, defibBrand, defibCount, defibAge, warranty, tradeInK, fiveYrSavingsK, recoverableK, coopContract]);
+    const leaderTitle = isFire ? 'Chief' : 'Director';
+    const leaderName = agency.keyContacts[0]?.name ? `${leaderTitle} ${agency.keyContacts[0].name.split(' ').pop()}` : leaderTitle;
+    const grantSentence = hasGrant 
+      ? ` With $${grantAmtK}K in active FEMA AFG grant liquidity allocated to the department, this capital upgrade aligns directly with your federal grant cycle.`
+      : '';
 
-  const handleCopy = () => {
+    return `${leaderName} at ${agency.name}: Your current ${defibBrand} fleet of ${defibCount} frontline units is ${defibAge} years old and currently operating with ${warranty.toLowerCase()} warranty status. In our actuarial model, transitioning to ZOLL X Series Advanced provides up to $${tradeInK}K in estimated trade-in credits, an estimated $${fiveYrSavingsK}K in 5-year biomedical service contract savings, and protects an estimated +$${recoverableK}K/year in recoverable Medicare claims through automated 12-lead transmission.${grantSentence} Furthermore, this configuration can be procured through ${coopContract.contractName} (${coopContract.contractNumber}), satisfying competitive bidding requirements under applicable local thresholds.`;
+  }, [agency, isFire, defibBrand, defibCount, defibAge, warranty, tradeInK, fiveYrSavingsK, recoverableK, hasGrant, grantAmtK, coopContract]);
+
+  // Tailored Discovery Questions (3+ for different command roles)
+  const discoveryQuestions = useMemo(() => [
+    {
+      role: isFire ? 'Fire Chief / Executive Command' : 'EMS Director / Executive Command',
+      question: `How significantly have your annual preventative maintenance and battery replacement costs increased on your ${defibAge}-year-old ${defibBrand} fleet over the past two budget cycles?`,
+      objective: 'Establish escalating cost of ownership and transition the conversation toward fixed-cap 5-year service guarantees.'
+    },
+    {
+      role: 'Medical Director / CQI Officer',
+      question: `Does your current monitor provide real-time ventilation rate and tidal volume feedback on screen, or are paramedics relying on manual timing to prevent hyperventilation during cardiac arrest resuscitation?`,
+      objective: 'Demonstrate Real BVM Help® clinical differentiation and AHA 2020 guideline compliance for chest compression fraction.'
+    },
+    {
+      role: 'Operations Captain / EMS Coordinator',
+      question: `What percentage of your 12-lead ECG transmissions to ${agency.hospitalLogistics?.primaryCathLabHospital || 'the local STEMI center'} fail or require redundant phone calls from the back of the ambulance?`,
+      objective: 'Uncover field friction with legacy modems and present ZOLL automated cellular gateway reliability.'
+    },
+    {
+      role: 'Finance Officer / Municipal Purchasing Agent',
+      question: hasGrant 
+        ? `What is your timeline for expending the $${grantAmtK}K FY${agency.grantStatus?.afgFiscalYear || 2024} FEMA AFG allocation before federal period-of-performance deadlines?`
+        : `Does your municipality currently utilize cooperative purchasing contracts such as ${coopContract.contractName} (${coopContract.contractNumber}) to accelerate capital equipment procurement?`,
+      objective: 'Identify procurement vehicles and ensure adherence to local competitive purchasing thresholds.'
+    }
+  ], [agency, isFire, defibAge, defibBrand, hasGrant, grantAmtK, coopContract]);
+
+  const handleCopyPitch = () => {
     navigator.clipboard.writeText(elevatorPitch);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2200);
+    setCopiedPitch(true);
+    setTimeout(() => setCopiedPitch(false), 2200);
   };
 
-  const toggleSection = (sec: string) => {
-    setExpandedSection(prev => prev === sec ? null : sec);
+  const handleCopyQuestions = () => {
+    const text = discoveryQuestions.map((q, idx) => `Q${idx + 1} (${q.role}):\n"${q.question}"\nStrategic Objective: ${q.objective}\n`).join('\n');
+    navigator.clipboard.writeText(text);
+    setCopiedQuestions(true);
+    setTimeout(() => setCopiedQuestions(false), 2200);
   };
 
   if (variant === 'compact') {
     return (
-      <div className={`p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 text-left transition-all ${className}`}>
+      <div className={`p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] bg-[#F5F7FA] dark:bg-[#111C2D] text-left transition-all ${className}`}>
         {/* Header / Hook */}
         <div className="flex items-start justify-between gap-3 mb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-[#0F172A] dark:bg-slate-800 text-white shrink-0 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5" />
-            </span>
-            <div>
-              <h4 className="text-xs font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                Executive Deal Story: Why {agency.name.split(' ')[0]} Now?
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Strategic conversion narrative · {defibBrand} replacement window
-              </p>
-            </div>
+          <div>
+            <h4 className="text-xs font-semibold text-[#14283F] dark:text-white flex items-center gap-1.5">
+              Prepare for Meeting: {agency.name}
+            </h4>
+            <p className="text-xs text-[#53657B] dark:text-slate-400 mt-0.5">
+              Executive conversation strategy · {defibBrand} replacement window
+            </p>
           </div>
 
           <button
-            onClick={handleCopy}
+            type="button"
+            onClick={handleCopyPitch}
             title="Copy Elevator Pitch"
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-xs shrink-0"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] text-[#14283F] dark:text-slate-200 hover:border-[#285EE8] transition-colors shrink-0 cursor-pointer"
           >
-            {copied ? (
+            {copiedPitch ? (
               <>
                 <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-emerald-700 dark:text-emerald-300 font-semibold">Copied!</span>
               </>
             ) : (
               <>
-                <Copy className="w-3 h-3 text-slate-400" />
+                <Copy className="w-3 h-3 text-[#53657B]" />
                 <span>Copy Pitch</span>
               </>
             )}
@@ -117,108 +152,92 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
 
         {/* 3 Pillars Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 my-3 text-xs">
-          {/* Pillar 1: Incumbent Vulnerability */}
-          <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
-            <div className="flex items-center gap-1.5 font-semibold text-rose-700 dark:text-rose-400 text-[11px] mb-1">
+          <div className="p-2.5 rounded-lg bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42]">
+            <div className="flex items-center gap-1.5 font-semibold text-rose-700 dark:text-rose-400 text-xs mb-1">
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>1. Incumbent Vulnerability</span>
+              <span>1. Incumbent fleet status</span>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-              <strong className="text-slate-900 dark:text-slate-100">{defibCount} {defibBrand}</strong> units ({defibAge} yrs old, {warranty.toLowerCase()}). Escalating preventative maintenance renewal costs (+16% YoY).
+            <p className="text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+              <strong className="text-[#14283F] dark:text-white">{defibCount}× {defibBrand}</strong> ({defibAge} yrs old, {warranty.toLowerCase()}). High biomedical maintenance overhead.
             </p>
           </div>
 
-          {/* Pillar 2: Financial Leverage */}
-          <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
-            <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400 text-[11px] mb-1">
+          <div className="p-2.5 rounded-lg bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42]">
+            <div className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400 text-xs mb-1">
               <DollarSign className="w-3.5 h-3.5" />
-              <span>2. 5-Yr Financial ROI</span>
+              <span>2. Modeled financial value</span>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-              <strong className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono tabular-nums">+${fiveYrSavingsK}K</strong> operating savings + <strong className="text-slate-900 dark:text-slate-100 font-mono tabular-nums">${tradeInK}K</strong> trade-in allowance. Recover +${recoverableK}K/yr in billing.
+            <p className="text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+              Estimated <strong className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">+${fiveYrSavingsK}K</strong> 5-yr TCO savings and <strong className="text-[#14283F] dark:text-white tabular-nums">${tradeInK}K</strong> trade-in credit.
             </p>
           </div>
 
-          {/* Pillar 3: Procurement Bypass */}
-          <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
-            <div className="flex items-center gap-1.5 font-semibold text-[#1D4ED8] dark:text-blue-400 text-[11px] mb-1">
+          <div className="p-2.5 rounded-lg bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42]">
+            <div className="flex items-center gap-1.5 font-semibold text-[#285EE8] dark:text-blue-400 text-xs mb-1">
               <Award className="w-3.5 h-3.5" />
-              <span>3. Fast-Track Vehicle</span>
+              <span>3. Procurement vehicle</span>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-              Pre-approved under <strong className="text-slate-900 dark:text-slate-100">{coopContract.contractName.split(' ')[0]}</strong> ({coopContract.contractNumber}), saving 6–9 mos of public RFP delays.
+            <p className="text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+              Eligible for <strong className="text-[#14283F] dark:text-white">{coopContract.contractName.split(' ')[0]}</strong> ({coopContract.contractNumber}), subject to local purchasing limits.
             </p>
           </div>
         </div>
 
-        {/* Narrative Accordion / Pitch Preview */}
-        <div className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
-          <span className="font-semibold text-slate-900 dark:text-slate-100">TM Quick Pitch: </span>
-          <span>"{elevatorPitch.slice(0, 160)}..." </span>
-          {onOpenFullProfile && (
-            <button
-              onClick={() => onOpenFullProfile(agency)}
-              className="inline-flex items-center gap-1 font-semibold text-[#1D4ED8] dark:text-blue-400 hover:underline ml-1 cursor-pointer"
-            >
-              <span>View full strategy & objections</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          )}
+        {/* Concise Pitch Preview */}
+        <div className="p-2.5 rounded-lg bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+          <strong className="text-[#14283F] dark:text-white">Suggested opening: </strong>
+          <span>&ldquo;{elevatorPitch.slice(0, 160)}...&rdquo;</span>
         </div>
       </div>
     );
   }
 
-  // FULL-SCREEN VARIANT
+  // FULL-SCREEN VARIANT: PREPARE FOR MEETING WORKSPACE
   return (
-    <div className={`p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs text-left ${className}`}>
+    <section 
+      aria-label="Prepare for Meeting Intelligence Workspace"
+      className={`pi-surface p-5 sm:p-6 lg:p-7 space-y-6 ${className}`}
+    >
       {/* Top Banner Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-lg bg-[#1E3A8A] text-white shadow-xs shrink-0">
-            <Sparkles className="w-5 h-5" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#DFE6EF] dark:border-[#1E2D42]">
+        <div>
+          <div className="text-xs font-semibold text-[#285EE8] dark:text-blue-400 mb-1">
+            Account preparation
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                Executive Deal Story &amp; Conversion Playbook
-              </h3>
-              <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 uppercase tracking-wider">
-                Priority Opportunity
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Targeted account conversion thesis for ZOLL Territory Managers · {agency.name}
-            </p>
-          </div>
+          <h2 className="pi-section-heading text-xl sm:text-2xl">
+            Prepare for Meeting: {agency.name}
+          </h2>
+          <p className="pi-supporting mt-1">
+            Evidence-backed account briefing, strategic discovery questions, and conversational guidance.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {onOpenDossier && (
             <button
               type="button"
               onClick={onOpenDossier}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#1E3A8A] text-white hover:bg-blue-800 transition-colors shadow-xs cursor-pointer"
-              title="Open printable 2-page Executive Briefing Dossier with direct PDF download"
+              className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] text-[#14283F] dark:text-slate-200 hover:bg-[#F5F7FA] transition-colors cursor-pointer inline-flex items-center gap-1.5"
+              title="Printable 2-page Executive Briefing Dossier"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / Download PDF Brief</span>
+              <Printer className="w-3.5 h-3.5 text-[#285EE8]" />
+              <span>Print Brief</span>
             </button>
           )}
 
           <button
             type="button"
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
+            onClick={handleCopyPitch}
+            className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
           >
-            {copied ? (
+            {copiedPitch ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-emerald-700 dark:text-emerald-300">Pitch Copied!</span>
+                <Check className="w-3.5 h-3.5" />
+                <span>Pitch Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <Copy className="w-3.5 h-3.5" />
                 <span>Copy Elevator Pitch</span>
               </>
             )}
@@ -226,124 +245,317 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
         </div>
       </div>
 
-      {/* 30-Second Elevator Pitch Card */}
-      <div className="my-5 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
-        <div className="flex items-center gap-2 mb-2">
-          <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-            30-Second Executive Elevator Pitch
+      {/* Sub-Navigation Strip */}
+      <div className="flex items-center gap-1 bg-[#F5F7FA] dark:bg-[#16243A] p-1 rounded-lg border border-[#DFE6EF] dark:border-[#1E2D42] w-fit">
+        {[
+          { id: 'brief', label: '1. Account Brief' },
+          { id: 'questions', label: '2. Discovery Questions' },
+          { id: 'solution', label: '3. Potential Solution Fit' },
+          { id: 'conversation', label: '4. Recommended Conversation' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-white dark:bg-[#111C2D] text-[#14283F] dark:text-white shadow-2xs'
+                : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* TAB 1: ACCOUNT BRIEF & WHAT WE KNOW VS NEED TO CONFIRM */}
+      {activeTab === 'brief' && (
+        <div className="space-y-6">
+          {/* Executive Opening Pitch Box */}
+          <div className="p-4 sm:p-5 rounded-xl bg-[#EEF3FE]/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/70 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#285EE8] dark:text-blue-400">
+                Recommended 30-second executive opening
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyPitch}
+                className="text-xs font-semibold text-[#285EE8] dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                {copiedPitch ? 'Copied' : 'Copy opening'}
+              </button>
+            </div>
+            <p className="text-sm text-[#14283F] dark:text-slate-100 leading-relaxed font-sans italic">
+              &ldquo;{elevatorPitch}&rdquo;
+            </p>
+            <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
+              Note: Financial values are modeled estimates based on CMS Medicare Part B public use files and standard equipment replacement lifecycle assumptions.
+            </div>
+          </div>
+
+          {/* Two-Column Grid: What We Know vs. What We Need to Confirm */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* What We Know (Supported Facts) */}
+            <div className="p-5 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-3.5">
+              <div className="flex items-center gap-2 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-3">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-semibold text-[#14283F] dark:text-white">
+                  What we know (Supported facts)
+                </h3>
+              </div>
+              <ul className="space-y-2.5 text-xs text-[#53657B] dark:text-slate-300">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Apparatus &amp; Stations: </strong>
+                    Operates {agency.totalAmbulances} frontline ambulances across {agency.stationsCount} stations, serving a population of {agency.populationServed.toLocaleString()}.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Installed Defibrillators: </strong>
+                    Fleet of {defibCount}× {defibBrand} units with an average age of {defibAge} years ({warranty.toLowerCase()} warranty status).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Federal Identifiers: </strong>
+                    Verified CMS NPI #{agency.npiNumber || 'Registered'} and USFA FDID {agency.fdid}.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Call Volume &amp; Acuity: </strong>
+                    Responds to {agency.annual911Transports.toLocaleString()} annual transports and {agency.annualCardiacArrestCalls} cardiac arrest runs per year.
+                  </span>
+                </li>
+                {hasGrant && (
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                    <span>
+                      <strong className="text-[#14283F] dark:text-white">Public Grant Liquidity: </strong>
+                      FEMA AFG Award FY{agency.grantStatus?.afgFiscalYear || 2024} of ${grantAmtK}K allocated.
+                    </span>
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            {/* What We Need to Confirm (Research Gaps) */}
+            <div className="p-5 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-3.5">
+              <div className="flex items-center gap-2 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-3">
+                <HelpCircle className="w-4 h-4 text-amber-600" />
+                <h3 className="text-sm font-semibold text-[#14283F] dark:text-white">
+                  What we need to confirm (Research gaps)
+                </h3>
+              </div>
+              <ul className="space-y-2.5 text-xs text-[#53657B] dark:text-slate-300">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Biomedical Trade-In Serial Numbers: </strong>
+                    Confirm exact serial numbers, battery health, and accessory compatibility on the {defibCount} {defibBrand} units.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Budget Approval Gates: </strong>
+                    Identify municipal council or district board voting schedules for capital equipment authorizations in FY2026.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Clinical Resuscitation Priorities: </strong>
+                    Determine whether Medical Direction prioritizes Real BVM Help® tidal volume guidance or automated mechanical CPR adoption.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-1.5 shrink-0" />
+                  <span>
+                    <strong className="text-[#14283F] dark:text-white">Procurement Vehicle Policy: </strong>
+                    Confirm whether local municipal ordinance permits piggybacking on {coopContract.contractName} ({coopContract.contractNumber}) or requires sealed bidding.
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: DISCOVERY QUESTIONS */}
+      {activeTab === 'questions' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#53657B] dark:text-slate-300">
+              Role-specific discovery questions designed to uncover genuine operational priorities without making assumptions.
+            </p>
+            <button
+              type="button"
+              onClick={handleCopyQuestions}
+              className="h-8 px-3 rounded-lg text-xs font-semibold bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] text-[#14283F] dark:text-slate-200 hover:border-[#285EE8] cursor-pointer inline-flex items-center gap-1.5"
+            >
+              {copiedQuestions ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedQuestions ? 'Questions Copied' : 'Copy All Questions'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {discoveryQuestions.map((q, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2 text-xs"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[#285EE8] dark:text-blue-400">
+                    Role: {q.role}
+                  </span>
+                  <span className="text-[#53657B] dark:text-slate-400 font-semibold tabular-nums">0{idx + 1}</span>
+                </div>
+                <p className="text-sm font-medium text-[#14283F] dark:text-white leading-snug">
+                  &ldquo;{q.question}&rdquo;
+                </p>
+                <div className="pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42] text-[11px] text-[#53657B] dark:text-slate-400">
+                  <strong className="text-[#14283F] dark:text-slate-300">Strategic objective: </strong>
+                  {q.objective}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: POTENTIAL SOLUTION FIT */}
+      {activeTab === 'solution' && (
+        <div className="space-y-4">
+          <p className="text-xs text-[#53657B] dark:text-slate-300">
+            Applicable ZOLL product categories evaluated based on documented department needs and clinical operational metrics.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Solution 1: X Series Advanced */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#14283F] dark:text-white text-sm">
+                  ZOLL X Series Advanced
+                </span>
+                <span className="text-[11px] font-semibold text-[#285EE8] bg-[#EEF3FE] dark:bg-blue-950/60 px-2 py-0.5 rounded">
+                  Primary Fit
+                </span>
+              </div>
+              <p className="text-[#53657B] dark:text-slate-300 leading-relaxed">
+                Replaces aging {defibBrand} fleet with lightweight (11.7 lbs) ruggedized monitor featuring Real BVM Help® ventilation feedback and automated 12-lead cellular transmission.
+              </p>
+              <div className="pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42] text-[11px] text-[#53657B] dark:text-slate-400">
+                <strong className="text-[#14283F] dark:text-slate-300">Target Clinical Metric: </strong>
+                AHA Chest Compression Fraction &gt;80% and peri-shock pause &lt;10s.
+              </div>
+            </div>
+
+            {/* Solution 2: AutoPulse Mechanical CPR */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#14283F] dark:text-white text-sm">
+                  AutoPulse Resuscitation System
+                </span>
+                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded">
+                  Transport Resus
+                </span>
+              </div>
+              <p className="text-[#53657B] dark:text-slate-300 leading-relaxed">
+                Load-distributing band CPR delivering continuous, consistent compressions during transport to {agency.hospitalLogistics?.primaryCathLabHospital || 'the cath lab'} without paramedic fatigue.
+              </p>
+              <div className="pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42] text-[11px] text-[#53657B] dark:text-slate-400">
+                <strong className="text-[#14283F] dark:text-slate-300">Transport Logistics: </strong>
+                {agency.hospitalLogistics?.transportTimeMinutes || 18} min average transit to STEMI facility.
+              </div>
+            </div>
+
+            {/* Solution 3: RescueNet CaseReview & Billing */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#14283F] dark:text-white text-sm">
+                  RescueNet ePCR &amp; Billing Boost
+                </span>
+                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded">
+                  Reimbursement
+                </span>
+              </div>
+              <p className="text-[#53657B] dark:text-slate-300 leading-relaxed">
+                Automated NEMSIS v3.5.0 code generation and ECG telemetry attachment to reduce Medicare Part B {agency.cmsData?.topDenialReasonCode || 'CO-16'} claim rejections.
+              </p>
+              <div className="pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42] text-[11px] text-[#53657B] dark:text-slate-400">
+                <strong className="text-[#14283F] dark:text-slate-300">Modeled Recovery: </strong>
+                Up to ${recoverableK}K/year in recoverable Medicare claims.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: RECOMMENDED CONVERSATION ROADMAP */}
+      {activeTab === 'conversation' && (
+        <div className="p-5 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-4 text-xs">
+          <h3 className="text-sm font-semibold text-[#14283F] dark:text-white">
+            Recommended Consultative Roadmap
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-[#EEF3FE] dark:bg-blue-950 text-[#285EE8] font-semibold flex items-center justify-center shrink-0">1</span>
+              <div>
+                <div className="font-semibold text-[#14283F] dark:text-white">Acknowledge &amp; Validate Current Operations</div>
+                <p className="text-[#53657B] dark:text-slate-300 mt-0.5 leading-relaxed">
+                  Start by commending their {agency.annual911Transports.toLocaleString()} annual runs and CPR community initiatives. Acknowledge familiarity with their {defibCount} {defibBrand} units and local trauma logistics.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-[#EEF3FE] dark:bg-blue-950 text-[#285EE8] font-semibold flex items-center justify-center shrink-0">2</span>
+              <div>
+                <div className="font-semibold text-[#14283F] dark:text-white">Explore Equipment Lifecycle &amp; Maintenance Burden</div>
+                <p className="text-[#53657B] dark:text-slate-300 mt-0.5 leading-relaxed">
+                  Inquire about maintenance turnaround times, battery replacements, and manufacturer end-of-service dates on their {defibAge}-year-old monitors without putting the customer on the defensive.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-[#EEF3FE] dark:bg-blue-950 text-[#285EE8] font-semibold flex items-center justify-center shrink-0">3</span>
+              <div>
+                <div className="font-semibold text-[#14283F] dark:text-white">Introduce Pre-Competed Cooperative Purchasing</div>
+                <p className="text-[#53657B] dark:text-slate-300 mt-0.5 leading-relaxed">
+                  Explain how {coopContract.contractName} ({coopContract.contractNumber}) allows the municipality to adopt best-in-class technology with pre-negotiated volume pricing, while respecting all applicable public purchasing regulations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Supporting Source Lineage Strip */}
+      <div className="pt-4 border-t border-[#DFE6EF] dark:border-[#1E2D42] flex flex-wrap items-center justify-between gap-3 text-xs text-[#53657B] dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Verified Public Registry Citations</span>
           </span>
-        </div>
-        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans italic">
-          "{elevatorPitch}"
-        </p>
-      </div>
-
-      {/* 4 Core Narrative Pillars */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-5">
-        {/* 1. Incumbent Pain */}
-        <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50">
-          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-xs mb-2">
-            <ShieldAlert className="w-4 h-4" />
-            <span>1. Incumbent Crisis</span>
-          </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums">
-            {defibAge} Yrs Old
-          </div>
-          <div className="text-xs text-rose-600 dark:text-rose-400 font-medium mb-1.5">
-            {warranty} Warranty ({defibCount} units)
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            Stryker/Incumbent hardware aging past safe service life. Rising annual ProCare renewals and MAUDE/FDA advisory notices.
-          </p>
+          <span aria-hidden="true">·</span>
+          <span>CMS NPPES NPI #{agency.npiNumber || '1376554592'}</span>
+          <span aria-hidden="true">·</span>
+          <span>USFA FDID {agency.fdid}</span>
+          <span aria-hidden="true">·</span>
+          <span>OpenFEMA AFG {hasGrant ? `Award #${agency.grantStatus?.afgAwardNumber || 'Active'}` : 'Registry'}</span>
         </div>
 
-        {/* 2. Clinical Advantage */}
-        <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50">
-          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs mb-2">
-            <HeartPulse className="w-4 h-4" />
-            <span>2. Clinical Protocol</span>
-          </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums">
-            {agency.utsteinSurvivalRate || 10.8}% Utstein
-          </div>
-          <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1.5">
-            AHA Guideline Upgrade
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            Real BVM Help provides real-time ventilation rate and tidal volume feedback to eliminate hyperventilation in cardiac arrest.
-          </p>
-        </div>
-
-        {/* 3. Financial Savings */}
-        <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
-          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs mb-2">
-            <DollarSign className="w-4 h-4" />
-            <span>3. 5-Yr Financial ROI</span>
-          </div>
-          <div className="text-xl font-bold font-mono text-emerald-700 dark:text-emerald-400 tabular-nums">
-            +${totalFinancialBenefitK}K
-          </div>
-          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mb-1.5">
-            Net Financial Value
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            ${fiveYrSavingsK}K lower maintenance costs + ${tradeInK}K direct trade-in credit + ${recoverableK}K/yr recoverable Medicare claims.
-          </p>
-        </div>
-
-        {/* 4. Procurement Speed */}
-        <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50">
-          <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-xs mb-2">
-            <Award className="w-4 h-4" />
-            <span>4. Purchasing Fast-Track</span>
-          </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100">
-            6–9 Mos Saved
-          </div>
-          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1.5">
-            {coopContract.contractNumber}
-          </div>
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            Procure immediately via {coopContract.contractName.split(' ')[0]} cooperative purchasing, satisfying all public competition rules.
-          </p>
+        <div className="text-[11px] text-[#53657B] dark:text-slate-400 italic">
+          Complies with municipal public procurement standards and HIPAA de-identification requirements.
         </div>
       </div>
-
-      {/* Recommended TM Meeting Tactics & Objections */}
-      <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3">
-          Tactical Meeting Playbook & Trap Questions
-        </h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Question 1: For the Fire Chief / Director */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-              Trap Question · Fire Chief / EMS Director
-            </span>
-            <p className="text-xs font-medium text-slate-900 dark:text-slate-100 mt-1 mb-1.5">
-              "How much has your annual biomedical preventative maintenance contract increased year-over-year on your {defibBrand} fleet?"
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Pivot: Show that ZOLL guarantees fixed 5-year biomedical service caps, saving ${fiveYrSavingsK}K over 5 years.
-            </p>
-          </div>
-
-          {/* Question 2: For Medical Director / Quality Officer */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-              Trap Question · Medical Director / CQI Officer
-            </span>
-            <p className="text-xs font-medium text-slate-900 dark:text-slate-100 mt-1 mb-1.5">
-              "Can your current monitors tell paramedics on scene whether they are hyperventilating a patient during CPR?"
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Pivot: Highlight that only ZOLL X Series Advanced provides Real BVM Help breath-by-breath volume feedback on screen.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
   );
 };

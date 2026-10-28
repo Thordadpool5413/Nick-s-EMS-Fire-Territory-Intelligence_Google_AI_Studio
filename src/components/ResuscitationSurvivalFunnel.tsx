@@ -133,13 +133,13 @@ export const ResuscitationSurvivalFunnel: React.FC<ResuscitationSurvivalFunnelPr
         {/* Flush Hairline Sparklines Header */}
         <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
           <div className="bg-slate-50 dark:bg-slate-900 p-2.5">
-            <span className="text-[9px] uppercase font-mono text-slate-500 dark:text-slate-400 block font-semibold">5-Yr Call Trend</span>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">5-year call trend</span>
             <div className="w-24">
               <InteractiveSparkline data={fiveYearCalls} color="rose" height={22} valueSuffix=" calls" />
             </div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-900 p-2.5">
-            <span className="text-[9px] uppercase font-mono text-slate-500 dark:text-slate-400 block font-semibold">5-Yr Survival Trend</span>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">5-year survival trend</span>
             <div className="w-24">
               <InteractiveSparkline 
                 data={fiveYearSurvival} 
@@ -156,11 +156,11 @@ export const ResuscitationSurvivalFunnel: React.FC<ResuscitationSurvivalFunnelPr
       {/* Clinical Opportunity Impact Hairline Grid */}
       <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
         <div className="bg-slate-50/70 dark:bg-slate-900 p-4 flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400 font-mono font-bold text-lg shrink-0 tabular-nums">
+          <div className="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400 font-semibold text-lg shrink-0 tabular-nums">
             +{additionalLivesSaved}
           </div>
           <div>
-            <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
+            <h4 className="font-semibold text-xs text-slate-900 dark:text-white leading-tight">
               Estimated Additional Neurological Survivors Annually in {agency.city}
             </h4>
             <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
@@ -171,13 +171,13 @@ export const ResuscitationSurvivalFunnel: React.FC<ResuscitationSurvivalFunnelPr
 
         <div className="bg-slate-50/70 dark:bg-slate-900 p-4 flex items-center gap-3 shrink-0 text-xs">
           <div className="text-right">
-            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block uppercase">Baseline</span>
-            <span className="font-mono font-bold text-slate-900 dark:text-white text-sm tabular-nums">{currentSurvivors} / yr</span>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Baseline</span>
+            <span className="font-semibold text-slate-900 dark:text-white text-sm tabular-nums">{currentSurvivors} / yr</span>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400" />
           <div className="text-right pl-2 border-l border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 block uppercase font-bold">ZOLL Projected</span>
-            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm tabular-nums">{potentialSurvivors} / yr</span>
+            <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 block">ZOLL Projected</span>
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm tabular-nums">{potentialSurvivors} / yr</span>
           </div>
         </div>
       </div>
@@ -215,14 +215,14 @@ export const ResuscitationSurvivalFunnel: React.FC<ResuscitationSurvivalFunnelPr
               >
                 <div className="flex items-baseline justify-between gap-2 text-xs mb-1.5">
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tabular-nums">
                       0{step.step}
                     </span>
-                    <span className="font-bold text-slate-900 dark:text-white">{step.name}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{step.name}</span>
                   </div>
                   <span className="flex-1 border-b border-dotted border-slate-200 dark:border-slate-800 mx-2 hidden sm:block" />
-                  <div className="flex items-center gap-3 font-mono text-xs shrink-0 tabular-nums">
-                    <span className={`font-bold ${step.textColor}`}>{step.count}</span>
+                  <div className="flex items-center gap-3 text-xs shrink-0 tabular-nums font-sans">
+                    <span className={`font-semibold ${step.textColor}`}>{step.count}</span>
                     <span className="text-slate-400 dark:text-slate-500 text-[10px]">Bench {step.benchmarkPct}%</span>
                   </div>
                 </div>

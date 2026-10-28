@@ -16,6 +16,7 @@ import {
   Bookmark, 
   Navigation, 
   Flame, 
+  Siren,
   FileText, 
   Calendar,
   Layers,
@@ -34,16 +35,20 @@ import {
   ShieldCheck,
   Sliders,
   Columns3,
-  ArrowRight
+  ArrowRight,
+  HelpCircle
 } from 'lucide-react';
 import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
 import { PulseIqScoreExplainerHub } from './PulseIqScoreExplainerHub';
 import { InteractiveSparkline } from './InteractiveSparkline';
+import { UnderstandingPulseIqModal } from './UnderstandingPulseIqModal';
+import { formatCurrency, formatEquipmentDisplay, formatInteger, formatPercent } from '../utils/formatters';
 
 interface PredictiveLeadQueueProps {
   agencies: Agency[];
   onSelectAgency: (agency: Agency) => void;
+  onPreviewAgency?: (agency: Agency) => void;
   onToggleRoute: (agencyId: string) => void;
   onToggleBookmark: (agencyId: string) => void;
   onUpdateStage: (agencyId: string, stage: LeadStage) => void;
@@ -69,6 +74,7 @@ import { nationalProviderDb } from '../services/nationalProviderDatabase';
 export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
   agencies,
   onSelectAgency,
+  onPreviewAgency,
   onToggleRoute,
   onToggleBookmark,
   onUpdateStage,
@@ -101,7 +107,27 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'cards' | 'table' | 'kanban'>('cards'); // Default to spacious executive cards
+  const [quickSegment, setQuickSegment] = useState<'all' | 'high_priority' | 'afg' | 'bookmarked'>('all');
+
+  const [viewMode, setViewModeState] = useState<'cards' | 'table' | 'kanban'>(() => {
+    try {
+      const saved = localStorage.getItem('nicks_agency_view_mode');
+      if (saved === 'cards' || saved === 'table' || saved === 'kanban') return saved;
+    } catch {
+      // ignore
+    }
+    return 'cards';
+  });
+
+  const setViewMode = (mode: 'cards' | 'table' | 'kanban') => {
+    setViewModeState(mode);
+    try {
+      localStorage.setItem('nicks_agency_view_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
+
   const [sortBy, setSortBy] = useState<'pulseIq' | 'fleetAge' | 'calls' | 'value' | 'denial'>('pulseIq');
 
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'ems' | 'fire'>(globalCategory || 'all');
@@ -109,6 +135,15 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
   const [pageSize, setPageSize] = useState<number>(50);
   const [expandedAgencyIds, setExpandedAgencyIds] = useState<Record<string, boolean>>({});
   const [activeClarityDrawer, setActiveClarityDrawer] = useState<Record<string, 'deal_story' | 'battlecard' | 'score_explainer' | null>>({});
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+  const [showUnderstandingModal, setShowUnderstandingModal] = useState<boolean>(false);
+
+  const activeFilterCount =
+    (selectedCategory !== 'all' ? 1 : 0) +
+    (selectedProduct !== 'all' ? 1 : 0) +
+    (selectedStage !== 'all' ? 1 : 0) +
+    (selectedState !== 'all' ? 1 : 0) +
+    (quickSegment !== 'all' ? 1 : 0);
 
   const toggleAgencyExpand = (agencyId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -254,16 +289,21 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
   const filteredAgencies = useMemo(() => {
     let result = geographicScopePool.filter(agency => {
       if (selectedCategory === 'ems') {
-        return !agency.agencyType.toLowerCase().includes('fire');
+        if (agency.agencyType.toLowerCase().includes('fire')) return false;
       } else if (selectedCategory === 'fire') {
-        return agency.agencyType.toLowerCase().includes('fire');
+        if (!agency.agencyType.toLowerCase().includes('fire')) return false;
       }
+
+      if (quickSegment === 'high_priority' && (agency.zollOpportunity.pulseIqScore || 0) < 80) return false;
+      if (quickSegment === 'afg' && !agency.grantStatus.afgAwarded) return false;
+      if (quickSegment === 'bookmarked' && !agency.isBookmarked) return false;
+
       return true;
     });
 
     // If territory manager selected a specific county or city but filter narrowed to 0,
     // seamlessly resolve both EMS Providers and Fire Departments from the territory engine
-    if (selectedState !== 'all' && (selectedCounty !== 'all' || selectedCity !== 'all') && result.length === 0) {
+    if (selectedState !== 'all' && (selectedCounty !== 'all' || selectedCity !== 'all') && result.length === 0 && quickSegment === 'all') {
       const countyToResolve = selectedCounty !== 'all' 
         ? selectedCounty 
         : (availableCounties[0] || `${selectedState} County`);
@@ -288,7 +328,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
       if (sortBy === 'denial') return b.cmsData.claimDenialRate - a.cmsData.claimDenialRate;
       return 0;
     });
-  }, [geographicScopePool, selectedCategory, selectedState, selectedCounty, selectedCity, availableCounties, agencies, sortBy]);
+  }, [geographicScopePool, selectedCategory, quickSegment, selectedState, selectedCounty, selectedCity, availableCounties, agencies, sortBy]);
 
   const [liveVerifiedVersion, setLiveVerifiedVersion] = useState<number>(0);
 
@@ -320,146 +360,141 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
   return (
     <div className="workspace-section-grid">
       
-      {/* Unified Clinical Executive Filter & Controls Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 grid grid-cols-1 gap-3.5 min-w-0">
+      {/* Streamlined Single-Row Filter Bar + Progressive "More Filters" Drawer */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 space-y-3 min-w-0">
         
-        {/* Top Row: Classification Segmented Control + Active Global Jurisdiction Context */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => { setSelectedCategory('all'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
-                selectedCategory === 'all'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span>All Organizations</span>
-              <span className="font-mono text-[11px] tabular-nums text-slate-400">
-                {geographicScopePool.length.toLocaleString()}
-              </span>
-            </button>
-            <button
-              onClick={() => { setSelectedCategory('ems'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
-                selectedCategory === 'ems'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span>EMS Providers</span>
-              <span className="font-mono text-[11px] tabular-nums text-slate-400">
-                {emsCount.toLocaleString()}
-              </span>
-            </button>
-            <button
-              onClick={() => { setSelectedCategory('fire'); setCurrentPage(1); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${
-                selectedCategory === 'fire'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span>Fire Departments</span>
-              <span className="font-mono text-[11px] tabular-nums text-slate-400">
-                {fireCount.toLocaleString()}
-              </span>
-            </button>
-          </div>
-
-          {/* Synced Jurisdiction Context & Count */}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-            <span className="inline-flex items-center gap-1.5 font-medium text-slate-500 dark:text-slate-400">
-              <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-              <span>Scope:</span>
-              <strong className="text-slate-900 dark:text-white">
-                {selectedState === 'all'
-                  ? 'All 50 States & DC'
-                  : `${ALL_50_STATES_SUMMARIES[selectedState]?.state || selectedState} (${selectedState})`}
-              </strong>
-              {selectedCounty !== 'all' && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <strong className="text-slate-900 dark:text-white">{selectedCounty}</strong>
-                </>
-              )}
-              {selectedCity !== 'all' && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <strong className="text-slate-900 dark:text-white">{selectedCity}</strong>
-                </>
-              )}
-            </span>
-            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">·</span>
-            <span className="font-mono text-slate-500 dark:text-slate-400">
-              Showing <strong className="text-slate-900 dark:text-white tabular-nums">{paginatedAgencies.length.toLocaleString()}</strong> of <strong className="text-slate-900 dark:text-white tabular-nums">{filteredAgencies.length.toLocaleString()}</strong> accounts
-            </span>
-          </div>
-        </div>
-
-        {/* Second Row: Search Input + Target Product, Sales Stage, Sort & View Mode */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(240px,1fr)_auto] gap-2.5 items-center min-w-0">
+        {/* Primary Row: Search + State Selector + Quick Segment Tabs + More Filters + Hybrid View Switcher */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 min-w-0">
           
-          {/* Search box */}
-          <div className="relative w-full min-w-0">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
+          {/* Left: Search Box + State Dropdown + Quick Segments */}
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+            <div className="relative flex-1 min-w-[220px] max-w-sm">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search agency, city, ZIP, NPI, or Chief..."
+                className="w-full h-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-12 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all"
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }} 
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Provider Discipline Switcher (All / EMS / Fire) - Always Visible on Mobile & Desktop */}
+            <div 
+              className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 w-full sm:w-auto shrink-0"
+              role="group"
+              aria-label="Provider Discipline Filter"
+            >
+              <button
+                type="button"
+                onClick={() => { setSelectedCategory('all'); setCurrentPage(1); }}
+                className={`flex-1 sm:flex-initial h-8 px-2.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+                  selectedCategory === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>All</span>
+                <span className="font-mono text-[10px] opacity-75">({geographicScopePool.length.toLocaleString()})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSelectedCategory('ems'); setCurrentPage(1); }}
+                className={`flex-1 sm:flex-initial h-8 px-2.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+                  selectedCategory === 'ems'
+                    ? 'bg-[#285EE8] text-white shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Siren className="w-3.5 h-3.5 shrink-0" />
+                <span>EMS</span>
+                <span className="font-mono text-[10px] opacity-80">({emsCount.toLocaleString()})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSelectedCategory('fire'); setCurrentPage(1); }}
+                className={`flex-1 sm:flex-initial h-8 px-2.5 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer ${
+                  selectedCategory === 'fire'
+                    ? 'bg-amber-600 text-white shadow-2xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 shrink-0" />
+                <span>Fire</span>
+                <span className="font-mono text-[10px] opacity-80">({fireCount.toLocaleString()})</span>
+              </button>
+            </div>
+
+            {/* State Quick Selector */}
+            <select
+              value={selectedState}
               onChange={(e) => {
-                setSearchTerm(e.target.value);
+                setSelectedState(e.target.value);
+                setSelectedCounty('all');
+                setSelectedCity('all');
                 setCurrentPage(1);
               }}
-              placeholder="Filter queue by department, city, ZIP, FDID, Fire Chief, or EMS Director..."
-              className="w-full h-9 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-14 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A] dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all"
-            />
-            {searchTerm && (
-              <button 
-                onClick={() => {
-                  setSearchTerm('');
-                  setCurrentPage(1);
-                }} 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              >
-                Clear
-              </button>
-            )}
+              aria-label="Filter by State"
+              className="h-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-800 dark:text-slate-200 font-semibold focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
+            >
+              <option value="all">All 50 States ({agencies.length.toLocaleString()})</option>
+              {all50StatesList.map((st) => (
+                <option key={st.code} value={st.code}>
+                  {st.state} ({st.code})
+                </option>
+              ))}
+            </select>
+
+            {/* Quick Segment Tabs */}
+            <div className="hidden lg:flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              {([
+                { id: 'all', label: 'All' },
+                { id: 'high_priority', label: 'Priority ≥80' },
+                { id: 'afg', label: 'AFG Grant' },
+                { id: 'bookmarked', label: 'Saved' }
+              ] as const).map((seg) => (
+                <button
+                  key={seg.id}
+                  type="button"
+                  onClick={() => {
+                    setQuickSegment(seg.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                    quickSegment === seg.id
+                      ? 'bg-white dark:bg-slate-900 text-[#1E3A8A] dark:text-blue-400 shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {seg.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 shrink-0 pl-1">
+              <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">
+                {filteredAgencies.length.toLocaleString()}
+              </span>
+              <span>results</span>
+            </div>
           </div>
 
-          {/* Pipeline & Sort Selectors + View Mode Toggle */}
-          <div className="flex flex-wrap items-center gap-2">
-            
-            {/* Target Product */}
-            <select
-              value={selectedProduct}
-              onChange={(e) => {
-                setSelectedProduct(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-[#1E3A8A]"
-            >
-              <option value="all">All Target Products</option>
-              <option value="X Series Advanced">X Series Advanced</option>
-              <option value="AutoPulse Resuscitation System">AutoPulse Mechanical CPR</option>
-              <option value="ZOLL AED 3 & Public Access Defibrillators">ZOLL AED 3 (PAD)</option>
-              <option value="Z Vent Transport Ventilator">Z Vent Transport Ventilator</option>
-              <option value="ZOLL Billing / AR Boost">ZOLL Billing &amp; AR Boost</option>
-              <option value="ZOLL RescueNet ePCR">RescueNet ePCR Suite</option>
-            </select>
-
-            {/* Stage filter */}
-            <select
-              value={selectedStage}
-              onChange={(e) => {
-                setSelectedStage(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-[#1E3A8A]"
-            >
-              <option value="all">All Sales Stages</option>
-              {stages.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-
+          {/* Right: Sort + More Filters Toggle + Hybrid Cards/Table View Switcher */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {/* Sort order */}
             <select
               value={sortBy}
@@ -467,46 +502,75 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 setSortBy(e.target.value as any);
                 setCurrentPage(1);
               }}
-              className="h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-[#1E3A8A]"
+              aria-label="Sort Agencies"
+              className="h-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
             >
-              <option value="pulseIq">Sort: PulseIQ Priority Score (Highest First)</option>
-              <option value="fleetAge">Sort: Oldest Equipment Fleet (Highest Need)</option>
-              <option value="calls">Sort: Annual 911 Call Volume (Highest First)</option>
+              <option value="pulseIq">Sort: PulseIQ Score</option>
+              <option value="fleetAge">Sort: Oldest Fleet</option>
+              <option value="calls">Sort: 911 Call Volume</option>
               <option value="value">Sort: Est. Project Value</option>
-              <option value="denial">Sort: Uncollected Medicare Claims (%)</option>
+              <option value="denial">Sort: Medicare Denials</option>
             </select>
 
-            {/* Calibrate Scoring Weights Trigger */}
-            {onOpenWeightsModal && (
+            {/* Collapsible More Filters Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilters(prev => !prev)}
+              className={`h-8 px-2.5 rounded-lg border text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showAdvancedFilters || activeFilterCount > 0
+                  ? 'bg-blue-50/80 dark:bg-blue-950/50 text-[#1E3A8A] dark:text-blue-400 border-blue-200 dark:border-blue-800 font-semibold'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>More Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="font-mono text-[10px] bg-[#1E3A8A] text-white px-1.5 py-0.2 rounded-full tabular-nums">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {activeFilterCount > 0 && (
               <button
                 type="button"
-                onClick={onOpenWeightsModal}
-                className="h-9 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                title="Calibrate 5-Pillar PulseIQ Scoring Weights"
+                onClick={() => {
+                  setSelectedState('all');
+                  setSelectedCounty('all');
+                  setSelectedCity('all');
+                  setSelectedCategory('all');
+                  setSelectedProduct('all');
+                  setSelectedStage('all');
+                  setQuickSegment('all');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
+                className="h-8 px-2 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
               >
-                <Sliders className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                <span>Calibrate Weights</span>
+                Reset
               </button>
             )}
 
-            {/* View Mode Toggle */}
+            {/* Hybrid View Mode Toggle */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
               <button
+                type="button"
                 onClick={() => setViewMode('cards')}
-                className={`h-8 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                className={`h-7 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   viewMode === 'cards' 
                     ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Scannable Summary Cards View"
+                title="Clean Executive Cards View"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Cards</span>
+                <span>Cards</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setViewMode('table')}
-                className={`h-8 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                className={`h-7 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   viewMode === 'table' 
                     ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -514,12 +578,13 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 title="Compact Comparison Table View"
               >
                 <TableIcon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Table</span>
+                <span>Table</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setViewMode('kanban')}
-                className={`h-8 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                className={`h-7 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                   viewMode === 'kanban' 
                     ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -527,72 +592,166 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 title="Kanban Deal Pipeline Board View"
               >
                 <Columns3 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Kanban Board</span>
+                <span className="hidden sm:inline">Board</span>
               </button>
             </div>
-
-            {/* 1-Click Territory Call Sheet CSV Export */}
-            <button
-              type="button"
-              onClick={() => {
-                const exportRows = filteredAgencies.slice(0, 500);
-                const headers = [
-                  'Department Name',
-                  'Category',
-                  'Street Address',
-                  'City',
-                  'County',
-                  'State',
-                  'ZIP Code',
-                  'Command Official',
-                  'Official Website',
-                  'OpenStreetMap Link',
-                  'Installed Defib Brand',
-                  'Defib Units',
-                  'Fleet Age (Years)',
-                  'Annual 911 Calls'
-                ];
-                const rows = exportRows.map((a) => {
-                  const chief = a.keyContacts[0];
-                  const mapsLink = a.mapSearchUri || `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${a.name}, ${a.address}`)}`;
-                  return [
-                    `"${(a.name || '').replace(/"/g, '""')}"`,
-                    a.providerCategory || (a.agencyType.toLowerCase().includes('fire') ? 'FIRE' : 'EMS'),
-                    `"${(a.address || '').replace(/"/g, '""')}"`,
-                    `"${(a.city || '').replace(/"/g, '""')}"`,
-                    `"${(a.county || '').replace(/"/g, '""')}"`,
-                    a.stateCode,
-                    a.zipCode,
-                    `"${(chief?.name || '').replace(/"/g, '""')}"`,
-                    `"${(a.officialWebsite || '').replace(/"/g, '""')}"`,
-                    `"${mapsLink.replace(/"/g, '""')}"`,
-                    `"${(a.installedFleet.defibBrand || '').replace(/"/g, '""')}"`,
-                    a.installedFleet.defibUnitsCount,
-                    a.installedFleet.defibAgeYears,
-                    a.annualCallVolume || a.annual911Transports
-                  ].join(',');
-                });
-                const csv = [headers.join(','), ...rows].join('\n');
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `territory-call-sheet-${selectedState !== 'all' ? selectedState : 'national'}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-              }}
-              className="h-9 px-3 rounded-lg bg-[#1E3A8A] hover:bg-[#111827] dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              title="Export filtered accounts to CSV Call Sheet"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Call Sheet (CSV)</span>
-            </button>
-
           </div>
-
         </div>
+
+        {/* Collapsible Secondary Filters & Export Drawer */}
+        {showAdvancedFilters && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 animate-in fade-in duration-150">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Organization Category */}
+              <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => { setSelectedCategory('all'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    selectedCategory === 'all'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  All ({geographicScopePool.length.toLocaleString()})
+                </button>
+                <button
+                  onClick={() => { setSelectedCategory('ems'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    selectedCategory === 'ems'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  EMS ({emsCount.toLocaleString()})
+                </button>
+                <button
+                  onClick={() => { setSelectedCategory('fire'); setCurrentPage(1); }}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    selectedCategory === 'fire'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Fire ({fireCount.toLocaleString()})
+                </button>
+              </div>
+
+              {/* Target Product */}
+              <select
+                value={selectedProduct}
+                onChange={(e) => {
+                  setSelectedProduct(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-[#1E3A8A]"
+              >
+                <option value="all">All Target Products</option>
+                <option value="X Series Advanced">X Series Advanced</option>
+                <option value="AutoPulse Resuscitation System">AutoPulse Mechanical CPR</option>
+                <option value="ZOLL AED 3 & Public Access Defibrillators">ZOLL AED 3 (PAD)</option>
+                <option value="Z Vent Transport Ventilator">Z Vent Transport Ventilator</option>
+                <option value="ZOLL Billing / AR Boost">ZOLL Billing &amp; AR Boost</option>
+                <option value="ZOLL RescueNet ePCR">RescueNet ePCR Suite</option>
+              </select>
+
+              {/* Stage filter */}
+              <select
+                value={selectedStage}
+                onChange={(e) => {
+                  setSelectedStage(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-[#1E3A8A]"
+              >
+                <option value="all">All Sales Stages</option>
+                {stages.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowUnderstandingModal(true)}
+                className="h-8 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                title="Understanding PulseIQ Methodology, Calculation & Prioritization"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>Understanding PulseIQ</span>
+              </button>
+
+              {/* Calibrate Scoring Weights Trigger */}
+              {onOpenWeightsModal && (
+                <button
+                  type="button"
+                  onClick={onOpenWeightsModal}
+                  className="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
+                  <span>Calibrate Weights</span>
+                </button>
+              )}
+
+              {/* 1-Click Territory Call Sheet CSV Export */}
+              <button
+                type="button"
+                onClick={() => {
+                  const exportRows = filteredAgencies.slice(0, 500);
+                  const headers = [
+                    'Department Name',
+                    'Category',
+                    'Street Address',
+                    'City',
+                    'County',
+                    'State',
+                    'ZIP Code',
+                    'Command Official',
+                    'Official Website',
+                    'Google Maps Link',
+                    'Installed Defib Brand',
+                    'Defib Units',
+                    'Fleet Age (Years)',
+                    'Annual 911 Calls'
+                  ];
+                  const rows = exportRows.map((a) => {
+                    const chief = a.keyContacts[0];
+                    const mapsLink = a.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a.name}, ${a.address}`)}`;
+                    return [
+                      `"${(a.name || '').replace(/"/g, '""')}"`,
+                      a.providerCategory || (a.agencyType.toLowerCase().includes('fire') ? 'FIRE' : 'EMS'),
+                      `"${(a.address || '').replace(/"/g, '""')}"`,
+                      `"${(a.city || '').replace(/"/g, '""')}"`,
+                      `"${(a.county || '').replace(/"/g, '""')}"`,
+                      a.stateCode,
+                      a.zipCode,
+                      `"${(chief?.name || '').replace(/"/g, '""')}"`,
+                      `"${(a.officialWebsite || '').replace(/"/g, '""')}"`,
+                      `"${mapsLink.replace(/"/g, '""')}"`,
+                      `"${(a.installedFleet.defibBrand || '').replace(/"/g, '""')}"`,
+                      a.installedFleet.defibUnitsCount,
+                      a.installedFleet.defibAgeYears,
+                      a.annualCallVolume || a.annual911Transports
+                    ].join(',');
+                  });
+                  const csv = [headers.join(','), ...rows].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', `territory-call-sheet-${selectedState !== 'all' ? selectedState : 'national'}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                }}
+                className="h-8 px-3 rounded-lg bg-[#1E3A8A] hover:bg-[#111827] dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-medium inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                title="Export filtered accounts to CSV Call Sheet"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content View */}
@@ -637,7 +796,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 }`}
               >
                 {/* TIER 1: TOP ZONE — AGENCY TITLE + UNBOXED MONOSPACE METADATA + PULSEIQ COMPOSITE */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-2.5 min-w-0">
                       <button
@@ -652,115 +811,102 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                       </button>
 
                       <div className="min-w-0">
-                        {/* Unboxed Monospace Metadata Strip (Zero-Pill Discipline) */}
-                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono tabular-nums text-slate-600 dark:text-slate-300 leading-relaxed mb-1">
-                          <span className="font-sans font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[10px]">
-                            {isFire ? 'Fire Department' : 'EMS Provider'}
+                        {/* Clean Metadata Strip */}
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs tabular-nums text-slate-500 dark:text-slate-400 leading-relaxed mb-0.5">
+                          <span className={`inline-flex items-center gap-1 font-semibold text-[11px] px-2 py-0.5 rounded-md ${
+                            isFire 
+                              ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60'
+                              : 'bg-blue-50 dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-400 border border-blue-200 dark:border-blue-800/60'
+                          }`}>
+                            {isFire ? <Flame className="w-3 h-3" /> : <Siren className="w-3 h-3" />}
+                            <span>{isFire ? 'Fire Department' : 'EMS Provider'}</span>
                           </span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                          <span>{agency.stateCode}</span>
-                          <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                          <span className="tabular-nums">FDID {agency.fdid || '04102'}</span>
+                          <span>FDID <span className="font-mono text-[11px]">{agency.fdid || '04102'}</span></span>
+                          {agency.npiNumber && (
+                            <>
+                              <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+                              <span>NPI <span className="font-mono text-[11px]">{agency.npiNumber}</span></span>
+                            </>
+                          )}
                           {agency.grantStatus.afgAwarded && (
                             <>
                               <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                              <span className="text-emerald-700 dark:text-emerald-400 font-bold tabular-nums">
-                                AFG Awarded (${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K)
+                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
+                                AFG {formatCurrency(agency.grantStatus.afgAwardAmount)}
                               </span>
                             </>
                           )}
                         </div>
 
-                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors leading-snug tracking-[-0.02em] truncate">
+                        <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors leading-snug tracking-[-0.015em] truncate">
                           {agency.name}
                         </h3>
 
-                        <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mt-0.5 flex flex-wrap items-center gap-1.5 font-mono tabular-nums text-[11px]">
-                          <span className="text-slate-800 dark:text-slate-200 font-sans font-medium">{agency.city}, {agency.stateCode}</span>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5 flex flex-wrap items-center gap-1.5 tabular-nums">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">{agency.city}, {agency.stateCode}</span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                           <span>{agency.county} County</span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                          <span className="tabular-nums">ZIP {agency.zipCode}</span>
+                          <span>ZIP {agency.zipCode}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Unboxed Tabular Score Readout + 2px Progress Bar + 5-Pillar Micro-Bar */}
+                    {/* Clean Tabular Score Readout + 2px Progress Bar */}
                     <div
-                      className="shrink-0 pl-4 border-l border-slate-200 dark:border-slate-800 flex flex-col items-end text-right w-28"
+                      className="shrink-0 pl-4 border-l border-slate-200 dark:border-slate-800 flex flex-col items-end text-right w-24"
                       onClick={(e) => e.stopPropagation()}
-                      title="PulseIQ Composite Score & 5-Pillar Breakdown"
+                      title="PulseIQ Composite Score"
                     >
-                      <div className="flex items-baseline justify-end gap-1 font-mono">
-                        <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums leading-none">
+                      <div className="flex items-baseline justify-end gap-0.5">
+                        <span className="text-xl font-semibold text-slate-900 dark:text-white tabular-nums leading-none">
                           {agency.zollOpportunity.pulseIqScore}
                         </span>
-                        <span className="text-[10px] text-slate-400 tabular-nums">/100</span>
+                        <span className="text-xs text-slate-400 tabular-nums">/100</span>
                       </div>
 
-                      {/* Ultra-thin 2px Horizontal Progress Bar */}
                       <div className="w-full h-[2px] bg-slate-200 dark:bg-slate-800 mt-1.5 overflow-hidden">
                         <div
                           className="h-full bg-[#1E3A8A] dark:bg-blue-400"
                           style={{ width: `${Math.min(100, agency.zollOpportunity.pulseIqScore)}%` }}
                         />
                       </div>
-
-                      {/* 5-Segment Mini Pillar Bar */}
-                      <div className="w-full grid grid-cols-5 gap-0.5 mt-1.5 h-2 items-end" aria-label="5 scoring pillars">
-                        {pillarBars.map((pb) => (
-                          <div key={pb.label} className="w-full bg-slate-100 dark:bg-slate-800 h-full flex items-end">
-                            <div
-                              className={`w-full ${pb.color} opacity-90`}
-                              style={{ height: `${Math.max(20, pb.val)}%` }}
-                              title={`${pb.label}: ${pb.val}/100`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <span className="text-[9px] font-mono text-slate-400 mt-1">
-                        PulseIQ Index
+                      <span className="text-xs text-slate-400 mt-1">
+                        PulseIQ
                       </span>
                     </div>
                   </div>
 
-                  {/* TIER 2: CENTER METRIC HERO — 2 HIGH-CONTRAST DATA PILLARS WITH VERIFIABLE PROVENANCE */}
-                  <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden my-3">
-                    {/* Left Hero: Installed Fleet Obsolescence */}
+                  {/* TIER 2: CLEAN 2-COLUMN METRIC LEDGER */}
+                  <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden my-2">
                     <div
                       className="p-3 bg-slate-50/70 dark:bg-slate-900/90 space-y-0.5"
-                      title="Confidence Tier: Municipal Capital Filing / Modeled Replacement Cycle (OEM 8-Yr Lifecycle)"
+                      title="USFA Apparatus Baseline & Fleet Age"
                     >
-                      <div className="flex items-center justify-between gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-                        <span>Frontline Fleet</span>
-                        <span className="font-mono text-[9px] text-amber-700 dark:text-amber-400 font-semibold">
-                          ◐ Modeled Cycle
-                        </span>
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Frontline fleet
                       </div>
-                      <div className="font-mono font-bold text-base text-amber-700 dark:text-amber-400 tabular-nums truncate">
-                        {agency.installedFleet.defibAgeYears} Yrs Old
+                      <div className="font-semibold text-sm text-slate-900 dark:text-white tabular-nums truncate">
+                        {agency.installedFleet.defibUnitsCount} {agency.installedFleet.defibBrand.split(' ')[0]} devices
                       </div>
-                      <div className="text-[11px] font-medium text-slate-700 dark:text-slate-200 leading-relaxed tabular-nums truncate">
-                        {agency.installedFleet.defibUnitsCount}× {agency.installedFleet.defibBrand.split(' ')[0]} {agency.installedFleet.defibBrand.includes('15') ? 'LP15' : ''}
+                      <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums truncate">
+                        Reported age: {agency.installedFleet.defibAgeYears} yrs · Ends {agency.competitorContract.contractEndDate}
                       </div>
                     </div>
 
-                    {/* Right Hero: Annual Medicare Recovery Opportunity */}
                     <div
                       className="p-3 bg-slate-50/70 dark:bg-slate-900/90 space-y-0.5"
-                      title={`Verified Federal Record: CMS Ambulance Fee Schedule Public Use File FY2025 · NPI ${agency.npiNumber || 'Verified'}`}
+                      title={`CMS Part B PUF & Actuarial Recovery Forecast`}
                     >
-                      <div className="flex items-center justify-between gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-                        <span>Medicare Recovery</span>
-                        <span className="font-mono text-[9px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                          ● CMS PUF FY25
-                        </span>
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        Est. Medicare recovery
                       </div>
-                      <div className="font-mono font-bold text-base text-[#1E3A8A] dark:text-blue-400 tabular-nums">
-                        +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K<span className="text-xs font-normal text-slate-500">/yr</span>
+                      <div className="font-semibold text-sm text-[#1E3A8A] dark:text-blue-400 tabular-nums">
+                        {formatCurrency(agency.cmsData.estimatedRecoverableRevenue, { perYear: true, showSign: true })}
                       </div>
-                      <div className="text-[11px] font-medium text-slate-700 dark:text-slate-200 leading-relaxed tabular-nums truncate">
-                        ${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K Total Value · {agency.cmsData.claimDenialRate}% Den
+                      <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums truncate">
+                        {formatCurrency(agency.zollOpportunity.projectedPipelineValue)} CapEx · {formatPercent(agency.cmsData.claimDenialRate)} denial
                       </div>
                     </div>
                   </div>
@@ -771,82 +917,100 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                       onClick={(e) => e.stopPropagation()}
                       className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-200 leading-relaxed animate-in fade-in duration-100"
                     >
-                      {/* Deep 4-Cell Ledger Grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 bg-slate-200 dark:bg-slate-800 gap-px border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
                         <div className="p-2.5 bg-white dark:bg-slate-900">
-                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase">Apparatus</span>
-                          <div className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Frontline apparatus</span>
+                          <div className="font-semibold tabular-nums text-slate-900 dark:text-white mt-0.5">
                             {agency.totalAmbulances} Amb · {agency.totalFireEngines} Eng
                           </div>
                         </div>
                         <div className="p-2.5 bg-white dark:bg-slate-900">
-                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase">Claims Denial</span>
-                          <div className="font-bold font-mono tabular-nums text-rose-600 dark:text-rose-400 mt-0.5">
-                            {agency.cmsData.claimDenialRate}% Denied
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Claims denial rate</span>
+                          <div className="font-semibold tabular-nums text-rose-600 dark:text-rose-400 mt-0.5">
+                            {agency.cmsData.claimDenialRate}% denied
                           </div>
                         </div>
                         <div className="p-2.5 bg-white dark:bg-slate-900">
-                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase">Utstein ROSC</span>
-                          <div className="font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
-                            {agency.utsteinSurvivalRate}% Survival
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Utstein survival</span>
+                          <div className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            {agency.utsteinSurvivalRate}% survival
                           </div>
                         </div>
                         <div className="p-2.5 bg-white dark:bg-slate-900">
-                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase">Annual Runs</span>
-                          <div className="font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5">
-                            {agency.annual911Transports.toLocaleString()} Runs
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Annual 911 runs</span>
+                          <div className="font-semibold tabular-nums text-slate-900 dark:text-white mt-0.5">
+                            {agency.annual911Transports.toLocaleString()} transports
                           </div>
                         </div>
                       </div>
 
-                      {/* CAD & Decision Maker Context */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[11px] leading-relaxed">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <div>
-                          <span className="font-sans text-slate-600 dark:text-slate-400">ePCR/CAD: </span>
+                          <span>ePCR/CAD: </span>
                           <strong className="text-slate-900 dark:text-white">{agency.installedFleet.epcrCadSoftware}</strong>
-                        </div>
-                        <div>
-                          <span className="font-sans text-slate-600 dark:text-slate-400">Chief: </span>
+                          <span className="mx-1.5">·</span>
+                          <span>Command: </span>
                           <strong className="text-slate-900 dark:text-white">{fireChiefContact?.name}</strong>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono text-[11px]">
+                          <a
+                            href={agency.nppesRegistryUrl || (agency.npiNumber ? `https://npiregistry.cms.hhs.gov/provider-view/${agency.npiNumber}` : 'https://npiregistry.cms.hhs.gov/')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#1E3A8A] dark:text-blue-400 hover:underline"
+                          >
+                            CMS NPPES &nearr;
+                          </a>
+                          <span>·</span>
+                          <a
+                            href={agency.usfaRegistryUrl || 'https://apps.usfa.fema.gov/registry/'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#1E3A8A] dark:text-blue-400 hover:underline"
+                          >
+                            USFA &nearr;
+                          </a>
+                          <span>·</span>
+                          <a
+                            href={agency.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#1E3A8A] dark:text-blue-400 hover:underline"
+                          >
+                            Maps &nearr;
+                          </a>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Toggle Extra Telemetry Link + Provenance Citation Trigger */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
+                  {/* Quiet Single-Line Details & Verification Toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
                     <button
                       type="button"
                       onClick={(e) => toggleAgencyExpand(agency.id, e)}
-                      className="text-[11px] font-mono text-[#1E3A8A] dark:text-blue-400 hover:underline cursor-pointer"
+                      className="font-medium text-slate-600 dark:text-slate-400 hover:text-[#1E3A8A] dark:hover:text-blue-400 cursor-pointer"
                     >
-                      {isExpanded ? '▲ Hide Full Ledger' : '▼ Expand Full Ledger & CAD Telemetry'}
+                      {isExpanded ? 'Hide operational details' : 'Show operational details & federal links'}
                     </button>
 
-                    <div className="flex items-center gap-2.5 font-mono tabular-nums text-[10px] text-slate-500 dark:text-slate-400">
-                      <span>Exp: {agency.competitorContract.contractEndDate}</span>
-                      {onOpenDataLineage && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenDataLineage(agency);
-                            }}
-                            className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold hover:underline cursor-pointer"
-                            title="Audit Federal Source Citations (USFA FDID, CMS NPI, NEMSIS v3.5)"
-                          >
-                            <ShieldCheck className="w-3 h-3 shrink-0" />
-                            <span>Source Lineage</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {onOpenDataLineage && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDataLineage(agency);
+                        }}
+                        className="text-slate-500 hover:text-slate-900 dark:hover:text-white hover:underline cursor-pointer"
+                        title="Audit Federal Source Citations"
+                      >
+                        Source Lineage
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* TIER 3: BOTTOM ACTION SHELF — 1 PRIMARY CTA + 2 QUIET ICONS */}
+                {/* TIER 3: BOTTOM ACTION SHELF — STAGE SELECT + CLEAN TEXT ACTIONS */}
                 <div 
                   className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs"
                   onClick={(e) => e.stopPropagation()}
@@ -855,46 +1019,41 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                   <select
                     value={agency.zollOpportunity.salesStage}
                     onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
-                    className="h-8.5 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
+                    className="h-8 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
                   >
                     {stages.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
 
-                  {/* Action Group: 1 High-Contrast Primary CTA + 2 Quiet Ghost Affordances */}
-                  <div className="flex items-center gap-2">
-                    {onOpenRfpGenerator && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenRfpGenerator(agency)}
-                        title="Generate Pre-Emptive Technical RFP Specifications"
-                        className="h-8.5 px-3 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                        <span>RFP</span>
-                      </button>
-                    )}
+                  {/* Action Group */}
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
+                      title="Open Slide-Over Quick Preview Drawer"
+                      className="h-8 px-2.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap cursor-pointer shrink-0"
+                    >
+                      Quick Preview
+                    </button>
 
                     <button
                       type="button"
                       onClick={() => onToggleRoute(agency.id)}
-                      className={`h-8.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-colors whitespace-nowrap cursor-pointer ${
+                      className={`h-8 px-2.5 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
                         agency.inDayRoute 
-                          ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E3A8A] dark:text-blue-400 border-blue-200 dark:border-blue-800' 
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E3A8A] dark:text-blue-400 border-blue-200 dark:border-blue-800 font-semibold' 
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                       title={agency.inDayRoute ? 'Remove from today\'s driving itinerary' : 'Add to today\'s driving itinerary'}
                     >
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>{agency.inDayRoute ? 'On Route' : 'Route'}</span>
+                      {agency.inDayRoute ? 'On Route' : '+ Route'}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => onSelectAgency(agency)}
-                      className="h-8.5 px-4 rounded-lg text-xs font-bold bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition-colors flex items-center gap-1 whitespace-nowrap shadow-xs cursor-pointer"
+                      className="h-8 px-3.5 rounded-lg text-xs font-semibold bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition-colors whitespace-nowrap cursor-pointer shrink-0"
                     >
-                      <span>Open Dossier</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      Full Dossier &rarr;
                     </button>
                   </div>
                 </div>
@@ -906,7 +1065,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
       ) : viewMode === 'kanban' ? (
         /* Interactive 6-Stage Kanban Deal Pipeline Board */
         <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-start overflow-x-auto pb-2">
+          <div className="flex overflow-x-auto gap-3.5 items-start pb-4 max-w-full">
             {stages.map((stage, stageIdx) => {
               const stageAgencies = filteredAgencies.filter(a => a.zollOpportunity.salesStage === stage);
               const totalStagePipeline = stageAgencies.reduce((sum, a) => sum + (a.zollOpportunity.projectedPipelineValue || 0), 0);
@@ -920,7 +1079,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
               return (
                 <div
                   key={stage}
-                  className="bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col gap-2.5 min-w-[250px]"
+                  className="w-[280px] shrink-0 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col gap-2.5"
                 >
                   {/* Column Header */}
                   <div className="pb-2.5 border-b border-slate-200 dark:border-slate-800">
@@ -956,18 +1115,18 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <div className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 uppercase truncate">
+                              <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
                                 {agency.city}, {agency.stateCode} · {isFire ? 'Fire' : 'EMS'}
                               </div>
-                              <div className="text-xs font-bold text-slate-900 dark:text-white leading-snug tracking-[-0.02em] line-clamp-2 mt-0.5">
+                              <div className="text-xs font-semibold text-slate-900 dark:text-white leading-snug tracking-[-0.01em] line-clamp-2 mt-0.5">
                                 {agency.name}
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <div className="font-mono text-[11px] font-bold text-slate-900 dark:text-white tabular-nums">
-                                {agency.zollOpportunity.pulseIqScore}<span className="text-[9px] text-slate-400 tabular-nums">/100</span>
+                              <div className="text-xs font-semibold text-slate-900 dark:text-white tabular-nums">
+                                {agency.zollOpportunity.pulseIqScore}<span className="text-[10px] text-slate-400 font-normal">/100</span>
                               </div>
-                              <div className="w-10 h-[2px] bg-slate-200 dark:bg-slate-700 overflow-hidden mt-0.5 ml-auto">
+                              <div className="w-10 h-[2px] bg-slate-200 dark:bg-slate-700 overflow-hidden mt-0.5 ml-auto rounded-full">
                                 <div
                                   className="h-full bg-[#1E3A8A] dark:bg-blue-400"
                                   style={{ width: `${agency.zollOpportunity.pulseIqScore}%` }}
@@ -976,17 +1135,17 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 text-[11px] font-mono tabular-nums">
+                          <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-700 border border-slate-200 dark:border-slate-700 text-[11px] tabular-nums rounded-md overflow-hidden">
                             <div className="bg-white dark:bg-slate-800 p-1.5">
-                              <span className="text-slate-400 block text-[9px] uppercase">Pipeline</span>
+                              <span className="text-slate-500 dark:text-slate-400 block text-[10px] font-medium">Pipeline</span>
                               <strong className="text-slate-900 dark:text-white tabular-nums">
                                 ${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K
                               </strong>
                             </div>
                             <div className="bg-white dark:bg-slate-800 p-1.5 text-right">
-                              <span className="text-slate-400 block text-[9px] uppercase">Rival Fleet</span>
+                              <span className="text-slate-500 dark:text-slate-400 block text-[10px] font-medium">Rival fleet</span>
                               <span className="text-amber-700 dark:text-amber-400 font-semibold tabular-nums">
-                                {agency.installedFleet.defibAgeYears}y ({agency.installedFleet.defibUnitsCount}u)
+                                {agency.installedFleet.defibAgeYears} yrs · {agency.installedFleet.defibUnitsCount} units
                               </span>
                             </div>
                           </div>
@@ -1043,23 +1202,47 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
         </div>
       ) : (
         /* High-Density Clinical Executive Table View */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-xs border-collapse tabular-nums">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider text-[11px]">
-                  <th className="py-3 px-3 w-28 text-left font-mono">Score · 5-Pillar</th>
-                  <th className="py-3 px-4">Agency / Jurisdiction</th>
-                  <th className="py-3 px-3 hidden 2xl:table-cell">Apparatus &amp; Leadership</th>
-                  <th className="py-3 px-3 hidden md:table-cell">Installed Fleet &amp; CAD</th>
-                  <th className="py-3 px-3 text-right hidden xl:table-cell">CMS &amp; Payer Mix</th>
-                  <th className="py-3 px-3 text-right hidden lg:table-cell">AFG Grant</th>
-                  <th className="py-3 px-3 text-right hidden sm:table-cell">Pipeline Est.</th>
-                  <th className="py-3 px-3 hidden md:table-cell">Sales Stage</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                <tr className="bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                  <th
+                    onClick={() => setSortBy('pulseIq')}
+                    className="py-2.5 px-3 w-28 text-left cursor-pointer hover:text-[#1E3A8A]"
+                    title="Sort by PulseIQ Composite Score"
+                  >
+                    Score {sortBy === 'pulseIq' ? '↓' : ''}
+                  </th>
+                  <th className="py-2.5 px-4">Agency &amp; jurisdiction</th>
+                  <th className="py-2.5 px-3 hidden 2xl:table-cell">Apparatus &amp; command</th>
+                  <th
+                    onClick={() => setSortBy('fleetAge')}
+                    className="py-2.5 px-3 hidden md:table-cell cursor-pointer hover:text-[#1E3A8A]"
+                    title="Sort by Fleet Age"
+                  >
+                    Frontline fleet {sortBy === 'fleetAge' ? '↓' : ''}
+                  </th>
+                  <th
+                    onClick={() => setSortBy('denial')}
+                    className="py-2.5 px-3 text-right hidden xl:table-cell cursor-pointer hover:text-[#1E3A8A]"
+                    title="Sort by Medicare Denial Rate"
+                  >
+                    CMS recovery {sortBy === 'denial' ? '↓' : ''}
+                  </th>
+                  <th className="py-2.5 px-3 text-right hidden lg:table-cell">AFG grant</th>
+                  <th
+                    onClick={() => setSortBy('value')}
+                    className="py-2.5 px-3 text-right hidden sm:table-cell cursor-pointer hover:text-[#1E3A8A]"
+                    title="Sort by Projected Pipeline Value"
+                  >
+                    CapEx value {sortBy === 'value' ? '↓' : ''}
+                  </th>
+                  <th className="py-2.5 px-3 hidden md:table-cell">Pipeline stage</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800">
                 {paginatedAgencies.map((agency) => {
                   const fireChiefContact = agency.keyContacts.find(c => c.role === 'Fire Chief' || c.title.toLowerCase().includes('fire')) || agency.keyContacts[0];
                   const emsDirectorContact = agency.keyContacts.find(c => c.role === 'EMS Chief' || c.title.toLowerCase().includes('ems')) || agency.keyContacts[1];
@@ -1073,17 +1256,17 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                   return (
                     <tr 
                       key={agency.id}
-                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
-                      onClick={() => onSelectAgency(agency)}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
+                      onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
                     >
-                      {/* Unboxed Tabular Score + 2px Progress Bar + 5-Pillar Mini Bar */}
-                      <td className="py-3 px-3" onClick={(e) => e.stopPropagation()}>
+                      {/* Unboxed Tabular Score + 2px Progress Bar */}
+                      <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                         <div className="space-y-1 w-20">
-                          <div className="flex items-baseline justify-between font-mono">
-                            <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums">
-                              {agency.zollOpportunity.pulseIqScore}<span className="text-[10px] text-slate-400 font-normal">/100</span>
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-xs font-semibold text-slate-900 dark:text-white tabular-nums">
+                              {agency.zollOpportunity.pulseIqScore}<span className="text-xs text-slate-400 font-normal">/100</span>
                             </span>
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 tabular-nums">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                               {agency.installedFleet.defibAgeYears}y
                             </span>
                           </div>
@@ -1110,7 +1293,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                       </td>
 
                       {/* Agency Name & Location */}
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-4">
                         <div className="flex items-start gap-2">
                           <button
                             onClick={(e) => {
@@ -1123,121 +1306,108 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                             <Bookmark className={`w-3.5 h-3.5 ${agency.isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
                           </button>
                           <div>
-                            <div className="font-bold text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+                            <div className="font-semibold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors">
                               {agency.name}
                             </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5 font-mono">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5 tabular-nums">
                               <span>{agency.city}, {agency.stateCode} · {agency.county}</span>
                               <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
-                              <span className="font-sans">{agency.agencyType}</span>
+                              <span>{agency.agencyType}</span>
                               <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
-                              <span className="text-slate-500 dark:text-slate-400">FDID {agency.fdid}</span>
+                              <span>FDID <span className="font-mono text-[11px]">{agency.fdid}</span></span>
                             </div>
                           </div>
                         </div>
                       </td>
 
                       {/* Apparatus & Leadership */}
-                      <td className="py-3 px-3 hidden 2xl:table-cell">
-                        <div className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums">
+                      <td className="py-2.5 px-3 hidden 2xl:table-cell">
+                        <div className="font-medium text-slate-900 dark:text-white tabular-nums">
                           {agency.totalFireEngines > 0 ? `${agency.totalFireEngines} Eng · ` : ''}{agency.totalAmbulances} ALS/BLS Units
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[210px]">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[210px]">
                           {fireChiefContact?.name} · {emsDirectorContact?.name}
                         </div>
                       </td>
 
                       {/* Installed Fleet, ePCR & CAD */}
-                      <td className="py-3 px-3 hidden md:table-cell">
-                        <div className="text-slate-900 dark:text-slate-100 font-medium tabular-nums">
-                          {agency.installedFleet.defibBrand} ({agency.installedFleet.defibAgeYears}y, {agency.installedFleet.defibUnitsCount}u)
+                      <td className="py-2.5 px-3 hidden md:table-cell">
+                        <div className="text-slate-900 dark:text-slate-100 font-semibold tabular-nums">
+                          {agency.installedFleet.defibUnitsCount} {agency.installedFleet.defibBrand.split(' ')[0]} devices ({agency.installedFleet.defibAgeYears}y)
                         </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-mono truncate max-w-[210px]">
-                          {agency.installedFleet.epcrCadSoftware} · {agency.installedFleet.dispatchCadVendor || 'Enterprise CAD'}
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[210px]">
+                          {agency.installedFleet.epcrCadSoftware}
                         </div>
                       </td>
 
                       {/* CMS Denial Rate & Payer Mix */}
-                      <td className="py-3 px-3 text-right hidden xl:table-cell">
-                        <div className={`font-mono font-bold tabular-nums ${
+                      <td className="py-2.5 px-3 text-right hidden xl:table-cell">
+                        <div className={`font-semibold tabular-nums ${
                           agency.cmsData.claimDenialRate > 18 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-900 dark:text-white'
                         }`}>
-                          {agency.cmsData.claimDenialRate}% Den · +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K
+                          {formatCurrency(agency.cmsData.estimatedRecoverableRevenue, { perYear: true, showSign: true })}
                         </div>
-                        <div className="text-[10px] text-slate-600 dark:text-slate-300 font-mono tabular-nums">
-                          MCR {agency.cmsData.medicarePayerPct ?? 42}% · COM {agency.cmsData.commercialPayerMixPct}%
+                        <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                          {formatPercent(agency.cmsData.claimDenialRate)} denial · MCR {agency.cmsData.medicarePayerPct ?? 42}%
                         </div>
                       </td>
 
                       {/* AFG Grant */}
-                      <td className="py-3 px-3 text-right hidden lg:table-cell">
+                      <td className="py-2.5 px-3 text-right hidden lg:table-cell">
                         {agency.grantStatus.afgAwarded ? (
                           <>
-                            <div className="font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                              ${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K
+                            <div className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                              {formatCurrency(agency.grantStatus.afgAwardAmount)}
                             </div>
-                            <div className="text-[10px] text-slate-600 dark:text-slate-300 font-mono tabular-nums">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                               FY{agency.grantStatus.afgFiscalYear}
                             </div>
                           </>
                         ) : (
-                          <span className="text-slate-300 dark:text-slate-600 font-mono text-[11px]">—</span>
+                          <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
                         )}
                       </td>
 
                       {/* Target Pipeline Value */}
-                      <td className="py-3 px-3 text-right hidden sm:table-cell">
-                        <div className="font-mono font-bold text-slate-900 dark:text-white tabular-nums">
-                          ${(agency.zollOpportunity.projectedPipelineValue / 1000).toLocaleString()}K
+                      <td className="py-2.5 px-3 text-right hidden sm:table-cell">
+                        <div className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                          {formatCurrency(agency.zollOpportunity.projectedPipelineValue)}
                         </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">
-                          {agency.zollOpportunity.probabilityPct}% prob
+                        <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                          {agency.zollOpportunity.probabilityPct}% probability
                         </div>
                       </td>
 
                       {/* Stage Dropdown */}
-                      <td className="py-3 px-3 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={agency.zollOpportunity.salesStage}
                           onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-blue-700 font-medium"
+                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] font-medium cursor-pointer"
                         >
                           {stages.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </td>
 
                       {/* Row Actions */}
-                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {onOpenRfpGenerator && (
-                            <button
-                              onClick={() => onOpenRfpGenerator(agency)}
-                              title="Generate Pre-Emptive RFP Specifications"
-                              className="h-7 px-2.5 rounded-lg text-[11px] font-medium bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
-                            >
-                              RFP
-                            </button>
-                          )}
-
                           <button
-                            onClick={() => onToggleRoute(agency.id)}
-                            title={agency.inDayRoute ? 'Remove from today\'s field route' : 'Add to today\'s field route'}
-                            className={`h-7 px-2.5 rounded-lg text-[11px] font-medium flex items-center gap-1 border transition-colors ${
-                              agency.inDayRoute 
-                                ? 'bg-[#1E3A8A] text-white border-[#1E3A8A]' 
-                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                            }`}
+                            type="button"
+                            onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
+                            className="h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                            title="Open Quick Preview Drawer"
                           >
-                            <Navigation className="w-3 h-3" />
-                            <span className="hidden sm:inline">{agency.inDayRoute ? 'In Route' : 'Route'}</span>
+                            Preview
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => onSelectAgency(agency)}
-                            className="h-7 px-3 rounded-lg text-[11px] font-semibold bg-[#1E3A8A] text-white hover:bg-[#172554] transition-colors flex items-center gap-1 shadow-xs"
-                            title="Inspect Provider Dossier"
+                            className="h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-[#1E3A8A] text-white hover:bg-[#172554] transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Open Full Actuarial Dossier"
                           >
-                            <span>Inspect</span>
+                            <span>Dossier</span>
                             <ChevronRight className="w-3 h-3" />
                           </button>
                         </div>
@@ -1323,6 +1493,12 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
         </div>
       )}
 
+      {/* Understanding PulseIQ Modal */}
+      <UnderstandingPulseIqModal
+        isOpen={showUnderstandingModal}
+        onClose={() => setShowUnderstandingModal(false)}
+        onOpenWeightsModal={onOpenWeightsModal}
+      />
     </div>
   );
 };

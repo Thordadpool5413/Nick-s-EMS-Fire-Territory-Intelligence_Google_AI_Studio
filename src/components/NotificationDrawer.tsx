@@ -17,7 +17,6 @@ import {
   Trash2, 
   ChevronRight,
   Sparkles,
-  Zap
 } from 'lucide-react';
 import { requestBrowserNotificationPermission } from '../utils/notificationService';
 
@@ -28,7 +27,6 @@ interface NotificationDrawerProps {
   onMarkAllRead: () => void;
   onClearAlerts: () => void;
   onSelectAlertAgency: (agencyId: string) => void;
-  onTriggerSimulatedAlert: (templateIndex: number) => void;
 }
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
@@ -37,13 +35,11 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   alerts,
   onMarkAllRead,
   onClearAlerts,
-  onSelectAlertAgency,
-  onTriggerSimulatedAlert
+  onSelectAlertAgency
 }) => {
   const [permissionState, setPermissionState] = useState<NotificationPermission | 'unknown'>(
     typeof Notification !== 'undefined' ? Notification.permission : 'unknown'
   );
-  const [simIndex, setSimIndex] = useState<number>(0);
 
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -109,36 +105,6 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               </button>
             </div>
           )}
-
-          {/* Quick Simulation Generator */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
-                Simulate Territory Trigger Event
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={simIndex}
-                onChange={(e) => setSimIndex(Number(e.target.value))}
-                className="bg-white border border-slate-300 rounded-lg p-1.5 text-xs text-slate-800 flex-1 focus:outline-none focus:border-sky-500"
-              >
-                <option value={0}>FEMA AFG Award: $640K (Allegheny)</option>
-                <option value={1}>CMS Ambulance Inflation Rate Update</option>
-                <option value={2}>Stryker LP15 Maintenance Spike</option>
-                <option value={3}>Geofence Proximity Alert: Columbus</option>
-              </select>
-
-              <button
-                onClick={() => onTriggerSimulatedAlert(simIndex)}
-                className="min-h-[36px] px-3 py-1.5 bg-white hover:bg-slate-100 text-sky-700 font-semibold rounded-lg border border-slate-300 transition-colors shrink-0 shadow-2xs"
-              >
-                Trigger
-              </button>
-            </div>
-          </div>
 
           {/* Alerts List */}
           {alerts.length > 0 ? (

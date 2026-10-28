@@ -44,8 +44,11 @@ import {
   Flame,
   Siren,
   Maximize2,
-  RotateCcw
+  RotateCcw,
+  HelpCircle,
+  Info
 } from 'lucide-react';
+import { UnderstandingPulseIqModal } from './UnderstandingPulseIqModal';
 
 interface PulseIqRegionalBreakdownChartProps {
   selectedState: string;
@@ -74,6 +77,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'ems' | 'fire'>(globalCategory);
   const [limitCount, setLimitCount] = useState<number>(12);
   const [sortBy, setSortBy] = useState<'score' | 'value' | 'fleetAge' | 'name'>('score');
+  const [showUnderstandingModal, setShowUnderstandingModal] = useState<boolean>(false);
 
   // Synchronize category filter whenever parent globalCategory prop changes
   useEffect(() => {
@@ -582,8 +586,8 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
       return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-xl text-xs space-y-1.5 max-w-xs pointer-events-none select-none">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-1.5">
-            <span className="font-bold text-slate-900 dark:text-white text-sm tracking-[-0.02em]">{item.fullName || label}</span>
-            <span className="font-mono tabular-nums text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#1E3A8A] dark:text-blue-400">
+            <span className="font-semibold text-slate-900 dark:text-white text-sm tracking-[-0.01em]">{item.fullName || label}</span>
+            <span className="tabular-nums text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#1E3A8A] dark:text-blue-400">
               Score: {item.score}
             </span>
           </div>
@@ -592,12 +596,12 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
             {item.city && <div><strong>City:</strong> {item.city}, {item.stateCode}</div>}
             {item.county && <div><strong>County:</strong> {item.county}</div>}
             {item.topAccountName && <div><strong>Top Lead:</strong> {item.topAccountName}</div>}
-            {item.fleetBrand && <div><strong>Installed Fleet:</strong> {item.fleetBrand} (<span className="font-mono tabular-nums">{item.fleetAge} yrs</span>)</div>}
-            {item.pipelineFormatted && <div><strong>Projected Pipeline:</strong> <span className="font-mono tabular-nums font-bold text-emerald-700 dark:text-emerald-400">{item.pipelineFormatted}</span></div>}
+            {item.fleetBrand && <div><strong>Installed Fleet:</strong> {item.fleetBrand} (<span className="tabular-nums font-semibold">{item.fleetAge} yrs</span>)</div>}
+            {item.pipelineFormatted && <div><strong>Projected Pipeline:</strong> <span className="tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{item.pipelineFormatted}</span></div>}
           </div>
 
           {/* 5-Pillar Score Breakdown Details */}
-          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1 font-mono tabular-nums text-[10px]">
+          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1 tabular-nums text-[10px]">
             <div className="flex items-center justify-between text-slate-900 dark:text-slate-100">
               <span>● Clinical Acuity (NEMSIS):</span>
               <span className="font-bold tabular-nums">{item.clinicalAcuity} / 25 pts</span>
@@ -662,9 +666,20 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                   {normalizedCounty !== 'all' ? `County Scope: ${normalizedCounty}` : normalizedState !== 'all' ? `State Scope: ${ALL_50_STATES_SUMMARIES[normalizedState.toUpperCase()]?.state || normalizedState}` : 'National Scope (50 States + DC)'}
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-0.5 tracking-[-0.02em]">
-                {scopeTitle}
-              </h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-[-0.02em]">
+                  {scopeTitle}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowUnderstandingModal(true)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 transition-colors cursor-pointer"
+                  title="Understanding PulseIQ Scoring Methodology"
+                  aria-label="Understanding PulseIQ Scoring Methodology"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
           <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 max-w-2xl leading-relaxed">
@@ -730,17 +745,29 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
             </button>
           </div>
 
-          {onOpenWeightsModal && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={onOpenWeightsModal}
-              className="px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Calibrate 5-Pillar PulseIQ Scoring Weights"
+              type="button"
+              onClick={() => setShowUnderstandingModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Understanding PulseIQ Methodology, Calculation & Prioritization"
             >
-              <Sliders className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-              <span>Calibrate Weights</span>
+              <Info className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Understanding PulseIQ</span>
             </button>
-          )}
 
+            {onOpenWeightsModal && (
+              <button
+                type="button"
+                onClick={onOpenWeightsModal}
+                className="px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Calibrate 5-Pillar PulseIQ Scoring Weights"
+              >
+                <Sliders className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                <span>Calibrate Weights</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -748,49 +775,49 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
         
         <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Mean Regional PulseIQ</div>
+          <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Mean regional PulseIQ</div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl sm:text-2xl font-bold font-mono text-slate-900 dark:text-white tabular-nums">
+            <span className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tabular-nums">
               {regionalStats.avgScore}
             </span>
-            <span className="text-[10px] font-mono tabular-nums text-[#1E3A8A] dark:text-blue-400 font-semibold">
-              / 100 pts
+            <span className="text-xs tabular-nums text-[#1E3A8A] dark:text-blue-400 font-medium">
+              / 100
             </span>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 leading-relaxed tabular-nums">
-            ● {regionalStats.totalAccounts.toLocaleString()} USFA / NPI providers
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed tabular-nums">
+            {regionalStats.totalAccounts.toLocaleString()} USFA / NPI providers
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Top Priority Opportunity</div>
-          <div className="text-sm font-bold text-slate-900 dark:text-white tabular-nums truncate" title={regionalStats.topLeadName}>
+          <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Top priority opportunity</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={regionalStats.topLeadName}>
             {regionalStats.topLeadName}
           </div>
-          <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed flex items-center gap-1">
-            <span>● Tier-1 Conversion Readiness</span>
+          <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed flex items-center gap-1">
+            <span>Tier-1 conversion readiness</span>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Addressable Pipeline</div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-700 dark:text-emerald-400 tabular-nums">
+          <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Addressable pipeline</div>
+          <div className="text-xl sm:text-2xl font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
             {regionalStats.totalPipeline >= 1000000000
               ? `$${(regionalStats.totalPipeline / 1000000000).toFixed(2)}B`
               : `$${(regionalStats.totalPipeline / 1000000).toFixed(1)}M`}
           </div>
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 leading-relaxed">
-            ● Sourcewell / NPPGov Schedule
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            Sourcewell / NPPGov Schedule
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 space-y-1">
-          <div className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Primary Displacement Target</div>
-          <div className="text-sm font-bold text-amber-700 dark:text-amber-400 tabular-nums truncate">
+          <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Primary displacement target</div>
+          <div className="text-sm font-semibold text-amber-700 dark:text-amber-400 truncate">
             {regionalStats.primaryCompetitor}
           </div>
-          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 leading-relaxed tabular-nums">
-            ◐ Legacy Fleet Cycle (&gt;7 yrs)
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed tabular-nums">
+            Legacy fleet cycle (&gt;7 yrs)
           </div>
         </div>
 
@@ -803,7 +830,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-            <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 uppercase">State:</span>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">State:</span>
             <select
               value={normalizedState}
               onChange={(e) => {
@@ -811,7 +838,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
                 if (onSelectState) onSelectState(val);
                 if (onSelectCounty) onSelectCounty('all');
               }}
-              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white font-semibold focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-white font-medium focus:outline-none focus:border-sky-500 shadow-2xs cursor-pointer"
             >
               <option value="all">All 50 States (National Comparison)</option>
               {allStatesList.map(st => (
@@ -823,7 +850,7 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
           {/* County Selector (Visible when a State is chosen) */}
           {normalizedState !== 'all' && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 uppercase">County:</span>
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">County:</span>
               <select
                 value={normalizedCounty}
                 onChange={(e) => {
@@ -1212,6 +1239,12 @@ export const PulseIqRegionalBreakdownChart: React.FC<PulseIqRegionalBreakdownCha
         </div>
       </div>
 
+      {/* Understanding PulseIQ Modal */}
+      <UnderstandingPulseIqModal
+        isOpen={showUnderstandingModal}
+        onClose={() => setShowUnderstandingModal(false)}
+        onOpenWeightsModal={onOpenWeightsModal}
+      />
     </div>
   );
 };

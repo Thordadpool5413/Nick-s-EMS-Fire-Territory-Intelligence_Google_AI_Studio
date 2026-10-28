@@ -18,6 +18,7 @@ import {
   FileText,
   Filter
 } from 'lucide-react';
+import { formatCurrency } from '../utils/formatters';
 
 interface ContractExpirationCalendarProps {
   agencies: Agency[];
@@ -117,7 +118,7 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
   }, [expiringAgencies, currentPage]);
 
   return (
-    <div className="space-y-5">
+    <div className="workspace-view-container min-w-0 w-full">
       
       {/* Calendar Header & Filter Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
@@ -217,25 +218,25 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
           <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">
             Upcoming Maintenance Agreement End Dates ({expiringAgencies.length.toLocaleString()} Matching Agencies)
           </h2>
-          <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-            Page {currentPage} of {totalPages} · Sorted by Expiration Date
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-sans tabular-nums">
+            Page {currentPage} of {totalPages} · Sorted by expiration date
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider border-b border-slate-200 dark:border-slate-800 text-[11px]">
-                <th className="py-3 px-4">Agency / Jurisdiction</th>
-                <th className="py-3 px-3">Incumbent Vendor &amp; Fleet</th>
-                <th className="py-3 px-3 hidden sm:table-cell">End Date</th>
-                <th className="py-3 px-3 hidden md:table-cell">Renewal Window</th>
-                <th className="py-3 px-3 text-right hidden lg:table-cell">Rival Annual Cost</th>
-                <th className="py-3 px-4 hidden xl:table-cell">Sales Intervention Strategy</th>
+              <tr className="bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 text-xs">
+                <th className="py-3 px-4">Agency / jurisdiction</th>
+                <th className="py-3 px-3">Incumbent vendor &amp; fleet</th>
+                <th className="py-3 px-3 hidden sm:table-cell">End date</th>
+                <th className="py-3 px-3 hidden md:table-cell">Renewal window</th>
+                <th className="py-3 px-3 text-right hidden lg:table-cell">Rival annual cost</th>
+                <th className="py-3 px-4 hidden xl:table-cell">Sales intervention strategy</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {paginatedAgencies.map((agency) => {
                 const cc = agency.competitorContract;
                 const isUrgent = cc.renewalWindowDays <= 90;
@@ -247,42 +248,42 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
                     onClick={() => onSelectAgency(agency)}
                   >
                     <td className="py-3.5 px-4 font-sans">
-                      <div className="font-bold text-[#0F172A] dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors">
+                      <div className="font-semibold text-[#0F172A] dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors">
                         {agency.name}
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {agency.city}, {agency.stateCode} · {agency.county} · Installed: <strong className="text-slate-700 dark:text-slate-200">{agency.installedFleet.defibBrand}</strong>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {agency.city}, {agency.stateCode} · {agency.county} · Installed: <strong className="text-slate-700 dark:text-slate-200 font-medium">{agency.installedFleet.defibBrand}</strong>
                       </div>
                     </td>
 
                     <td className="py-3.5 px-3">
-                      <div className="font-bold text-[#0F172A] dark:text-white">
+                      <div className="font-semibold text-[#0F172A] dark:text-white">
                         {cc.vendor}
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                        <span className="font-bold tabular-nums text-slate-700 dark:text-slate-300">{agency.installedFleet.defibUnitsCount}</span> units under agreement
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-300">{agency.installedFleet.defibUnitsCount}</span> devices under contract
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-3 font-mono font-bold text-[#0F172A] dark:text-white tabular-nums hidden sm:table-cell">
+                    <td className="py-3.5 px-3 font-semibold text-[#0F172A] dark:text-white tabular-nums hidden sm:table-cell">
                       {cc.contractEndDate}
                     </td>
 
                     <td className="py-3.5 px-3 hidden md:table-cell">
-                      <span className={`text-xs font-mono tabular-nums flex items-center gap-1 ${
-                        isUrgent ? 'font-bold text-amber-700 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'
+                      <span className={`text-xs tabular-nums flex items-center gap-1 ${
+                        isUrgent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'
                       }`}>
                         {isUrgent && <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
                         <span>{cc.renewalWindowDays} days</span>
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-3 text-right font-mono tabular-nums text-rose-700 dark:text-rose-400 font-bold hidden lg:table-cell">
+                    <td className="py-3.5 px-3 text-right tabular-nums text-rose-700 dark:text-rose-400 font-semibold hidden lg:table-cell">
                       ${cc.annualServiceCostPerUnit.toLocaleString()}
-                      <span className="text-[10px] text-slate-400 font-normal block font-sans">/ unit / yr</span>
+                      <span className="text-xs text-slate-400 font-normal block">/ unit / yr</span>
                     </td>
 
-                    <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300 text-[11px] max-w-xs leading-relaxed hidden xl:table-cell">
+                    <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300 text-xs max-w-xs leading-relaxed hidden xl:table-cell">
                       {cc.actionRecommendation}
                     </td>
 
@@ -315,8 +316,8 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
         {/* Pagination Bar */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
-            <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
-              Showing {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, expiringAgencies.length)} of {expiringAgencies.length.toLocaleString()} Contracts
+            <span className="text-xs font-sans tabular-nums text-slate-600 dark:text-slate-400">
+              Showing {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, expiringAgencies.length)} of {expiringAgencies.length.toLocaleString()} contracts
             </span>
             <div className="flex items-center gap-2">
               <button

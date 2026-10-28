@@ -168,16 +168,16 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
-                  VERIFIABLE DATA PROVENANCE &amp; SYNC LEDGER
+                <span className="text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded">
+                  Verifiable data provenance &amp; sync ledger
                 </span>
-                <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Cross-Walked by USFA FDID · CMS NPI · Census FIPS
+                  Cross-walked by USFA FDID &middot; CMS NPI &middot; Census FIPS
                 </span>
               </div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5 tracking-tight">
-                Institutional Data Lineage &amp; Federal Registry Sync Verifier
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white mt-0.5 tracking-tight">
+                Institutional data lineage &amp; federal registry sync verifier
               </h2>
             </div>
           </div>
@@ -319,15 +319,15 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs">
                       <span className="text-[10px] text-slate-400 block font-semibold">Integrity Score</span>
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">100% Verified</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums">100% Verified</span>
                     </div>
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs">
                       <span className="text-[10px] text-slate-400 block font-semibold">FDID / Registry ID</span>
-                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs">{activeAgency.fdid || 'Active FDID'}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs tabular-nums">{activeAgency.fdid || 'Active FDID'}</span>
                     </div>
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs">
                       <span className="text-[10px] text-slate-400 block font-semibold">NEMSIS / CMS Match</span>
-                      <span className="font-mono font-bold text-[#1E3A8A] dark:text-blue-400 text-xs">Exact Match</span>
+                      <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 text-xs">Exact Match</span>
                     </div>
                   </div>
                 )}
@@ -538,8 +538,8 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">1. Fleet Age</span>
-                    <span className="font-mono font-bold text-sky-700">25 pts</span>
+                    <span className="font-semibold text-slate-900">1. Fleet Age</span>
+                    <span className="font-semibold text-sky-700 tabular-nums">25 pts</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-snug">
                     Graduated points for competitor hardware older than 7 years, expired OEM warranties, and announced manufacturer service sunsets.
@@ -547,8 +547,8 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
                 </div>
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">2. Clinical Acuity</span>
-                    <span className="font-mono font-bold text-sky-700">25 pts</span>
+                    <span className="font-semibold text-slate-900">2. Clinical Acuity</span>
+                    <span className="font-semibold text-sky-700 tabular-nums">25 pts</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-snug">
                     Cardiac arrest call density (NEMSIS OHCA), Utstein survival deficit vs. 29.7% benchmark, and drive time to cath labs.
@@ -556,8 +556,8 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
                 </div>
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">3. CMS Financials</span>
-                    <span className="font-mono font-bold text-sky-700">20 pts</span>
+                    <span className="font-semibold text-slate-900">3. CMS Financials</span>
+                    <span className="font-semibold text-sky-700 tabular-nums">20 pts</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-snug">
                     Medicare Part B claim denial rate (&gt;15%), GADCS reporting compliance, and addressable cash recovery via ZOLL Billing.
@@ -565,8 +565,8 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
                 </div>
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">4. Demographics</span>
-                    <span className="font-mono font-bold text-sky-700">15 pts</span>
+                    <span className="font-semibold text-slate-900">4. Demographics</span>
+                    <span className="font-semibold text-sky-700 tabular-nums">15 pts</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-snug">
                     Senior 65+ population concentration, municipal poverty percentage, and public access AED coverage deficit in schools.
@@ -574,8 +574,8 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
                 </div>
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">5. Budget & Grants</span>
-                    <span className="font-mono font-bold text-sky-700">15 pts</span>
+                    <span className="font-semibold text-slate-900">5. Budget & Grants</span>
+                    <span className="font-semibold text-sky-700 tabular-nums">15 pts</span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-snug">
                     Active FEMA Assistance to Firefighters Grant (AFG) obligation status and municipal fiscal year-end surplus spend timing.

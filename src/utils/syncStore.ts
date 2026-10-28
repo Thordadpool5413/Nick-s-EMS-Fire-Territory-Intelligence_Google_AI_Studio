@@ -6,15 +6,7 @@
 import { Agency, SyncOutboxItem, PredictiveWeights, LeadStage } from '../types';
 import { nationalProviderDb } from '../services/nationalProviderDatabase';
 
-const STORAGE_KEY_CUSTOM_AGENCIES = 'zoll_pulseiq_custom_agencies_v7';
-// Never reuse device caches across different signed-in AppDeploy accounts.
-// Visitor data is intentionally separate and cannot silently be merged into another account.
-function scopedKey(key: string): string {
-  let userKey = 'visitor';
-  try { userKey = sessionStorage.getItem('ems_authenticated_user') || 'visitor'; }
-  catch { /* ephemeral privacy-safe visitor cache */ }
-  return key + '_appdeploy_' + encodeURIComponent(userKey);
-}
+const STORAGE_KEY_CUSTOM_AGENCIES = 'zoll_pulseiq_custom_agencies_v8';
 const LEGACY_AGENCY_KEYS = [
   'zoll_pulseiq_agencies_v1',
   'zoll_pulseiq_agencies_v2',
@@ -26,7 +18,8 @@ const LEGACY_AGENCY_KEYS = [
   'zoll_pulseiq_custom_agencies_v3',
   'zoll_pulseiq_custom_agencies_v4',
   'zoll_pulseiq_custom_agencies_v5',
-  'zoll_pulseiq_custom_agencies_v6'
+  'zoll_pulseiq_custom_agencies_v6',
+  'zoll_pulseiq_custom_agencies_v7'
 ];
 const STORAGE_KEY_OUTBOX = 'zoll_pulseiq_outbox_v1';
 const STORAGE_KEY_WEIGHTS = 'zoll_pulseiq_weights_v1';
@@ -308,7 +301,7 @@ export function loadStoredAgencies(): Agency[] {
     const baseline = nationalProviderDb.getInitialBaselineAgencies();
     getBaselineSignatures(baseline);
 
-    const rawCustom = localStorage.getItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES));
+    const rawCustom = localStorage.getItem(STORAGE_KEY_CUSTOM_AGENCIES);
     if (!rawCustom) return baseline;
 
     const customEntries: [string, CompactAgencyDelta][] = JSON.parse(rawCustom);
@@ -323,7 +316,9 @@ export function loadStoredAgencies(): Agency[] {
         isBookmarked: custom.isBookmarked ?? agency.isBookmarked,
         inDayRoute: custom.inDayRoute ?? agency.inDayRoute,
         lastContactDate: custom.lastContactDate ?? agency.lastContactDate,
-        fieldNotes: custom.fieldNotes ?? agency.fieldNotes,
+        fieldNotes: (custom.fieldNotes ?? agency.fieldNotes ?? []).filter(
+          n => n.repName !== 'Sarah Jenkins (TM)' && !n.notes.includes('Kowalski') && !n.notes.includes('Chief Adams')
+        ),
         zollOpportunity: {
           ...agency.zollOpportunity,
           salesStage: custom.salesStage ?? agency.zollOpportunity.salesStage
@@ -372,13 +367,13 @@ export function saveAgencies(agencies: Agency[]): void {
 
     const serialized = JSON.stringify(customEntries);
     try {
-      localStorage.setItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES), serialized);
+      localStorage.setItem(STORAGE_KEY_CUSTOM_AGENCIES, serialized);
     } catch {
       // If quota is still tight due to other keys, prune to top 40 deltas and retry safely
       purgeLegacyStorageKeys();
       const trimmed = JSON.stringify(customEntries.slice(0, 40));
       try {
-        localStorage.setItem(scopedKey(STORAGE_KEY_CUSTOM_AGENCIES), trimmed);
+        localStorage.setItem(STORAGE_KEY_CUSTOM_AGENCIES, trimmed);
       } catch {
         // Silently skip localStorage cache if browser storage is completely full
       }
@@ -390,7 +385,7 @@ export function saveAgencies(agencies: Agency[]): void {
 
 export function loadStoredOutbox(): SyncOutboxItem[] {
   try {
-    const raw = localStorage.getItem(scopedKey(STORAGE_KEY_OUTBOX));
+    const raw = localStorage.getItem(STORAGE_KEY_OUTBOX);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -399,7 +394,7 @@ export function loadStoredOutbox(): SyncOutboxItem[] {
 
 export function saveOutbox(items: SyncOutboxItem[]): void {
   try {
-    localStorage.setItem(scopedKey(STORAGE_KEY_OUTBOX), JSON.stringify(items.slice(0, 50)));
+    localStorage.setItem(STORAGE_KEY_OUTBOX, JSON.stringify(items.slice(0, 50)));
   } catch {
     // Ignore quota errors on offline outbox cache
   }
@@ -407,7 +402,7 @@ export function saveOutbox(items: SyncOutboxItem[]): void {
 
 export function loadStoredWeights(): PredictiveWeights {
   try {
-    const raw = localStorage.getItem(scopedKey(STORAGE_KEY_WEIGHTS));
+    const raw = localStorage.getItem(STORAGE_KEY_WEIGHTS);
     if (!raw) return DEFAULT_WEIGHTS;
     const parsed = JSON.parse(raw);
     return {
@@ -424,7 +419,7 @@ export function loadStoredWeights(): PredictiveWeights {
 
 export function saveStoredWeights(weights: PredictiveWeights): void {
   try {
-    localStorage.setItem(scopedKey(STORAGE_KEY_WEIGHTS), JSON.stringify(weights));
+    localStorage.setItem(STORAGE_KEY_WEIGHTS, JSON.stringify(weights));
   } catch {
     // Ignore quota errors
   }

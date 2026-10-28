@@ -241,6 +241,7 @@ export interface Agency {
     afgAwardAmount: number;
     afgFiscalYear: number;
     afgPurpose: string;
+    afgAwardNumber?: string;
     saferGrantActive: boolean;
     fiscalYearEndMonth: string; // e.g. "September", "December", "June"
   };
@@ -274,14 +275,28 @@ export interface Agency {
   taxonomyDescription?: string;
   nppesOfficialName?: string;
   nppesOfficialTitle?: string;
+  nppesLastUpdated?: string;
   nppesRegistryUrl?: string;
+  usfaRegistryUrl?: string;
+  liveFemaAwards?: Array<{
+    awardNumber: string;
+    grantee: string;
+    programActivity: string;
+    federalShareAwarded: number;
+    awardDate: string;
+    programYear: number;
+  }>;
   headquartersPhone?: string;
   officialWebsite?: string;
-  mapSearchUri?: string;
-  verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | string;
+  googleMapsUri?: string;
+  verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | 'Google Maps Verified' | 'Firestore Cloud Synced' | string;
   isVerifiedRecord?: boolean;
   lastVerifiedAt?: string;
   budgetCycleEndMonth?: string;
+  _syncedAt?: string;
+  _updatedAt?: string;
+  isCloudPersisted?: boolean;
+  dataProvenanceTier?: 'firestore_cloud_synced' | 'live_federal_registry' | 'public_federal_baseline';
 
   // Granular Apparatus Vehicle Fleet Breakdown
   apparatusFleet?: {
@@ -382,7 +397,7 @@ export interface SyncOutboxItem {
   timestamp: string;
   agencyId: string;
   agencyName: string;
-  actionType: 'UPDATE_STAGE' | 'ADD_FIELD_NOTE' | 'TOGGLE_ROUTE' | 'TOGGLE_BOOKMARK' | 'UPDATE_CONTACT';
+  actionType: 'UPDATE_STAGE' | 'ADD_FIELD_NOTE' | 'TOGGLE_ROUTE' | 'UPDATE_CONTACT';
   payload: any;
   status: 'PENDING' | 'SYNCED' | 'FAILED';
 }

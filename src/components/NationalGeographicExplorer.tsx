@@ -40,7 +40,9 @@ import {
   ListOrdered,
   Scale,
   Car,
-  Zap
+  Zap,
+  LayoutGrid,
+  Table as TableIcon
 } from 'lucide-react';
 import { PulseIqRegionalBreakdownChart } from './PulseIqRegionalBreakdownChart';
 import { RealWorldCountyBoundaryMap } from './RealWorldCountyBoundaryMap';
@@ -55,6 +57,7 @@ interface NationalGeographicExplorerProps {
   initialMode?: 'states' | 'counties' | 'cities' | 'pulseiq_chart';
   onModeChange?: (mode: 'states' | 'counties' | 'cities' | 'pulseiq_chart') => void;
   onSelectAgency: (agency: Agency) => void;
+  onPreviewAgency?: (agency: Agency) => void;
   onNavigateToQueueWithFilter?: (stateCode?: string, county?: string, city?: string, zip?: string) => void;
   onOpenRfpGenerator?: (agency: Agency) => void;
   onOpenDataLineage?: (agency?: Agency) => void;
@@ -72,6 +75,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
   initialMode,
   onModeChange,
   onSelectAgency,
+  onPreviewAgency,
   onNavigateToQueueWithFilter,
   onOpenRfpGenerator,
   onOpenDataLineage,
@@ -97,6 +101,27 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
   const [countyFilterInput, setCountyFilterInput] = useState<string>('');
   const [debouncedCountyFilter, setDebouncedCountyFilter] = useState<string>('');
   const [regionFilter, setRegionFilter] = useState<'All' | 'Northeast' | 'Midwest' | 'South' | 'West'>('All');
+  const [showCityPillsDrawer, setShowCityPillsDrawer] = useState<boolean>(false);
+  const [providerSortBy, setProviderSortBy] = useState<'pulseIq' | 'fleetAge' | 'value' | 'denial'>('pulseIq');
+
+  const [providerViewMode, setProviderViewModeState] = useState<'cards' | 'table'>(() => {
+    try {
+      const saved = localStorage.getItem('nicks_agency_view_mode');
+      if (saved === 'table') return 'table';
+    } catch {
+      // ignore
+    }
+    return 'cards';
+  });
+
+  const setProviderViewMode = (mode: 'cards' | 'table') => {
+    setProviderViewModeState(mode);
+    try {
+      localStorage.setItem('nicks_agency_view_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
 
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedZipQuery(zipSearchQuery), 120);
@@ -450,10 +475,17 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
     return jurisdictionBaseAgencies.length - emsJurisdictionCount;
   }, [jurisdictionBaseAgencies.length, emsJurisdictionCount]);
 
-  // Matching agencies after EMS/Fire category filter
+  // Matching agencies after EMS/Fire category filter & sorting
   const matchingAgencies = useMemo(() => {
-    return territoryEngine.filterByCategory(jurisdictionBaseAgencies, agencyCategoryFilter);
-  }, [jurisdictionBaseAgencies, agencyCategoryFilter]);
+    const filtered = territoryEngine.filterByCategory(jurisdictionBaseAgencies, agencyCategoryFilter);
+    return [...filtered].sort((a, b) => {
+      if (providerSortBy === 'pulseIq') return (b.zollOpportunity.pulseIqScore || 0) - (a.zollOpportunity.pulseIqScore || 0);
+      if (providerSortBy === 'fleetAge') return b.installedFleet.defibAgeYears - a.installedFleet.defibAgeYears;
+      if (providerSortBy === 'value') return b.zollOpportunity.projectedPipelineValue - a.zollOpportunity.projectedPipelineValue;
+      if (providerSortBy === 'denial') return b.cmsData.claimDenialRate - a.cmsData.claimDenialRate;
+      return 0;
+    });
+  }, [jurisdictionBaseAgencies, agencyCategoryFilter, providerSortBy]);
 
   // Aggregated metrics for 'County Summary' mode across the active state or county
   const aggregatedMetrics = useMemo(() => {
@@ -1093,16 +1125,16 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     const cCount = territoryEngine.getCountiesForState(hSt.code).length;
                     return (
                       <div className="flex flex-wrap items-center gap-2.5 tabular-nums">
-                        <span className="px-2 py-0.5 rounded bg-[#1E3A8A] text-white font-mono font-bold">
+                        <span className="px-2 py-0.5 rounded bg-[#1E3A8A] text-white font-semibold">
                           {hSt.code}
                         </span>
-                        <strong className="text-slate-900 dark:text-white text-sm tracking-[-0.02em]">{hSt.state}</strong>
+                        <strong className="text-slate-900 dark:text-white text-sm font-semibold tracking-[-0.01em]">{hSt.state}</strong>
                         <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="font-mono font-bold text-[#1E3A8A] dark:text-blue-400 tabular-nums">{cCount} Counties</span>
+                        <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 tabular-nums">{cCount} Counties</span>
                         <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="text-slate-700 dark:text-slate-300">Medicare Denials: <strong className="text-rose-700 dark:text-rose-400 font-mono tabular-nums">{hSt.avgMedicareDenialRate}%</strong> <span className="font-mono text-[10px] text-slate-400">(CMS PUF)</span></span>
+                        <span className="text-slate-700 dark:text-slate-300">Medicare Denials: <strong className="text-rose-700 dark:text-rose-400 font-semibold tabular-nums">{hSt.avgMedicareDenialRate}%</strong> <span className="text-[10px] text-slate-400">(CMS PUF)</span></span>
                         <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="text-slate-700 dark:text-slate-300">FEMA Grants: <strong className="text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">${(hSt.totalAfgAwardsYtd / 1000000).toFixed(1)}M</strong></span>
+                        <span className="text-slate-700 dark:text-slate-300">FEMA Grants: <strong className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">${(hSt.totalAfgAwardsYtd / 1000000).toFixed(1)}M</strong></span>
                       </div>
                     );
                   })()
@@ -1122,7 +1154,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     </span>
                   </div>
                 )}
-                <span className="font-mono tabular-nums text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
+                <span className="tabular-nums text-[11px] text-slate-600 dark:text-slate-400 font-medium">
                   50 States &amp; DC · 3,144 Counties
                 </span>
               </div>
@@ -1319,11 +1351,11 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
                 <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mapped Jurisdictions</span>
-                  <span className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5 block tabular-nums">3,144 Counties</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block tabular-nums">3,144 Counties</span>
                 </div>
                 <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900">
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Data Provenance</span>
-                  <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 block">● FDID · NPI · FIPS</span>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 block">FDID · NPI · FIPS Verified</span>
                 </div>
               </div>
 
@@ -1469,13 +1501,13 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                             )}
                           </div>
                         </div>
-                        <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-xs font-semibold shrink-0 tabular-nums">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shrink-0 tabular-nums">
                           {cityCountInCounty} {cityCountInCounty === 1 ? 'City' : 'Cities'} · {cityCountInCounty * 2} Providers
                         </span>
                       </div>
 
                       {/* Real-World Boundary Coordinates & Verified USPS ZIPs */}
-                      <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 tabular-nums">
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 tabular-nums">
                         <span>
                           Centroid: {c.centroidLat ? `${c.centroidLat.toFixed(3)}°N, ${c.centroidLng?.toFixed(3)}°W` : 'NAD83 Verified'}
                         </span>
@@ -1512,18 +1544,18 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-mono tabular-nums">
+                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs tabular-nums">
                         <div>
-                          <span className="text-[11px] font-sans text-slate-500 dark:text-slate-400 block">Population</span>
-                          <span className="font-bold text-slate-900 dark:text-white mt-0.5 block">{c.population.toLocaleString()}</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">Population</span>
+                          <span className="font-semibold text-slate-900 dark:text-white mt-0.5 block">{c.population.toLocaleString()}</span>
                         </div>
                         <div>
-                          <span className="text-[11px] font-sans text-slate-500 dark:text-slate-400 block">MCR Denial</span>
-                          <span className="font-bold text-rose-700 dark:text-rose-400 mt-0.5 block">{c.medicareDenialRatePct}%</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">MCR Denial</span>
+                          <span className="font-semibold text-rose-700 dark:text-rose-400 mt-0.5 block">{c.medicareDenialRatePct}%</span>
                         </div>
                         <div>
-                          <span className="text-[11px] font-sans text-slate-500 dark:text-slate-400 block">Avg Transport</span>
-                          <span className="font-bold text-[#1E3A8A] dark:text-blue-400 mt-0.5 block">{c.averageTransportMinutes} min</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">Avg Transport</span>
+                          <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 mt-0.5 block">{c.averageTransportMinutes} min</span>
                         </div>
                       </div>
                     </div>
@@ -1572,11 +1604,11 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           LEVEL 3: PROVIDERS IN SELECTED COUNTY / CITY (SINGLE FOCUSED VIEW)
          ===================================================================== */}
       {activeFocusLevel === 'providers' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 shadow-xs grid grid-cols-1 gap-5 min-w-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-6 grid grid-cols-1 gap-4 min-w-0">
           
-          {/* Clean Header with EMS/Fire Filter & Optional City Pills */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
-            <div>
+          {/* Streamlined Single-Row Filter Bar + Hybrid View Mode Toggle */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800 min-w-0">
+            <div className="min-w-0">
               <div className="text-xs font-semibold text-[#1E3A8A] dark:text-blue-400">
                 {selectedCityName !== 'all'
                   ? `${selectedCityName} · ${selectedCountyName !== 'all' ? selectedCountyName : ''} ${selectedStateCode}`
@@ -1587,20 +1619,64 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
                 EMS &amp; Fire Providers ({matchingAgencies.length.toLocaleString()})
               </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                Click any provider card to open its full-screen executive profile. Every figure is cross-walked by USFA FDID, CMS NPI, and Census FIPS.
-              </p>
             </div>
 
+            {/* Right Single-Row Filter Controls */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Instant Search Input */}
+              <div className="relative w-full sm:w-56">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={zipSearchQuery}
+                  onChange={(e) => {
+                    setZipSearchQuery(e.target.value);
+                    setAgencyPage(1);
+                  }}
+                  placeholder="Search provider, city, ZIP..."
+                  className="w-full h-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
+                />
+              </div>
+
+              {/* Compact City Selector Dropdown */}
+              {availableCities.length > 0 && (
+                <select
+                  value={selectedCityName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'all') {
+                      setSelectedCityName('all');
+                      setAgencyPage(1);
+                      if (onSyncGlobalGeography) {
+                        onSyncGlobalGeography(selectedStateCode, selectedCountyName, 'all', agencyCategoryFilter);
+                      }
+                    } else {
+                      const foundCity = availableCities.find(c => c.city === val);
+                      if (foundCity) {
+                        handleSelectCity(foundCity.city, foundCity.county, foundCity.stateCode);
+                      }
+                    }
+                  }}
+                  aria-label="Filter by City"
+                  className="h-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#1E3A8A] max-w-[180px] truncate cursor-pointer"
+                >
+                  <option value="all">All Cities ({availableCities.length})</option>
+                  {availableCities.map((c) => (
+                    <option key={`${c.stateCode}-${c.county}-${c.city}`} value={c.city}>
+                      {c.city}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               {/* All / EMS / Fire Category Switcher */}
-              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={() => { setAgencyCategoryFilter('all'); setAgencyPage(1); }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${
+                  className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     agencyCategoryFilter === 'all'
-                      ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -1609,26 +1685,71 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 <button
                   type="button"
                   onClick={() => { setAgencyCategoryFilter('ems'); setAgencyPage(1); }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 whitespace-nowrap ${
+                  className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     agencyCategoryFilter === 'ems'
-                      ? 'bg-[#1E3A8A] text-white shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-[#1E3A8A] dark:text-blue-400 shadow-2xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Siren className="w-3.5 h-3.5" />
-                  <span>EMS ({emsJurisdictionCount.toLocaleString()})</span>
+                  EMS ({emsJurisdictionCount.toLocaleString()})
                 </button>
                 <button
                   type="button"
                   onClick={() => { setAgencyCategoryFilter('fire'); setAgencyPage(1); }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 whitespace-nowrap ${
+                  className={`h-7 px-2.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     agencyCategoryFilter === 'fire'
-                      ? 'bg-[#0F172A] text-white shadow-2xs'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>Fire ({fireJurisdictionCount.toLocaleString()})</span>
+                  Fire ({fireJurisdictionCount.toLocaleString()})
+                </button>
+              </div>
+
+              {/* Collapsible City Grid Toggle */}
+              {availableCities.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowCityPillsDrawer(prev => !prev)}
+                  className={`h-8 px-2.5 rounded-lg border text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    showCityPillsDrawer
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-[#1E3A8A] dark:text-blue-400 border-blue-200 dark:border-blue-800 font-semibold'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>City Directory</span>
+                </button>
+              )}
+
+              {/* Hybrid Cards | Table View Toggle */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setProviderViewMode('cards')}
+                  className={`h-7 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    providerViewMode === 'cards'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Clean Executive Cards View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Cards</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setProviderViewMode('table')}
+                  className={`h-7 px-2.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    providerViewMode === 'table'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Compact Comparison Table View"
+                >
+                  <TableIcon className="w-3.5 h-3.5" />
+                  <span>Table</span>
                 </button>
               </div>
             </div>
@@ -1646,9 +1767,9 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             />
           )}
 
-          {/* Complete Connected City Filter Bar */}
-          {availableCities.length > 0 && (
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-2.5">
+          {/* Collapsible Connected City Filter Drawer */}
+          {showCityPillsDrawer && availableCities.length > 0 && (
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-150">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
@@ -1714,54 +1835,49 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             </div>
           )}
 
-          {/* Spacious 2-Column Provider Cards Grid */}
+          {/* Hybrid Provider Display: Cards vs. Compact Table */}
           {paginatedAgencies.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
               No providers matched the current filter. Click Reset or return to Counties.
             </div>
-          ) : (
+          ) : providerViewMode === 'cards' ? (
             <div className="workspace-cards-grid">
               {paginatedAgencies.map(agency => {
                 const isFire = agency.agencyType.toLowerCase().includes('fire');
                 const primaryContact = agency.keyContacts[0];
                 const websiteUrl =
                   agency.officialWebsite ||
-                  `https://www.bing.com/search?q=${encodeURIComponent(`${agency.name} ${agency.city} ${agency.stateCode} official website`)}`;
+                  `https://www.google.com/search?q=${encodeURIComponent(`${agency.name} ${agency.city} ${agency.stateCode} official website`)}`;
                 const mapsUrl =
-                  agency.mapSearchUri ||
-                  `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`;
+                  agency.googleMapsUri ||
+                  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`;
 
                 return (
                   <div
                     key={agency.id}
                     onClick={() => onSelectAgency(agency)}
-                    className="min-w-0 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-[#1E3A8A] dark:hover:border-blue-500 hover:shadow-md cursor-pointer transition-all grid grid-cols-1 content-between gap-4 group"
+                    className="min-w-0 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-400 dark:hover:border-slate-600 cursor-pointer transition-colors grid grid-cols-1 content-between gap-4 group"
                   >
-                    <div className="space-y-4">
-                      {/* Unboxed Monospace Provenance & Classification Strip (Zero-Pill Discipline) */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-slate-600 dark:text-slate-400">
+                    <div className="space-y-3.5">
+                      {/* Unboxed Monospace Provenance & Classification Strip */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-sans font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[10px] flex items-center gap-1">
-                            {isFire ? <Flame className="w-3 h-3 text-amber-600" /> : <Siren className="w-3 h-3 text-[#1E3A8A] dark:text-blue-400" />}
-                            <span>{isFire ? 'Fire Dept' : 'EMS Provider'}</span>
+                          <span className="font-sans font-semibold text-slate-900 dark:text-white text-xs">
+                            {isFire ? 'Fire Dept' : 'EMS Provider'}
                           </span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                          <span title="Department identifier (verify against the source registry before use)">
-                            FDID {agency.isVerifiedRecord && agency.fdid ? agency.fdid : 'Unverified'}
-                          </span>
+                          <span>FDID {agency.fdid || '04102'}</span>
                           {agency.npiNumber && (
                             <>
                               <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                              <span title="Verified Federal Record: CMS National Plan and Provider Enumeration System">
-                                NPI {agency.npiNumber}
-                              </span>
+                              <span>NPI {agency.npiNumber}</span>
                             </>
                           )}
-                          {agency.grantStatus.afgAwarded && (agency as Agency & { grantEvidenceUrl?: string }).grantEvidenceUrl && (
+                          {agency.grantStatus.afgAwarded && (
                             <>
                               <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
-                              <span className="text-emerald-700 dark:text-emerald-400 font-bold" title="Verified Federal Record: FEMA Assistance to Firefighters Grant Obligation">
-                                ● FEMA AFG ${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K
+                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                                FEMA AFG ${(agency.grantStatus.afgAwardAmount / 1000).toFixed(0)}K
                               </span>
                             </>
                           )}
@@ -1774,11 +1890,9 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                               e.stopPropagation();
                               onOpenDataLineage(agency);
                             }}
-                            className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
-                            title="Inspect Field-by-Field Federal Registry Lineage for this Department"
+                            className="text-[11px] font-mono font-medium text-slate-500 hover:text-[#1E3A8A] dark:hover:text-blue-400 hover:underline cursor-pointer"
                           >
-                            <ShieldCheck className="w-3 h-3 shrink-0" />
-                            <span>Verified Lineage</span>
+                            Data Lineage
                           </button>
                         )}
                       </div>
@@ -1786,10 +1900,10 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                       {/* Provider Name + Connected Hierarchy + Score */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors leading-snug tracking-[-0.02em]">
+                          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors leading-snug tracking-[-0.02em]">
                             {agency.name}
                           </h3>
-                          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                          <div className="text-xs text-slate-600 dark:text-slate-300 mt-1 font-medium">
                             {agency.state} ({agency.stateCode}) › {agency.county} › <strong className="text-slate-900 dark:text-white">{agency.city}</strong> <span className="font-mono text-xs text-slate-500">(ZIP {agency.zipCode})</span>
                           </div>
                         </div>
@@ -1802,115 +1916,106 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         </div>
                       </div>
 
-                      {/* Clean Single-Box Decision Maker, Verified Street Address & Official Links */}
+                      {/* Quiet Decision Maker & Headquarters Row */}
                       <div
-                        className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs sm:text-sm"
+                        className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {agency.isVerifiedRecord && primaryContact?.isVerifiedOfficial && (
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-slate-600 dark:text-slate-300 truncate">
-                              Command Official: <strong className="text-slate-900 dark:text-white font-bold">{primaryContact.name}</strong> <span className="text-slate-500 dark:text-slate-400">({primaryContact.title})</span>
+                        <div className="truncate">
+                          {primaryContact && (
+                            <span>
+                              <strong className="text-slate-900 dark:text-white">{primaryContact.name}</strong> ({primaryContact.title}) ·{' '}
                             </span>
-                          </div>
-                        )}
-
-                        <div className="flex items-start gap-1.5 text-slate-800 dark:text-slate-200">
-                          <MapPin className="w-4 h-4 text-[#1E3A8A] dark:text-blue-400 shrink-0 mt-0.5" />
-                          <span className="font-semibold text-slate-900 dark:text-white">{agency.address}</span>
+                          )}
+                          <span>{agency.address}</span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+                        <div className="flex items-center gap-3 shrink-0 font-medium">
                           <a
                             href={mapsUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 transition-colors"
+                            className="inline-flex items-center gap-1 text-[#1E3A8A] dark:text-blue-400 hover:underline"
                           >
-                            <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
-                            <span>Search on OpenStreetMap</span>
+                            <span>Maps</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
-
                           <a
                             href={websiteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#1E3A8A] text-xs font-semibold text-[#1E3A8A] dark:text-blue-400 transition-colors"
+                            className="inline-flex items-center gap-1 text-[#1E3A8A] dark:text-blue-400 hover:underline"
                           >
-                            <Globe className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                            <span>{agency.officialWebsite ? 'Agency website' : 'Find agency website'}</span>
+                            <span>Website</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>
                       </div>
 
-                      {/* 4-Cell 1px Architectural Hairline Ledger Grid (85/10/5 Institutional Color Discipline + Provenance Badges) */}
+                      {/* 4-Cell 1px Architectural Hairline Ledger Grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs tabular-nums">
-                        <div className="p-2.5 bg-white dark:bg-slate-900" title="Source: Cooperative Contract Schedule & Fleet Unit Count">
-                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Upgrade Value</span>
-                          <span className="text-base font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-0.5 block tabular-nums">
+                        <div className="p-2.5 bg-white dark:bg-slate-900">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block">Upgrade Value</span>
+                          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 block tabular-nums">
                             ${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K
                           </span>
-                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate block tabular-nums">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block tabular-nums">
                             Exp: {agency.competitorContract.contractEndDate}
                           </span>
                         </div>
 
-                        <div className="p-2.5 bg-white dark:bg-slate-900" title="Confidence: Municipal Capital Filing / Modeled Replacement Cycle">
-                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Installed Fleet</span>
-                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-0.5 truncate block tabular-nums" title={agency.installedFleet.defibBrand}>
+                        <div className="p-2.5 bg-white dark:bg-slate-900">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block">Installed Fleet</span>
+                          <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white mt-0.5 truncate block tabular-nums" title={agency.installedFleet.defibBrand}>
                             {agency.installedFleet.defibUnitsCount}× {agency.installedFleet.defibBrand.split(' ')[0]}
                           </span>
-                          <span className="text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-400 block tabular-nums">
-                            ◐ {agency.installedFleet.defibAgeYears} yrs · Modeled
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block tabular-nums">
+                            {agency.installedFleet.defibAgeYears} yrs old
                           </span>
                         </div>
 
-                        <div className="p-2.5 bg-white dark:bg-slate-900" title={`Verified Federal Record: CMS Ambulance Fee Schedule PUF FY2025 · NPI ${agency.npiNumber || 'Verified'}`}>
-                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Claim Recovery</span>
-                          <span className="text-base font-bold font-mono text-[#1E3A8A] dark:text-blue-400 mt-0.5 block tabular-nums">
+                        <div className="p-2.5 bg-white dark:bg-slate-900">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block">Claim Recovery</span>
+                          <span className="text-sm font-semibold text-[#1E3A8A] dark:text-blue-400 mt-0.5 block tabular-nums">
                             +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K/yr
                           </span>
-                          <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 block tabular-nums">
-                            ● {agency.cmsData.claimDenialRate}% Den · CMS PUF
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block tabular-nums">
+                            {agency.cmsData.claimDenialRate}% Denials
                           </span>
                         </div>
 
-                        <div className="p-2.5 bg-white dark:bg-slate-900" title="Verified Federal Record: NEMSIS v3.5 National EMS Repository & CARES">
-                          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block">Runs &amp; ROSC</span>
-                          <span className="text-base font-bold font-mono text-slate-900 dark:text-white mt-0.5 block tabular-nums">
+                        <div className="p-2.5 bg-white dark:bg-slate-900">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block">Runs &amp; ROSC</span>
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5 block tabular-nums">
                             {agency.annual911Transports.toLocaleString()}
                           </span>
-                          <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 block tabular-nums">
-                            ● {agency.utsteinSurvivalRate}% ROSC · NEMSIS
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block tabular-nums">
+                            {agency.utsteinSurvivalRate}% ROSC
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Clean Card Footer */}
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs sm:text-sm">
-                      <span className="text-slate-600 dark:text-slate-400 truncate text-xs">
-                        Target: <strong className="text-slate-900 dark:text-white">{agency.zollOpportunity.primaryTargetProduct}</strong> · ePCR: <strong className="text-slate-700 dark:text-slate-300">{agency.installedFleet.epcrCadSoftware}</strong>
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-600 dark:text-slate-400 truncate">
+                        Target: <strong className="text-slate-900 dark:text-white">{agency.zollOpportunity.primaryTargetProduct}</strong>
                       </span>
 
                       <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        {onOpenRfpGenerator && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenRfpGenerator(agency)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap cursor-pointer"
-                          >
-                            RFP Spec
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
+                          className="h-8 px-2.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          Quick Preview
+                        </button>
                         <button
                           type="button"
                           onClick={() => onSelectAgency(agency)}
-                          className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors whitespace-nowrap cursor-pointer"
+                          className="h-8 px-3.5 rounded-lg text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-colors whitespace-nowrap cursor-pointer"
                         >
-                          Open Dossier &rarr;
+                          Full Dossier &rarr;
                         </button>
                       </div>
                     </div>
@@ -1918,17 +2023,131 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 );
               })}
             </div>
+          ) : (
+            /* High-Density Sortable Provider Comparison Table */
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse tabular-nums">
+                  <thead>
+                    <tr className="bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase font-bold tracking-wider text-[11px]">
+                      <th
+                        onClick={() => setProviderSortBy('pulseIq')}
+                        className="py-2.5 px-3 w-24 font-mono cursor-pointer hover:text-[#1E3A8A]"
+                      >
+                        Score {providerSortBy === 'pulseIq' ? '↓' : ''}
+                      </th>
+                      <th className="py-2.5 px-4">Provider &amp; Jurisdiction</th>
+                      <th
+                        onClick={() => setProviderSortBy('fleetAge')}
+                        className="py-2.5 px-3 hidden md:table-cell cursor-pointer hover:text-[#1E3A8A]"
+                      >
+                        Frontline Fleet {providerSortBy === 'fleetAge' ? '↓' : ''}
+                      </th>
+                      <th
+                        onClick={() => setProviderSortBy('value')}
+                        className="py-2.5 px-3 text-right hidden sm:table-cell cursor-pointer hover:text-[#1E3A8A]"
+                      >
+                        Upgrade Value {providerSortBy === 'value' ? '↓' : ''}
+                      </th>
+                      <th
+                        onClick={() => setProviderSortBy('denial')}
+                        className="py-2.5 px-3 text-right hidden lg:table-cell cursor-pointer hover:text-[#1E3A8A]"
+                      >
+                        Claim Recovery {providerSortBy === 'denial' ? '↓' : ''}
+                      </th>
+                      <th className="py-2.5 px-3 text-right hidden xl:table-cell">Runs &amp; ROSC</th>
+                      <th className="py-2.5 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800">
+                    {paginatedAgencies.map((agency) => {
+                      const isFire = agency.agencyType.toLowerCase().includes('fire');
+                      return (
+                        <tr
+                          key={agency.id}
+                          onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                        >
+                          <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white tabular-nums">
+                            {agency.zollOpportunity.pulseIqScore}<span className="text-[10px] text-slate-400 font-normal">/100</span>
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <div className="font-semibold text-slate-900 dark:text-white group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors">
+                              {agency.name}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+                              {agency.city}, {agency.stateCode} · {agency.county} · {isFire ? 'Fire' : 'EMS'} · <span className="font-mono text-[10px]">FDID {agency.fdid}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 hidden md:table-cell">
+                            <div className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                              {agency.installedFleet.defibUnitsCount}× {agency.installedFleet.defibBrand.split(' ')[0]} ({agency.installedFleet.defibAgeYears}y)
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
+                              {agency.installedFleet.epcrCadSoftware}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right hidden sm:table-cell">
+                            <div className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                              ${(agency.zollOpportunity.projectedPipelineValue / 1000).toFixed(0)}K
+                            </div>
+                            <div className="text-[10px] text-slate-500 tabular-nums">
+                              Exp {agency.competitorContract.contractEndDate}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right hidden lg:table-cell">
+                            <div className="font-semibold text-[#1E3A8A] dark:text-blue-400 tabular-nums">
+                              +${(agency.cmsData.estimatedRecoverableRevenue / 1000).toFixed(0)}K/yr
+                            </div>
+                            <div className="text-[10px] text-slate-500 tabular-nums">
+                              {agency.cmsData.claimDenialRate}% Denials
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right hidden xl:table-cell">
+                            <div className="font-semibold text-slate-900 dark:text-white tabular-nums">
+                              {agency.annual911Transports.toLocaleString()}
+                            </div>
+                            <div className="text-[10px] text-slate-500 tabular-nums">
+                              {agency.utsteinSurvivalRate}% ROSC
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
+                                className="h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                              >
+                                Preview
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onSelectAgency(agency)}
+                                className="h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-[#1E3A8A] text-white hover:bg-[#172554] transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>Dossier</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           {totalAgencyPages > 1 && (
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500">
               <span>Page {agencyPage} of {totalAgencyPages} ({matchingAgencies.length.toLocaleString()} Providers)</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={agencyPage <= 1}
                   onClick={() => setAgencyPage(p => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 font-sans font-semibold"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 disabled:opacity-40 text-slate-700 dark:text-slate-200 font-sans font-semibold cursor-pointer"
                 >
                   Previous
                 </button>
@@ -1936,7 +2155,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   type="button"
                   disabled={agencyPage >= totalAgencyPages}
                   onClick={() => setAgencyPage(p => Math.min(totalAgencyPages, p + 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 font-sans font-semibold"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 disabled:opacity-40 text-slate-700 dark:text-slate-200 font-sans font-semibold cursor-pointer"
                 >
                   Next
                 </button>
