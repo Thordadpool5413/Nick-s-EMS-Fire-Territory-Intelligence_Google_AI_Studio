@@ -67,8 +67,8 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
 
   const projectedState = useMemo(() => {
     if (!stateCode || stateCode === 'all') return { projectedCounties: [], bbox: [-98, 38, -97, 39] as [number, number, number, number] };
-    return countyBoundaryHierarchy.projectStateCountiesToSvg(stateCode, 720, 400, 22);
-  }, [stateCode, boundaryVersion]);
+    return countyBoundaryHierarchy.projectStateCountiesToSvg(stateCode, 720, 400, 22, agencies);
+  }, [stateCode, boundaryVersion, agencies]);
 
   const activeCountyNode: CountyBoundaryNode | null = useMemo(() => {
     if (!stateNode || !selectedCountyName || selectedCountyName === 'all') return null;
@@ -185,7 +185,13 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
                           onClick={() => onSelectCounty(pc.countyName, stateNode.stateCode)}
                         >
                           <title>
-                            {`${pc.countyName} (FIPS ${pc.countyFips}) · Seat: ${pc.countySeat} · ${pc.citiesCount} Cities · ${pc.landAreaSqMiles} sq mi`}
+                            {`${pc.countyName} (FIPS ${pc.countyFips}) · Seat: ${pc.countySeat} · ${pc.citiesCount} Cities · ${pc.landAreaSqMiles} sq mi${
+                              pc.medicareDenialRatePct !== null
+                                ? ` · County MCR Denial: ${pc.medicareDenialRatePct}% (State Benchmark: ${pc.stateBenchmarkDenialRatePct ?? 'N/A'}%)`
+                                : pc.stateBenchmarkDenialRatePct !== null
+                                  ? ` · County MCR Denial: Not available (State Benchmark: ${pc.stateBenchmarkDenialRatePct}%)`
+                                  : ''
+                            }`}
                           </title>
                         </path>
                       );
@@ -243,15 +249,27 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
                     <span className="text-[11px] font-sans text-slate-500 block">MCR Denials</span>
-                    <span className="text-sm font-bold text-rose-700 mt-0.5 block">
-                      {inspectedCounty.medicareDenialRatePct !== null
-                        ? `${inspectedCounty.medicareDenialRatePct}%`
-                        : 'Not available'}
-                    </span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="text-sm font-bold text-rose-700">
+                        {inspectedCounty.medicareDenialRatePct !== null
+                          ? `${inspectedCounty.medicareDenialRatePct}%`
+                          : 'Not available'}
+                      </span>
+                      {inspectedCounty.medicareDenialRatePct !== null && inspectedCounty.stateBenchmarkDenialRatePct !== null && (
+                        <span className="text-[11px] font-sans text-slate-500 font-normal">
+                          (State: {inspectedCounty.stateBenchmarkDenialRatePct}%)
+                        </span>
+                      )}
+                    </div>
+                    {inspectedCounty.medicareDenialRatePct !== null && inspectedCounty.medicareDenialSource && (
+                      <span className="text-[10px] text-slate-600 block mt-0.5 leading-tight font-sans">
+                        {inspectedCounty.medicareDenialSource}
+                      </span>
+                    )}
                     {inspectedCounty.medicareDenialRatePct === null && (
                       <span className="text-[10px] text-slate-500 block mt-0.5 leading-tight font-sans">
                         {inspectedCounty.stateBenchmarkDenialRatePct !== null && inspectedCounty.stateBenchmarkDenialRatePct !== undefined
-                          ? `State benchmark: ${inspectedCounty.stateBenchmarkDenialRatePct}%`
+                          ? inspectedCounty.stateBenchmarkDenialSource || `State benchmark: ${inspectedCounty.stateBenchmarkDenialRatePct}%`
                           : 'State denial benchmark unavailable'}
                       </span>
                     )}

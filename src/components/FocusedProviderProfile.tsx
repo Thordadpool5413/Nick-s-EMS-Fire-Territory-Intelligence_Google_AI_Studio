@@ -87,6 +87,7 @@ import { ExecutiveBriefingDossier } from './ExecutiveBriefingDossier';
 import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
 import { TermTooltip } from './TermTooltip';
+import { AgencyOperationalVerificationModal } from './AgencyOperationalVerificationModal';
 
 /**
  * Guarantees complete agency fields for any selected EMS Provider or Fire Department
@@ -428,6 +429,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   const [showActuarialMath, setShowActuarialMath] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState<boolean>(false);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
 
   // Field Note Form State
   const [meetingType, setMeetingType] = useState<FieldNote['meetingType']>('On-Site Station Visit');
@@ -896,6 +898,16 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 <span className="hidden sm:inline">Print Brief</span>
               </button>
 
+              <button
+                type="button"
+                onClick={() => setIsVerifyModalOpen(true)}
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer shadow-2xs"
+                title="Verify and edit ground-truth address, leadership, stations, fleet, volume, and maintenance contracts"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Verify &amp; Edit Operations</span>
+              </button>
+
               {onOpenRfpGenerator && (
                 <button
                   type="button"
@@ -912,6 +924,34 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
         {/* Main Account 360 Workspace Content */}
         <div className="max-w-[1640px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6 min-w-0">
+          {/* Ground Truth Operational Verification Status Banner */}
+          {agency.isOperationalDataVerified && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-bold text-emerald-950 dark:text-emerald-200">
+                    Empirically Verified Operational Record
+                  </div>
+                  <div className="text-emerald-800 dark:text-emerald-400 text-[11px]">
+                    Audited via {agency.verificationSource || 'Territory Command Audit'} {agency.lastVerifiedAt ? `· ${new Date(agency.lastVerifiedAt).toLocaleDateString()}` : ''}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ HQ Address</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ Leadership</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ Apparatus Fleet</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ Emergency Volume</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ Hospital &amp; Cath Lab</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ CAD &amp; ePCR</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60">✓ Contracts</span>
+              </div>
+            </div>
+          )}
+
           {/* ================================================================
               ABOVE THE FOLD — 3 PRIMARY DECISION BLOCKS (SECTION 9)
              ================================================================ */}
@@ -3265,6 +3305,16 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
         agency={agency}
         isOpen={showDossierModal}
         onClose={() => setShowDossierModal(false)}
+      />
+
+      {/* Ground Truth Operational & Fleet Data Verification Modal */}
+      <AgencyOperationalVerificationModal
+        agency={agency}
+        isOpen={isVerifyModalOpen}
+        onClose={() => setIsVerifyModalOpen(false)}
+        onSaved={(updatedAgency) => {
+          setLivePatch(updatedAgency);
+        }}
       />
     </div>
   );

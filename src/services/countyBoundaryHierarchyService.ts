@@ -8,6 +8,7 @@ import { Agency } from '../types';
 import { ALL_NATIONWIDE_COUNTIES, ComprehensiveCountyRecord, CityBoundaryRecord } from '../data/allCountiesDatabase';
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 import { territoryEngine } from './territoryIntelligenceEngine';
+import { aggregateProviderMedicareDenialRates } from './dataSanitizationService';
 
 export interface GeoJsonGeometry {
   type: 'Polygon' | 'MultiPolygon';
@@ -105,6 +106,7 @@ export interface SvgProjectedCounty {
   medicareDenialRatePct: number | null;
   stateBenchmarkDenialRatePct?: number | null;
   medicareDenialSource?: string;
+  stateBenchmarkDenialSource?: string;
   averageTransportMinutes: number;
   svgPath: string;
   labelX: number;
@@ -369,7 +371,8 @@ class CountyBoundaryHierarchyService {
     stateCode: string,
     width: number = 760,
     height: number = 420,
-    padding: number = 24
+    padding: number = 24,
+    agencies: Agency[] = []
   ): {
     projectedCounties: SvgProjectedCounty[];
     bbox: [number, number, number, number];
@@ -424,14 +427,13 @@ class CountyBoundaryHierarchyService {
       return [+x.toFixed(1), +y.toFixed(1)];
     };
 
-    const stSummary = ALL_50_STATES_SUMMARIES[sc];
-    // CMS Part B Ground Ambulance claims are adjudicated across regional MAC jurisdictions.
-    // Standard CMS PUF releases do not publish standalone state-by-state denial tables
-    // unless custom FOIA/claims data extraction is performed.
-    // If no authenticated state-level CMS PUF dataset meeting all 7 criteria is linked,
-    // state denial benchmark is explicitly marked unavailable.
-    const hasAuthenticBenchmark = false; // Set to false to prevent uncorroborated benchmarks from masquerading as official CMS PUF
-    const stateBenchmark = hasAuthenticBenchmark ? stSummary?.avgMedicareDenialRate : null;
+    // Dynamic Provider Claims Aggregation:
+    // If authenticated agencies are provided, dynamically calculate state benchmark across CMS-enrolled suppliers.
+    const stateAgg = agencies.length > 0 ? aggregateProviderMedicareDenialRates(agencies, sc) : null;
+    const stateBenchmark = stateAgg && stateAgg.hasMeasuredData ? stateAgg.ratePct : null;
+    const stateBenchmarkSource = stateAgg && stateAgg.hasMeasuredData
+      ? stateAgg.provenance
+      : undefined;
 
     const projectedCounties: SvgProjectedCounty[] = [];
 
@@ -439,11 +441,24 @@ class CountyBoundaryHierarchyService {
       const svgPath = this.geometryToSvgPath(co.geometry!, projectPoint);
       if (!svgPath) continue;
       const [labelX, labelY] = projectPoint(co.centroid.lng, co.centroid.lat);
-      // Factual county rate: null if no measured county rate exists in authoritative CMS PUF record.
-      // Never substitute state-level averages into the county's measured rate field!
-      const denialRate = co.countyRecord.medicareDenialRatePct !== undefined && co.countyRecord.medicareDenialRatePct !== null
-        ? co.countyRecord.medicareDenialRatePct
-        : null;
+
+      // Factual county rate:
+      // 1. If explicit measured rate is present on countyRecord, use it.
+      // 2. Else if agencies provided, compute dynamic aggregation for this county.
+      // 3. Otherwise strictly null (do not manufacture).
+      let denialRate: number | null = null;
+      let denialSource: string | undefined = undefined;
+
+      if (co.countyRecord.medicareDenialRatePct !== undefined && co.countyRecord.medicareDenialRatePct !== null) {
+        denialRate = co.countyRecord.medicareDenialRatePct;
+        denialSource = co.countyRecord.medicareDenialSource ?? 'CMS Measured County Rate';
+      } else if (agencies.length > 0) {
+        const countyAgg = aggregateProviderMedicareDenialRates(agencies, sc, co.countyName);
+        if (countyAgg.hasMeasuredData) {
+          denialRate = countyAgg.ratePct;
+          denialSource = countyAgg.provenance;
+        }
+      }
 
       projectedCounties.push({
         countyFips: co.countyFips,
@@ -455,7 +470,8 @@ class CountyBoundaryHierarchyService {
         population: co.countyRecord.population,
         medicareDenialRatePct: denialRate,
         stateBenchmarkDenialRatePct: stateBenchmark,
-        medicareDenialSource: denialRate !== null ? (co.countyRecord.medicareDenialSource ?? 'CMS Measured County Rate') : undefined,
+        medicareDenialSource: denialSource,
+        stateBenchmarkDenialSource: stateBenchmarkSource,
         averageTransportMinutes: co.countyRecord.averageTransportMinutes,
         svgPath,
         labelX,

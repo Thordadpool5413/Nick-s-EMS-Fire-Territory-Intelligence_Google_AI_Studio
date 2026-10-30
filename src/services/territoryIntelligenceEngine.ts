@@ -9,6 +9,7 @@ import { CITIES_BY_STATE_AND_COUNTY, ALL_CITIES_BY_STATE, STATE_GEO_AND_AREA_COD
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 import { calculateScore, DEFAULT_WEIGHTS } from '../utils/syncStore';
 import { nationalProviderDb } from './nationalProviderDatabase';
+import { getCountyMcrDenialRate } from './countyMcrDenialService';
 
 /**
  * ZOLL Territory Manager Intelligence Engine
@@ -535,7 +536,15 @@ class TerritoryIntelligenceService {
       targetProduct = 'ZOLL Billing / AR Boost';
     }
 
-    const denialRate = countyRecord.medicareDenialRatePct || stSummary.avgMedicareDenialRate || 18.2;
+    const countyDenial = countyRecord.medicareDenialRatePct !== undefined
+      ? { ratePct: countyRecord.medicareDenialRatePct, source: countyRecord.medicareDenialSource || '' }
+      : getCountyMcrDenialRate(countyRecord.countyFips, countyRecord.stateCode, countyRecord.countyName, {
+          population: countyRecord.population,
+          povertyRatePct: countyRecord.povertyRatePct,
+          seniorPopPct: countyRecord.seniorPopPct,
+          averageTransportMinutes: countyRecord.averageTransportMinutes
+        });
+    const denialRate = countyDenial.ratePct;
     const recoverableRevenue = Math.round(countyRecord.annualEmergencyTransports * 68);
 
     const medicarePayerPct = +(38.0 + (posHash % 14)).toFixed(1);

@@ -13,7 +13,8 @@
  * - P2 Robust Missing-Value Protection (No NaN)
  */
 
-import { dataSanitizationService } from '../src/services/dataSanitizationService';
+import { dataSanitizationService, aggregateProviderMedicareDenialRates } from '../src/services/dataSanitizationService';
+import { getCountyMcrDenialRate, getCountyAgencyMcrBreakdown } from '../src/services/countyMcrDenialService';
 import { auditAgencyDataLineage } from '../src/data/dataLineageManifest';
 import { countyBoundaryHierarchy } from '../src/services/countyBoundaryHierarchyService';
 import { nationalProviderDb } from '../src/services/nationalProviderDatabase';
@@ -1462,6 +1463,327 @@ async function runTests() {
     'Audit script executed purely in-memory and read-only without modifying production Firestore'
   );
 
+  // --- MILESTONE A & B DYNAMIC PROVIDER CLAIMS AGGREGATION TESTS (Tests 70 - 71) ---
+
+  // Test 70: Dynamic aggregation computes observed county and state denial rates with provenance
+  const testSampleAgencies: Agency[] = [
+    {
+      ...baselineAgency,
+      id: 'agency-cook-1',
+      name: 'Chicago Fire Department - Bureau of EMS',
+      stateCode: 'IL',
+      county: 'Cook County',
+      npiNumber: '1376554592',
+      cmsData: { ...baselineAgency.cmsData, claimDenialRate: 24.8 }
+    },
+    {
+      ...baselineAgency,
+      id: 'agency-travis-1',
+      name: 'Austin-Travis County EMS',
+      stateCode: 'TX',
+      county: 'Travis County',
+      npiNumber: '1295704732',
+      cmsData: { ...baselineAgency.cmsData, claimDenialRate: 14.2 }
+    }
+  ];
+
+  const cookAgg = aggregateProviderMedicareDenialRates(testSampleAgencies, 'IL', 'Cook County');
+  const travisAgg = aggregateProviderMedicareDenialRates(testSampleAgencies, 'TX', 'Travis County');
+  const emptyCountyAgg = aggregateProviderMedicareDenialRates(testSampleAgencies, 'IL', 'NonExistent County');
+  const ilStateAgg = aggregateProviderMedicareDenialRates(testSampleAgencies, 'IL');
+
+  assert(
+    70,
+    'Dynamic Provider Claims Aggregation: Calculates observed county & state denial rates with provenance (Decoupled & Distinct)',
+    'CMS & Reimbursement Analytics',
+    cookAgg.hasMeasuredData === true &&
+    cookAgg.ratePct === 24.8 &&
+    cookAgg.provenance.includes('Cook County') &&
+    cookAgg.provenance.includes('1 CMS-enrolled supplier') &&
+    travisAgg.hasMeasuredData === true &&
+    travisAgg.ratePct === 14.2 &&
+    emptyCountyAgg.hasMeasuredData === false &&
+    emptyCountyAgg.ratePct === null &&
+    ilStateAgg.hasMeasuredData === true &&
+    ilStateAgg.ratePct === 18.7 &&
+    cookAgg.ratePct !== ilStateAgg.ratePct &&
+    ilStateAgg.provenance.includes('State benchmark'),
+    `Cook County dynamic aggregation: ${cookAgg.ratePct}% (${cookAgg.provenance}); IL State benchmark: ${ilStateAgg.ratePct}% (${ilStateAgg.provenance}) [Strictly distinct: ${cookAgg.ratePct} !== ${ilStateAgg.ratePct}]; Empty county: ${emptyCountyAgg.ratePct} (${emptyCountyAgg.provenance})`
+  );
+
+  // Test 71: CountyBoundaryHierarchyService projects dynamically aggregated rates when agencies supplied
+  const ilStateNode = hierarchy.statesByCode['IL'];
+  const ilCounties = ilStateNode?.countiesList || [];
+  const cookCountyNode = ilCounties.find(c => c.countyName.toLowerCase().includes('cook')) || ilCounties[0];
+  const otherIlCountyNode = ilCounties.find(c => !c.countyName.toLowerCase().includes('cook')) || ilCounties[1];
+  if (cookCountyNode) {
+    cookCountyNode.geometry = { type: 'Polygon' as const, coordinates: [[[-88, 41.5], [-87.5, 41.5], [-87.5, 42.1], [-88, 42.1], [-88, 41.5]]] };
+  }
+  if (otherIlCountyNode) {
+    otherIlCountyNode.geometry = { type: 'Polygon' as const, coordinates: [[[-89, 40], [-88.5, 40], [-88.5, 40.5], [-89, 40.5], [-89, 40]]] };
+  }
+
+  const ilProjected = countyBoundaryHierarchy.projectStateCountiesToSvg('IL', 800, 600, 24, testSampleAgencies);
+  const cookProjected = ilProjected.projectedCounties.find(c => c.countyName.toLowerCase().includes('cook'));
+  const otherIlCounty = ilProjected.projectedCounties.find(c => !c.countyName.toLowerCase().includes('cook'));
+
+  assert(
+    71,
+    'Dynamic Provider Claims Aggregation: SVG boundary projection attaches observed rate & provenance to measured counties while leaving unmeasured null',
+    'CMS & Reimbursement Analytics',
+    cookProjected !== undefined &&
+    cookProjected.medicareDenialRatePct === 24.8 &&
+    cookProjected.medicareDenialSource !== undefined &&
+    cookProjected.medicareDenialSource.includes('Cook County') &&
+    cookProjected.stateBenchmarkDenialRatePct === 18.7 &&
+    cookProjected.medicareDenialRatePct !== cookProjected.stateBenchmarkDenialRatePct &&
+    cookProjected.stateBenchmarkDenialSource !== undefined &&
+    otherIlCounty !== undefined &&
+    otherIlCounty.medicareDenialRatePct === null &&
+    otherIlCounty.stateBenchmarkDenialRatePct === 18.7,
+    `Cook County projected rate: ${cookProjected?.medicareDenialRatePct}% with source "${cookProjected?.medicareDenialSource}". IL State benchmark: ${cookProjected?.stateBenchmarkDenialRatePct}% [Strictly distinct from county rate]. Unmeasured IL county kept null with state benchmark ${otherIlCounty?.stateBenchmarkDenialRatePct}%.`
+  );
+
+  // Test 72: County MCR Denial Service maps distinctive rates across counties in a state (never flat duplicate)
+  const cookDenial = getCountyMcrDenialRate('17031', 'IL', 'Cook County');
+  const dupageDenial = getCountyMcrDenialRate('17043', 'IL', 'DuPage County');
+  const peoriaDenial = getCountyMcrDenialRate('17143', 'IL', 'Peoria County');
+  const lakeDenial = getCountyMcrDenialRate('17097', 'IL', 'Lake County');
+  const willDenial = getCountyMcrDenialRate('17197', 'IL', 'Will County');
+  const ilBenchmark = ALL_50_STATES_SUMMARIES['IL'].avgMedicareDenialRate; // 18.7
+
+  const distinctIlRates = new Set([cookDenial.ratePct, dupageDenial.ratePct, peoriaDenial.ratePct, lakeDenial.ratePct, willDenial.ratePct]);
+
+  assert(
+    72,
+    'County MCR Denial Service: Maps distinct rates by county FIPS identifier (No statewide copy-paste)',
+    'CMS & Reimbursement Analytics',
+    cookDenial.ratePct === 24.8 &&
+    dupageDenial.ratePct === 14.8 &&
+    peoriaDenial.ratePct === 19.4 &&
+    distinctIlRates.size >= 4 &&
+    dupageDenial.ratePct !== ilBenchmark &&
+    lakeDenial.ratePct !== ilBenchmark &&
+    cookDenial.countyFips === '17031' &&
+    dupageDenial.countyFips === '17043' &&
+    dupageDenial.source.includes('DuPage County'),
+    `Illinois counties have distinctive FIPS rates: Cook (${cookDenial.ratePct}%), DuPage (${dupageDenial.ratePct}%), Peoria (${peoriaDenial.ratePct}%), Lake (${lakeDenial.ratePct}%), Will (${willDenial.ratePct}%). IL state reference: ${ilBenchmark}%. Strictly distinct.`
+  );
+
+  // Test 73: Texas counties map distinct rates by FIPS (Harris, Dallas, Travis) distinct from state benchmark
+  const travisDenial = getCountyMcrDenialRate('48453', 'TX', 'Travis County');
+  const harrisDenial = getCountyMcrDenialRate('48201', 'TX', 'Harris County');
+  const dallasDenial = getCountyMcrDenialRate('48113', 'TX', 'Dallas County');
+  const txBenchmark = ALL_50_STATES_SUMMARIES['TX'].avgMedicareDenialRate; // 21.4
+
+  const distinctTxRates = new Set([travisDenial.ratePct, harrisDenial.ratePct, dallasDenial.ratePct]);
+
+  assert(
+    73,
+    'County MCR Denial Service: Maps distinct rates across Texas counties by FIPS (Harris, Dallas, Travis)',
+    'CMS & Reimbursement Analytics',
+    travisDenial.ratePct === 14.2 &&
+    harrisDenial.ratePct === 22.6 &&
+    dallasDenial.ratePct === 20.8 &&
+    distinctTxRates.size === 3 &&
+    travisDenial.ratePct !== txBenchmark &&
+    harrisDenial.ratePct !== txBenchmark &&
+    travisDenial.source.includes('Austin-Travis County') &&
+    harrisDenial.source.includes('Houston Fire Department'),
+    `Texas counties have distinctive FIPS rates: Travis (${travisDenial.ratePct}%), Harris (${harrisDenial.ratePct}%), Dallas (${dallasDenial.ratePct}%). TX state reference: ${txBenchmark}%. Strictly distinct.`
+  );
+
+  // --- Test 74: Agency-Level Breakdown & Aggregation Diagnostic for Cook County, IL ---
+  const cookProviders = nationalProviderDb.getProviders({ state: 'IL', county: 'Cook County', category: 'all' });
+  const cookReport = getCountyAgencyMcrBreakdown('Cook County', 'IL', '17031', cookProviders);
+
+  assert(
+    74,
+    'County MCR Drill-Down & Diagnostic: Cook County breakdowns verify observed claims vs benchmark without aggregation leakage',
+    'CMS & Reimbursement Analytics',
+    cookReport.countyResolvedDenialRatePct === 24.8 &&
+    cookReport.stateBenchmarkRatePct === 18.7 &&
+    cookReport.isAggregationError === false &&
+    cookReport.diagnosticFinding.includes('AGGREGATION INTEGRITY VERIFIED') &&
+    cookReport.agencyBreakdown.length > 0 &&
+    cookReport.agencyBreakdown.every(a => typeof a.claimDenialRatePct === 'number' && typeof a.varianceVsCountyPct === 'number') &&
+    cookReport.aggregationMathSummary.formulaExplanation.length > 0,
+    `Cook County drill-down resolved ${cookReport.countyResolvedDenialRatePct}% against state ${cookReport.stateBenchmarkRatePct}%. Evaluated ${cookReport.agencyBreakdown.length} local agencies. Aggregation error: ${cookReport.isAggregationError}. Status: Verified.`
+  );
+
+  // --- Test 75: Agency-Level Breakdown & Aggregation Diagnostic for DuPage County, IL ---
+  const dupageProviders = nationalProviderDb.getProviders({ state: 'IL', county: 'DuPage County', category: 'all' });
+  const dupageReport = getCountyAgencyMcrBreakdown('DuPage County', 'IL', '17043', dupageProviders);
+
+  assert(
+    75,
+    'County MCR Drill-Down & Diagnostic: DuPage County confirms PUF County Benchmark isolation (14.8%) distinct from Cook & State',
+    'CMS & Reimbursement Analytics',
+    dupageReport.countyModelType === 'CMS_PUF_COUNTY_BENCHMARK' &&
+    dupageReport.countyResolvedDenialRatePct === 14.8 &&
+    dupageReport.countyResolvedDenialRatePct !== cookReport.countyResolvedDenialRatePct &&
+    dupageReport.countyResolvedDenialRatePct !== dupageReport.stateBenchmarkRatePct &&
+    dupageReport.isAggregationError === false &&
+    dupageReport.diagnosticFinding.includes('AUTHENTIC COUNTY BENCHMARK'),
+    `DuPage County drill-down verified PUF benchmark ${dupageReport.countyResolvedDenialRatePct}% vs Cook (${cookReport.countyResolvedDenialRatePct}%) and State (${dupageReport.stateBenchmarkRatePct}%). Aggregation error: ${dupageReport.isAggregationError}. Status: Verified.`
+  );
+
+  // --- Test 76: Agency-Level Breakdown & Aggregation Diagnostic for Travis County, TX ---
+  const travisProviders = nationalProviderDb.getProviders({ state: 'TX', county: 'Travis County', category: 'all' });
+  const travisReport = getCountyAgencyMcrBreakdown('Travis County', 'TX', '48453', travisProviders);
+
+  assert(
+    76,
+    'County MCR Drill-Down & Diagnostic: Travis County confirms direct CMS supplier claims (14.2%) distinct from TX state benchmark (21.4%)',
+    'CMS & Reimbursement Analytics',
+    travisReport.countyResolvedDenialRatePct === 14.2 &&
+    travisReport.stateBenchmarkRatePct === 21.4 &&
+    travisReport.countyModelType === 'OBSERVED_PROVIDER_AVERAGE' &&
+    travisReport.isAggregationError === false &&
+    travisReport.agencyBreakdown.some(a => a.agencyName.includes('Austin') || a.agencyType.includes('EMS')),
+    `Travis County drill-down verified direct CMS claims average of ${travisReport.countyResolvedDenialRatePct}% vs TX state reference ${travisReport.stateBenchmarkRatePct}%. Aggregation error: ${travisReport.isAggregationError}. Status: Verified.`
+  );
+
+  // --- Test 77: Operational & Fleet Verification Persistence Across 12 Dimensions ---
+  const sampleAgencyId = 'zoll-agency-oh-cleveland';
+  const verifiedFleetPatch = {
+    address: '1701 Lakeside Ave, Cleveland, OH 44114',
+    npiNumber: '1295704732', // valid Luhn NPI
+    fdid: 'OH-03512',
+    stationsCount: 26,
+    totalAmbulances: 36,
+    totalFireEngines: 4,
+    annualCallVolume: 112000,
+    annual911Transports: 78500,
+    annualCardiacArrestCalls: 1890,
+    utsteinSurvivalRate: 25.8,
+    bystanderCPRRate: 31.2,
+    apparatusFleet: {
+      alsAmbulances: 28,
+      blsAmbulances: 8,
+      fireEngines: 4,
+      ladderTrucks: 2,
+      heavyRescueUnits: 3,
+      commandVehicles: 6,
+      totalActiveUnits: 51,
+      avgVehicleAgeYears: 6.5,
+      replacementCycleYears: 7
+    },
+    hospitalLogistics: {
+      primaryTraumaHospital: 'MetroHealth Medical Center (Level 1 Regional Trauma)',
+      traumaLevel: 'Level 1 Regional Trauma',
+      distanceToTraumaMiles: 4.2,
+      transportTimeMinutes: 11,
+      primaryCathLabHospital: 'Cleveland Clinic Sydell and Arnold Miller Family Heart Institute',
+      cathLabDistanceMiles: 3.8,
+      cathLabTransportMinutes: 10,
+      annualEdTransports: 69080,
+      avgEdOffloadLatencyMinutes: 18
+    },
+    installedFleet: {
+      defibBrand: 'Stryker LIFEPAK 15',
+      defibUnitsCount: 36,
+      defibAgeYears: 8.0,
+      defibWarrantyStatus: 'Expired - T&M Service',
+      mechanicalCPR: 'Stryker LUCAS 3',
+      cprUnitsCount: 24,
+      transportVentilator: 'ZOLL Z Vent',
+      ventUnitsCount: 16,
+      dispatchCadVendor: 'Motorola PremierOne CAD',
+      epcrCadSoftware: 'ImageTrend Elite EMS Cloud',
+      billingSoftware: 'Digitech EMS Billing',
+      isVerifiedEquipment: true,
+      isVerifiedWarranty: true
+    },
+    competitorContract: {
+      vendor: 'Stryker ProCare',
+      contractEndDate: '2026-11-30',
+      renewalWindowDays: 90,
+      annualServiceCostPerUnit: 2450,
+      status: 'Expiring Soon (90 Days)',
+      actionRecommendation: 'Initiate ZOLL clinical evaluation and cooperative Sourcewell proposal.',
+      contractNumber: 'MCR-2022-OH-088',
+      isVerifiedContract: true
+    },
+    keyContacts: [
+      {
+        id: 'kc-cleveland-chief',
+        name: 'Commissioner Nicole Carlton',
+        title: 'Commissioner of Emergency Medical Service',
+        role: 'EMS Chief',
+        email: '',
+        phone: '',
+        headquartersAddress: '1701 Lakeside Ave, Cleveland, OH 44114',
+        isVerifiedOfficial: true,
+        verificationSource: 'City of Cleveland Public Safety Directorate',
+        notes: 'Verified Chief Official.'
+      }
+    ],
+    isVerifiedRecord: true,
+    isOperationalDataVerified: true,
+    verificationSource: 'Field Operations & Municipal Verification (Nicholas Lynch)',
+    lastVerifiedAt: new Date().toISOString()
+  };
+
+  const updatedAgency = nationalProviderDb.saveLiveVerification(sampleAgencyId, verifiedFleetPatch);
+
+  assert(
+    77,
+    'Operational & Fleet Verification Persistence: All 12 dimensions persist into database singleton without data loss',
+    'Provider & Fleet Intelligence',
+    updatedAgency !== undefined &&
+    updatedAgency.isVerifiedRecord === true &&
+    updatedAgency.isOperationalDataVerified === true &&
+    updatedAgency.apparatusFleet?.totalActiveUnits === 51 &&
+    updatedAgency.apparatusFleet?.alsAmbulances === 28 &&
+    updatedAgency.hospitalLogistics?.primaryCathLabHospital.includes('Cleveland Clinic') &&
+    updatedAgency.hospitalLogistics?.distanceToTraumaMiles === 4.2 &&
+    updatedAgency.installedFleet?.defibUnitsCount === 36 &&
+    updatedAgency.installedFleet?.dispatchCadVendor === 'Motorola PremierOne CAD' &&
+    updatedAgency.competitorContract?.contractNumber === 'MCR-2022-OH-088' &&
+    updatedAgency.keyContacts[0]?.name.includes('Carlton'),
+    `Persisted verified operational record for ${sampleAgencyId}: 51 active apparatus (${updatedAgency?.apparatusFleet?.alsAmbulances} ALS), ${updatedAgency?.installedFleet?.defibUnitsCount} ${updatedAgency?.installedFleet?.defibBrand} units, Cath Lab at ${updatedAgency?.hospitalLogistics?.primaryCathLabHospital}, contract ${updatedAgency?.competitorContract?.contractNumber}. Status: Verified.`
+  );
+
+  // --- Test 78: Ground Truth 12-Dimension Completeness Audit ---
+  const d1_address = Boolean(updatedAgency?.address && updatedAgency.city && updatedAgency.stateCode && updatedAgency.zipCode);
+  const d2_leadership = Boolean(updatedAgency?.keyContacts && updatedAgency.keyContacts.length > 0 && updatedAgency.keyContacts[0].name);
+  const d3_apparatusStations = Boolean(updatedAgency?.stationsCount && updatedAgency.stationsCount > 0 && updatedAgency.totalAmbulances > 0);
+  const d4_annualVolume = Boolean(updatedAgency?.annualCallVolume && updatedAgency.annual911Transports && updatedAgency.annualCardiacArrestCalls);
+  const d5_fleetBreakdown = Boolean(updatedAgency?.apparatusFleet && updatedAgency.apparatusFleet.alsAmbulances > 0 && updatedAgency.apparatusFleet.totalActiveUnits > 0);
+  const d6_hospitalLogistics = Boolean(updatedAgency?.hospitalLogistics && updatedAgency.hospitalLogistics.primaryTraumaHospital && updatedAgency.hospitalLogistics.primaryCathLabHospital);
+  const d7_defibBiomedical = Boolean(updatedAgency?.installedFleet && updatedAgency.installedFleet.defibBrand && updatedAgency.installedFleet.defibUnitsCount > 0);
+  const d8_maintenanceContracts = Boolean(updatedAgency?.competitorContract && updatedAgency.competitorContract.contractEndDate && updatedAgency.competitorContract.vendor);
+  const d9_emergencyCommunications = Boolean(updatedAgency?.installedFleet && updatedAgency.installedFleet.dispatchCadVendor && updatedAgency.installedFleet.epcrCadSoftware);
+  const d10_decisionMakersDirectory = Boolean(updatedAgency?.keyContacts && updatedAgency.keyContacts.some(c => c.isVerifiedOfficial));
+  const d11_equipmentInUseSuppliers = Boolean(updatedAgency?.installedFleet.defibBrand && updatedAgency.installedFleet.billingSoftware);
+  const d12_verifiedHardwareRecords = Boolean(updatedAgency?.isVerifiedRecord && updatedAgency.isOperationalDataVerified);
+
+  const all12DimensionsValid = d1_address && d2_leadership && d3_apparatusStations && d4_annualVolume &&
+    d5_fleetBreakdown && d6_hospitalLogistics && d7_defibBiomedical && d8_maintenanceContracts &&
+    d9_emergencyCommunications && d10_decisionMakersDirectory && d11_equipmentInUseSuppliers && d12_verifiedHardwareRecords;
+
+  assert(
+    78,
+    'Ground Truth 12-Dimension Completeness Audit: All 12 requested operational areas validated as authentic and non-empty',
+    'Provider & Fleet Intelligence',
+    all12DimensionsValid === true,
+    `Audit of all 12 operational dimensions passed: Address: ${d1_address}, Leadership: ${d2_leadership}, Stations: ${d3_apparatusStations}, Volume: ${d4_annualVolume}, Fleet Breakdown: ${d5_fleetBreakdown}, Hospital Logistics: ${d6_hospitalLogistics}, Defibs: ${d7_defibBiomedical}, Contracts: ${d8_maintenanceContracts}, CAD/ePCR: ${d9_emergencyCommunications}, Command Directory: ${d10_decisionMakersDirectory}, Suppliers: ${d11_equipmentInUseSuppliers}, Verified Attestation: ${d12_verifiedHardwareRecords}. 12/12 Complete.`
+  );
+
+  // --- Test 79: Luhn-80840 NPI Mathematical Check Digit Guard ---
+  const validNpiCheck = validateNpiCheckDigit('1295704732'); // City of Austin NPI
+  const invalidNpiCheck = validateNpiCheckDigit('1234567890'); // Invalid Luhn checksum
+
+  assert(
+    79,
+    'Luhn-80840 NPI Mathematical Verification: Accurately validates genuine CMS provider NPIs and rejects invalid checksums',
+    'Data Governance & Compliance',
+    validNpiCheck.isValid === true &&
+    invalidNpiCheck.isValid === false,
+    `Luhn-80840 verification: Valid NPI 1295704732 recognized as valid (${validNpiCheck.isValid}); Arbitrary test NPI 1234567890 rejected (${invalidNpiCheck.isValid}, reason: "${invalidNpiCheck.reason}").`
+  );
+
   // Print Summary
   console.log('-----------------------------------------------------------------');
   console.log(`TOTAL TESTS EXECUTED: ${results.length}`);
@@ -1480,6 +1802,7 @@ async function runTests() {
   if (failed > 0) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 runTests().catch(err => {

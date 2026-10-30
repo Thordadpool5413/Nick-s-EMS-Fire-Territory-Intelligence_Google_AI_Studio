@@ -10,6 +10,8 @@ import { US_STATES_SVG_PATHS, EAST_COAST_CALLOUT_STATES } from '../data/usStates
 import { NATIONAL_ZIP_CITY_REGISTRY, lookupZipCode, searchLocations, getZipCodesForState, ZipCityRecord } from '../data/nationalZipCityRegistry';
 import { territoryEngine } from '../services/territoryIntelligenceEngine';
 import { nationalProviderDb } from '../services/nationalProviderDatabase';
+import { aggregateProviderMedicareDenialRates } from '../services/dataSanitizationService';
+import { getCountyMcrDenialRate } from '../services/countyMcrDenialService';
 import { 
   Globe, 
   MapPin, 
@@ -51,6 +53,7 @@ import { PulseIqScoreTooltip } from './PulseIqScoreTooltip';
 import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
 import { PulseIqScoreExplainerHub } from './PulseIqScoreExplainerHub';
+import { CountyMcrDrilldownModal } from './CountyMcrDrilldownModal';
 
 interface NationalGeographicExplorerProps {
   agencies: Agency[];
@@ -122,6 +125,18 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
       // ignore
     }
   };
+
+  const [drilldownCounty, setDrilldownCounty] = useState<{
+    countyName: string;
+    stateCode: string;
+    countyFips: string;
+    countyPopulation?: number;
+    povertyRatePct?: number;
+    seniorPopPct?: number;
+    averageTransportMinutes?: number;
+    ratePct: number | null;
+    source: string;
+  } | null>(null);
 
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedZipQuery(zipSearchQuery), 120);
@@ -1123,6 +1138,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   (() => {
                     const hSt = ALL_50_STATES_SUMMARIES[hoveredMapStateCode];
                     const cCount = territoryEngine.getCountiesForState(hSt.code).length;
+                    const stAgg = aggregateProviderMedicareDenialRates(agencies, hSt.code);
                     return (
                       <div className="flex flex-wrap items-center gap-2.5 tabular-nums">
                         <span className="px-2 py-0.5 rounded bg-[#1E3A8A] text-white font-semibold">
@@ -1132,7 +1148,17 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         <span className="text-slate-300 dark:text-slate-700">·</span>
                         <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 tabular-nums">{cCount} Counties</span>
                         <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="text-slate-700 dark:text-slate-300">Medicare Denials: <strong className="text-rose-700 dark:text-rose-400 font-semibold tabular-nums">{hSt.avgMedicareDenialRate}%</strong> <span className="text-[10px] text-slate-400">(CMS PUF)</span></span>
+                        <span className="text-slate-700 dark:text-slate-300">
+                          Medicare Denials:{' '}
+                          <strong className="text-rose-700 dark:text-rose-400 font-semibold tabular-nums">
+                            {stAgg.hasMeasuredData ? `${stAgg.ratePct}%` : `${hSt.avgMedicareDenialRate}%`}
+                          </strong>{' '}
+                          <span className="text-[10px] text-slate-400">
+                            {stAgg.hasMeasuredData
+                              ? `(${stAgg.supplierCount} CMS ${stAgg.supplierCount === 1 ? 'supplier' : 'suppliers'})`
+                              : '(State Model)'}
+                          </span>
+                        </span>
                         <span className="text-slate-300 dark:text-slate-700">·</span>
                         <span className="text-slate-700 dark:text-slate-300">FEMA Grants: <strong className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">${(hSt.totalAfgAwardsYtd / 1000000).toFixed(1)}M</strong></span>
                       </div>
@@ -1551,16 +1577,73 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         </div>
                         <div>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">MCR Denial</span>
-                          <span className="font-semibold text-rose-700 dark:text-rose-400 mt-0.5 block">
-                            {c.medicareDenialRatePct !== undefined && c.medicareDenialRatePct !== null
-                              ? `${c.medicareDenialRatePct}%`
-                              : 'Not available'}
-                          </span>
-                          {(c.medicareDenialRatePct === undefined || c.medicareDenialRatePct === null) && (
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
-                              State denial benchmark unavailable
-                            </span>
-                          )}
+                          {(() => {
+                            const cAgg = aggregateProviderMedicareDenialRates(agencies, c.stateCode, c.countyName);
+                            const countyDenial = getCountyMcrDenialRate(c.countyFips, c.stateCode, c.countyName, {
+                              population: c.population,
+                              povertyRatePct: c.povertyRatePct,
+                              seniorPopPct: c.seniorPopPct,
+                              averageTransportMinutes: c.averageTransportMinutes
+                            });
+                            const denialRateVal = cAgg.hasMeasuredData && cAgg.ratePct !== null
+                              ? cAgg.ratePct
+                              : (c.medicareDenialRatePct !== undefined && c.medicareDenialRatePct !== null
+                                  ? c.medicareDenialRatePct
+                                  : countyDenial.ratePct);
+                            const denialSourceText = cAgg.hasMeasuredData && cAgg.provenance
+                              ? cAgg.provenance
+                              : (c.medicareDenialSource || countyDenial.source);
+                            const stAgg = aggregateProviderMedicareDenialRates(agencies, c.stateCode);
+                            const stateBaselineRate = stAgg.hasMeasuredData && stAgg.ratePct !== null
+                              ? stAgg.ratePct
+                              : (ALL_50_STATES_SUMMARIES[c.stateCode]?.avgMedicareDenialRate ?? null);
+
+                            return (
+                              <>
+                                <div className="flex items-baseline gap-1 mt-0.5">
+                                  <span className="font-semibold text-rose-700 dark:text-rose-400">
+                                    {denialRateVal !== null && denialRateVal !== undefined
+                                      ? `${denialRateVal}%`
+                                      : 'Not available'}
+                                  </span>
+                                  {denialRateVal !== null && denialRateVal !== undefined && stateBaselineRate !== null && (
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
+                                      (St: {stateBaselineRate}%)
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-tight mt-0.5 line-clamp-2">
+                                  {denialSourceText
+                                    ? denialSourceText
+                                    : stAgg.hasMeasuredData
+                                      ? stAgg.provenance
+                                      : 'State denial benchmark unavailable'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDrilldownCounty({
+                                      countyName: c.countyName,
+                                      stateCode: c.stateCode,
+                                      countyFips: c.countyFips,
+                                      countyPopulation: c.population,
+                                      povertyRatePct: c.povertyRatePct,
+                                      seniorPopPct: c.seniorPopPct,
+                                      averageTransportMinutes: c.averageTransportMinutes,
+                                      ratePct: denialRateVal ?? null,
+                                      source: denialSourceText
+                                    });
+                                  }}
+                                  className="mt-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:hover:bg-rose-900 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                  title="Drill down into individual agency claim rates and aggregation diagnostic for this county"
+                                >
+                                  <BarChart3 className="w-2.5 h-2.5" />
+                                  <span>Breakdown &amp; Diagnostic</span>
+                                </button>
+                              </>
+                            );
+                          })()}
                         </div>
                         <div>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">Avg Transport</span>
@@ -1728,6 +1811,32 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 >
                   <Filter className="w-3.5 h-3.5" />
                   <span>City Directory</span>
+                </button>
+              )}
+
+              {/* MCR Denial Drill-Down Button */}
+              {selectedCountyName !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const foundCounty = availableCounties.find(c => c.countyName.toLowerCase() === selectedCountyName.toLowerCase()) || activeCountyRecord;
+                    setDrilldownCounty({
+                      countyName: selectedCountyName,
+                      stateCode: selectedStateCode,
+                      countyFips: foundCounty?.countyFips || '',
+                      countyPopulation: foundCounty?.population,
+                      povertyRatePct: foundCounty?.povertyRatePct,
+                      seniorPopPct: foundCounty?.seniorPopPct,
+                      averageTransportMinutes: foundCounty?.averageTransportMinutes,
+                      ratePct: null,
+                      source: ''
+                    });
+                  }}
+                  className="h-8 px-2.5 rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title={`Inspect individual agency Medicare claim denial rates and aggregation diagnostics for ${selectedCountyName}`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>MCR Denial Drill-Down</span>
                 </button>
               )}
 
@@ -2187,6 +2296,28 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
             globalCategory={agencyCategoryFilter}
           />
         </div>
+      )}
+
+      {/* County Medicare Part B Denial & Aggregation Diagnostic Drill-Down Modal */}
+      {drilldownCounty && (
+        <CountyMcrDrilldownModal
+          isOpen={true}
+          onClose={() => setDrilldownCounty(null)}
+          countyName={drilldownCounty.countyName}
+          stateCode={drilldownCounty.stateCode}
+          countyFips={drilldownCounty.countyFips}
+          countyPopulation={drilldownCounty.countyPopulation}
+          povertyRatePct={drilldownCounty.povertyRatePct}
+          seniorPopPct={drilldownCounty.seniorPopPct}
+          averageTransportMinutes={drilldownCounty.averageTransportMinutes}
+          countyDenialRatePct={drilldownCounty.ratePct}
+          countyDenialSource={drilldownCounty.source}
+          agencies={agencies}
+          onSelectAgency={(agency) => {
+            onSelectAgency(agency);
+            setDrilldownCounty(null);
+          }}
+        />
       )}
 
     </div>

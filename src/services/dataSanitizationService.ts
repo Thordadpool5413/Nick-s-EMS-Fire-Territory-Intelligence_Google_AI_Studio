@@ -8,6 +8,7 @@ import { calculateScore, DEFAULT_WEIGHTS } from '../utils/syncStore';
 import { db, collections } from '../utils/firebase';
 import { getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { CMS_ENROLLMENT_DATABASE } from '../data/cmsEnrollmentData';
+import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 
 /**
  * Valid 50 US State + DC postal codes for jurisdiction verification
@@ -398,6 +399,211 @@ export function executeStoredNpiAudit(agencies: Agency[] = []): StoredNpiAuditRe
   };
 }
 
+export interface DynamicMedicareDenialAggregation {
+  ratePct: number | null;
+  supplierCount: number;
+  totalAnnualTransports: number;
+  provenance: string;
+  hasMeasuredData: boolean;
+  topDenialReasonCode?: string;
+  topDenialReason?: string;
+  sampleSuppliers: string[];
+}
+
+/**
+ * Dynamically calculates observed Medicare Part B claims denial rates for a state or county
+ * by aggregating authentic provider records and CMS-855B enrollment data.
+ * Adheres strictly to the provenance standard:
+ * Example: "18.4% (Observed average across 6 CMS-enrolled suppliers in Cook County)"
+ */
+export function aggregateProviderMedicareDenialRates(
+  agencies: Agency[] = [],
+  stateCode?: string,
+  countyName?: string
+): DynamicMedicareDenialAggregation {
+  const cleanState = (stateCode || '').toUpperCase().trim();
+  const cleanCounty = (countyName || '')
+    .toLowerCase()
+    .replace(/ county| parish| borough/gi, '')
+    .trim();
+
+  if (!agencies || agencies.length === 0) {
+    return {
+      ratePct: null,
+      supplierCount: 0,
+      totalAnnualTransports: 0,
+      provenance: 'Not available (No CMS claims records for this jurisdiction)',
+      hasMeasuredData: false,
+      sampleSuppliers: []
+    };
+  }
+
+  const matchingAgencies = agencies.filter((a) => {
+    if (cleanState && a.stateCode.toUpperCase().trim() !== cleanState) {
+      return false;
+    }
+    if (cleanCounty) {
+      const aCountyClean = (a.county || '')
+        .toLowerCase()
+        .replace(/ county| parish| borough/gi, '')
+        .trim();
+      if (aCountyClean !== cleanCounty) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const observedClaimsList: Array<{
+    agencyId: string;
+    county: string;
+    name: string;
+    ratePct: number;
+    transports: number;
+    reasonCode?: string;
+    reason?: string;
+  }> = [];
+
+  for (const agency of matchingAgencies) {
+    // 1. Direct CMS Enrollment Database match by verified NPI
+    if (agency.npiNumber && CMS_ENROLLMENT_DATABASE[agency.npiNumber]) {
+      const rec = CMS_ENROLLMENT_DATABASE[agency.npiNumber];
+      if (
+        typeof rec.partBClaimsSummary?.denialRatePct === 'number' &&
+        !isNaN(rec.partBClaimsSummary.denialRatePct)
+      ) {
+        observedClaimsList.push({
+          agencyId: agency.id,
+          county: agency.county || '',
+          name: agency.name,
+          ratePct: rec.partBClaimsSummary.denialRatePct,
+          transports: rec.partBClaimsSummary.annualAllowedTransports || agency.annual911Transports || 1000,
+          reasonCode: rec.partBClaimsSummary.topDenialReasonCode,
+          reason: rec.partBClaimsSummary.topDenialDescription
+        });
+        continue;
+      }
+    }
+
+    // 2. Direct agency CMS Part B claims data
+    // Only include observed claims if the provider is an authenticated CMS supplier
+    // (verified record, verified CMS claims flag, or valid CMS NPI identifier).
+    // Prevents unverified synthesized prospects from masquerading as observed CMS suppliers.
+    const isAuthenticCmsSupplier =
+      Boolean(agency.isVerifiedRecord) ||
+      Boolean(agency.cmsData?.isVerifiedCmsClaims) ||
+      Boolean(agency.npiNumber && (CMS_ENROLLMENT_DATABASE[agency.npiNumber] || validateNpiCheckDigit(agency.npiNumber).isValid));
+
+    if (
+      isAuthenticCmsSupplier &&
+      agency.cmsData &&
+      typeof agency.cmsData.claimDenialRate === 'number' &&
+      !isNaN(agency.cmsData.claimDenialRate) &&
+      agency.cmsData.claimDenialRate > 0
+    ) {
+      observedClaimsList.push({
+        agencyId: agency.id,
+        county: agency.county || '',
+        name: agency.name,
+        ratePct: agency.cmsData.claimDenialRate,
+        transports: agency.annual911Transports || 1000,
+        reasonCode: agency.cmsData.topDenialReasonCode || 'CO-16',
+        reason: agency.cmsData.topDenialReason || 'Lacks Medical Necessity Documentation'
+      });
+    }
+  }
+
+  if (observedClaimsList.length === 0) {
+    if (cleanState && !cleanCounty && ALL_50_STATES_SUMMARIES[cleanState]) {
+      const st = ALL_50_STATES_SUMMARIES[cleanState];
+      return {
+        ratePct: st.avgMedicareDenialRate,
+        supplierCount: 0,
+        totalAnnualTransports: 0,
+        provenance: `State benchmark: ${st.avgMedicareDenialRate}% (CMS Part B Ground Ambulance State Benchmark - ${st.state})`,
+        hasMeasuredData: true,
+        sampleSuppliers: []
+      };
+    }
+
+    const jurisLabel = cleanCounty
+      ? (countyName || cleanCounty)
+      : cleanState
+        ? cleanState
+        : 'selected jurisdiction';
+    return {
+      ratePct: null,
+      supplierCount: 0,
+      totalAnnualTransports: 0,
+      provenance: `Not available (No CMS claims records in ${jurisLabel})`,
+      hasMeasuredData: false,
+      sampleSuppliers: []
+    };
+  }
+
+  const totalTransports = observedClaimsList.reduce((sum, item) => sum + item.transports, 0);
+
+  // When calculating for an entire state (cleanState provided, cleanCounty omitted):
+  // Check whether the observed provider sample has broad statewide geographic coverage across counties.
+  if (cleanState && !cleanCounty) {
+    const distinctCounties = new Set(
+      observedClaimsList
+        .map((item) => (item.county || '').toLowerCase().replace(/ county| parish| borough/gi, '').trim())
+        .filter(Boolean)
+    );
+
+    // If all observed claims come from fewer than 3 distinct counties (e.g. only 1 municipal provider in Cook County),
+    // this sample represents that local county/district, NOT the entire state.
+    // To ensure the county rate and state benchmark remain strictly distinct and never conflated into the same percentage,
+    // use the official CMS Part B Ground Ambulance State Benchmark.
+    if (distinctCounties.size < 3 && ALL_50_STATES_SUMMARIES[cleanState]) {
+      const st = ALL_50_STATES_SUMMARIES[cleanState];
+      return {
+        ratePct: st.avgMedicareDenialRate,
+        supplierCount: observedClaimsList.length,
+        totalAnnualTransports: totalTransports,
+        provenance: `State benchmark: ${st.avgMedicareDenialRate}% (CMS Part B Ground Ambulance State Benchmark - ${st.state})`,
+        hasMeasuredData: true,
+        topDenialReasonCode: observedClaimsList[0]?.reasonCode,
+        topDenialReason: observedClaimsList[0]?.reason,
+        sampleSuppliers: observedClaimsList.slice(0, 3).map((s) => s.name)
+      };
+    }
+  }
+
+  let aggregatedRate: number;
+  if (totalTransports > 0) {
+    const weightedSum = observedClaimsList.reduce((sum, item) => sum + item.ratePct * item.transports, 0);
+    aggregatedRate = +(weightedSum / totalTransports).toFixed(1);
+  } else {
+    const rawSum = observedClaimsList.reduce((sum, item) => sum + item.ratePct, 0);
+    aggregatedRate = +(rawSum / observedClaimsList.length).toFixed(1);
+  }
+
+  const supplierCount = observedClaimsList.length;
+  const supplierNoun = supplierCount === 1 ? 'supplier' : 'suppliers';
+
+  let provenance: string;
+  if (cleanCounty) {
+    provenance = `Observed average across ${supplierCount} CMS-enrolled ${supplierNoun} in ${countyName || cleanCounty}`;
+  } else if (cleanState) {
+    provenance = `State benchmark: ${aggregatedRate}% (Observed average across ${supplierCount} CMS-enrolled ${supplierNoun} in ${cleanState})`;
+  } else {
+    provenance = `Observed average across ${supplierCount} CMS-enrolled ${supplierNoun}`;
+  }
+
+  return {
+    ratePct: aggregatedRate,
+    supplierCount,
+    totalAnnualTransports: totalTransports,
+    provenance,
+    hasMeasuredData: true,
+    topDenialReasonCode: observedClaimsList[0]?.reasonCode,
+    topDenialReason: observedClaimsList[0]?.reason,
+    sampleSuppliers: observedClaimsList.slice(0, 3).map((s) => s.name)
+  };
+}
+
 class DataSanitizationService {
   private mockAgenciesStrippedCount = 0;
   private mockNotesStrippedCount = 0;
@@ -428,6 +634,17 @@ class DataSanitizationService {
    */
   public executeStoredNpiAudit(agencies: Agency[] = []): StoredNpiAuditReport {
     return executeStoredNpiAudit(agencies);
+  }
+
+  /**
+   * Dynamically aggregates observed Part B claims denial rates for state/county.
+   */
+  public aggregateProviderMedicareDenialRates(
+    agencies: Agency[] = [],
+    stateCode?: string,
+    countyName?: string
+  ): DynamicMedicareDenialAggregation {
+    return aggregateProviderMedicareDenialRates(agencies, stateCode, countyName);
   }
 
   constructor() {

@@ -15,6 +15,8 @@ import { CITIES_BY_STATE_AND_COUNTY, STATE_GEO_AND_AREA_CODES } from '../data/al
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 import { INITIAL_AGENCIES } from '../data/healthcareData';
 import { NATIONAL_ZIP_CITY_REGISTRY } from '../data/nationalZipCityRegistry';
+import { getCountyMcrDenialRate } from './countyMcrDenialService';
+import { saveAgencyToFirestore } from '../utils/firebase';
 
 export interface ProviderFilterOptions {
   state?: string;
@@ -149,14 +151,38 @@ class NationalProviderDatabaseService {
           current[agencyId] = {
             address: updated.address,
             zipCode: updated.zipCode,
+            city: updated.city,
+            state: updated.state,
+            stateCode: updated.stateCode,
             npiNumber: updated.npiNumber,
+            fdid: updated.fdid,
             headquartersPhone: '',
             officialWebsite: updated.officialWebsite,
+            googleMapsUri: updated.googleMapsUri,
             mapSearchUri: updated.mapSearchUri,
             verificationSource: updated.verificationSource,
             isVerifiedRecord: true,
+            isOperationalDataVerified: updated.isOperationalDataVerified ?? true,
             lastVerifiedAt: updated.lastVerifiedAt || new Date().toISOString(),
             keyContacts: updated.keyContacts,
+            stationsCount: updated.stationsCount,
+            totalAmbulances: updated.totalAmbulances,
+            totalFireEngines: updated.totalFireEngines,
+            totalEMSStaff: updated.totalEMSStaff,
+            annualCallVolume: updated.annualCallVolume,
+            annual911Transports: updated.annual911Transports,
+            annualCardiacArrestCalls: updated.annualCardiacArrestCalls,
+            bystanderCPRRate: updated.bystanderCPRRate,
+            utsteinSurvivalRate: updated.utsteinSurvivalRate,
+            apparatusFleet: updated.apparatusFleet,
+            hospitalLogistics: updated.hospitalLogistics,
+            installedFleet: updated.installedFleet,
+            competitorContract: updated.competitorContract,
+            cmsData: updated.cmsData,
+            gisData: updated.gisData,
+            qualityMetrics: updated.qualityMetrics,
+            grantStatus: updated.grantStatus,
+            femaGrantHistory: updated.femaGrantHistory,
           };
           window.localStorage.setItem(verifiedCacheKey(), JSON.stringify(current));
         } else {
@@ -174,6 +200,13 @@ class NationalProviderDatabaseService {
       } catch {
         // Ignore storage quota errors
       }
+    }
+
+    // Cloud Database Persistence via Firestore: Persist verified operational records
+    if (updated.isVerifiedRecord) {
+      try {
+        saveAgencyToFirestore(updated).catch(() => {});
+      } catch {}
     }
 
     return updated;
@@ -279,7 +312,15 @@ class NationalProviderDatabaseService {
     ];
     const dispatchCadVendor = cadVendors[posHash % cadVendors.length];
 
-    const denialRate = c.medicareDenialRatePct || stSummary.avgMedicareDenialRate || 18.2;
+    const countyDenial = c.medicareDenialRatePct !== undefined
+      ? { ratePct: c.medicareDenialRatePct, source: c.medicareDenialSource || '' }
+      : getCountyMcrDenialRate(c.countyFips, sc, c.countyName, {
+          population: c.population,
+          povertyRatePct: c.povertyRatePct,
+          seniorPopPct: c.seniorPopPct || stSummary.seniorPopPct || 16.5,
+          averageTransportMinutes: c.averageTransportMinutes
+        });
+    const denialRate = countyDenial.ratePct;
     const recoverableRevenue = Math.round(emsTransports * (isFire ? 34 : 68));
 
     const medicarePayerPct = +(38.0 + (posHash % 14)).toFixed(1);
@@ -353,6 +394,49 @@ class NationalProviderDatabaseService {
       ? Math.max(2, Math.round(popServed / 14000))
       : 0;
 
+    const stationsCount = Math.max(1, Math.round(popServed / 18000));
+    const alsAmbulances = isFire ? Math.max(1, Math.round(totalAmbulances * 0.75)) : Math.max(1, Math.round(totalAmbulances * 0.8));
+    const blsAmbulances = Math.max(0, totalAmbulances - alsAmbulances);
+    const fireEngines = isFire ? Math.max(1, totalFireEngines) : 0;
+    const ladderTrucks = isFire ? Math.max(0, Math.round(stationsCount * 0.4)) : 0;
+    const heavyRescueUnits = isFire ? Math.max(0, Math.round(stationsCount * 0.3)) : Math.max(0, Math.round(stationsCount * 0.25));
+    const commandVehicles = Math.max(1, Math.round(stationsCount * 0.5));
+    const totalActiveUnits = alsAmbulances + blsAmbulances + fireEngines + ladderTrucks + heavyRescueUnits + commandVehicles;
+    const avgVehicleAgeYears = defibAge;
+    const replacementCycleYears = emsTransports > 6000 ? 7 : 10;
+
+    const apparatusFleet = {
+      alsAmbulances,
+      blsAmbulances,
+      fireEngines,
+      ladderTrucks,
+      heavyRescueUnits,
+      commandVehicles,
+      totalActiveUnits,
+      avgVehicleAgeYears,
+      replacementCycleYears
+    };
+
+    const traumaHospName = `${cleanCityDisplay} Regional Medical Center (Level ${(posHash % 2) + 1} Trauma & PCI)`;
+    const cathLabHospName = `${cleanCityDisplay} Heart & Vascular Pavilion (24/7 STEMI PCI Cath Lab)`;
+    const distTrauma = +(c.averageTransportMinutes * 0.65).toFixed(1);
+    const latencyTrauma = c.averageTransportMinutes;
+    const distCath = +(c.primaryCathLabDistanceMiles).toFixed(1);
+    const latencyCath = Math.round(c.averageTransportMinutes * 0.9);
+    const annualEdTransports = Math.round(emsTransports * 0.88);
+
+    const hospitalLogistics = {
+      primaryTraumaHospital: traumaHospName,
+      traumaLevel: (posHash % 3 === 0) ? 'Level 1 Regional Trauma' : 'Level 2 Regional Trauma',
+      distanceToTraumaMiles: distTrauma,
+      transportTimeMinutes: latencyTrauma,
+      primaryCathLabHospital: cathLabHospName,
+      cathLabDistanceMiles: distCath,
+      cathLabTransportMinutes: latencyCath,
+      annualEdTransports,
+      avgEdOffloadLatencyMinutes: 20
+    };
+
     // OpenStreetMap is a search link, never an official verification of agency identity.
     const headquartersAddress = `${agencyName} Headquarters, ${cleanCityDisplay}, ${sc} ${zip}`;
     const mapSearchUri = `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${agencyName}, ${cleanCityDisplay}, ${sc} ${zip}`)}`;
@@ -364,6 +448,8 @@ class NationalProviderDatabaseService {
       fdid: `${sc}-${isFire ? 'FD' : 'EMS'}-${c.countyFips}${isMunicipalCity ? `-${citySlug.slice(0, 3).toUpperCase()}` : ''}`,
       agencyType,
       providerCategory: isFire ? 'FIRE' : 'EMS',
+      apparatusFleet,
+      hospitalLogistics,
       jurisdictionLevel: isMunicipalCity ? 'Local' : 'County',
       state: c.stateName,
       stateCode: sc,
@@ -598,15 +684,26 @@ class NationalProviderDatabaseService {
           dispatchCadVendor: rawAgency.installedFleet.dispatchCadVendor || 'CentralSquare Enterprise CAD'
         },
         keyContacts: verifiedContacts,
-        ...savedPatch,
       };
-      enriched.headquartersPhone = '';
-      enriched.keyContacts = enriched.keyContacts.map((c) => ({ ...c, phone: '' }));
 
-      this.registerAgency(enriched);
-      const isFire = enriched.agencyType.toLowerCase().includes('fire');
-      const rawCountyClean = enriched.county.toLowerCase().replace(/\s*(county|parish|borough|census area|municipality)$/i, '').trim();
-      seenCityCategory.add(`${enriched.stateCode.toUpperCase()}:${rawCountyClean}:${enriched.city.toLowerCase().trim()}:${isFire ? 'fire' : 'ems'}`);
+      const deepEnriched: Agency = {
+        ...enriched,
+        ...savedPatch,
+        apparatusFleet: savedPatch.apparatusFleet ? { ...enriched.apparatusFleet, ...savedPatch.apparatusFleet } : enriched.apparatusFleet,
+        hospitalLogistics: savedPatch.hospitalLogistics ? { ...enriched.hospitalLogistics, ...savedPatch.hospitalLogistics } : enriched.hospitalLogistics,
+        installedFleet: savedPatch.installedFleet ? { ...enriched.installedFleet, ...savedPatch.installedFleet } : enriched.installedFleet,
+        competitorContract: savedPatch.competitorContract ? { ...enriched.competitorContract, ...savedPatch.competitorContract } : enriched.competitorContract,
+        cmsData: savedPatch.cmsData ? { ...enriched.cmsData, ...savedPatch.cmsData } : enriched.cmsData,
+        gisData: savedPatch.gisData ? { ...enriched.gisData, ...savedPatch.gisData } : enriched.gisData,
+        keyContacts: savedPatch.keyContacts && savedPatch.keyContacts.length > 0 ? savedPatch.keyContacts : enriched.keyContacts,
+      };
+      deepEnriched.headquartersPhone = '';
+      deepEnriched.keyContacts = deepEnriched.keyContacts.map((c) => ({ ...c, phone: '' }));
+
+      this.registerAgency(deepEnriched);
+      const isFire = deepEnriched.agencyType.toLowerCase().includes('fire');
+      const rawCountyClean = deepEnriched.county.toLowerCase().replace(/\s*(county|parish|borough|census area|municipality)$/i, '').trim();
+      seenCityCategory.add(`${deepEnriched.stateCode.toUpperCase()}:${rawCountyClean}:${deepEnriched.city.toLowerCase().trim()}:${isFire ? 'fire' : 'ems'}`);
     }
 
     // 2. Connect all 3,144 Counties and all Official US Census Cities & Unincorporated Districts across all 50 States + DC
@@ -652,14 +749,36 @@ class NationalProviderDatabaseService {
         if (!seenCityCategory.has(emsKey)) {
           const baseEms = this.createJurisdictionAgency(c, sc, cityName, isMunicipalCity, 'ems', stSummary);
           const savedPatch = savedVerifications[baseEms.id] || {};
-          this.registerAgency({ ...baseEms, ...savedPatch });
+          const mergedEms: Agency = {
+            ...baseEms,
+            ...savedPatch,
+            apparatusFleet: savedPatch.apparatusFleet ? { ...baseEms.apparatusFleet, ...savedPatch.apparatusFleet } : baseEms.apparatusFleet,
+            hospitalLogistics: savedPatch.hospitalLogistics ? { ...baseEms.hospitalLogistics, ...savedPatch.hospitalLogistics } : baseEms.hospitalLogistics,
+            installedFleet: savedPatch.installedFleet ? { ...baseEms.installedFleet, ...savedPatch.installedFleet } : baseEms.installedFleet,
+            competitorContract: savedPatch.competitorContract ? { ...baseEms.competitorContract, ...savedPatch.competitorContract } : baseEms.competitorContract,
+            cmsData: savedPatch.cmsData ? { ...baseEms.cmsData, ...savedPatch.cmsData } : baseEms.cmsData,
+            gisData: savedPatch.gisData ? { ...baseEms.gisData, ...savedPatch.gisData } : baseEms.gisData,
+            keyContacts: savedPatch.keyContacts && savedPatch.keyContacts.length > 0 ? savedPatch.keyContacts : baseEms.keyContacts,
+          };
+          this.registerAgency(mergedEms);
           seenCityCategory.add(emsKey);
         }
 
         if (!seenCityCategory.has(fireKey)) {
           const baseFire = this.createJurisdictionAgency(c, sc, cityName, isMunicipalCity, 'fire', stSummary);
           const savedPatch = savedVerifications[baseFire.id] || {};
-          this.registerAgency({ ...baseFire, ...savedPatch });
+          const mergedFire: Agency = {
+            ...baseFire,
+            ...savedPatch,
+            apparatusFleet: savedPatch.apparatusFleet ? { ...baseFire.apparatusFleet, ...savedPatch.apparatusFleet } : baseFire.apparatusFleet,
+            hospitalLogistics: savedPatch.hospitalLogistics ? { ...baseFire.hospitalLogistics, ...savedPatch.hospitalLogistics } : baseFire.hospitalLogistics,
+            installedFleet: savedPatch.installedFleet ? { ...baseFire.installedFleet, ...savedPatch.installedFleet } : baseFire.installedFleet,
+            competitorContract: savedPatch.competitorContract ? { ...baseFire.competitorContract, ...savedPatch.competitorContract } : baseFire.competitorContract,
+            cmsData: savedPatch.cmsData ? { ...baseFire.cmsData, ...savedPatch.cmsData } : baseFire.cmsData,
+            gisData: savedPatch.gisData ? { ...baseFire.gisData, ...savedPatch.gisData } : baseFire.gisData,
+            keyContacts: savedPatch.keyContacts && savedPatch.keyContacts.length > 0 ? savedPatch.keyContacts : baseFire.keyContacts,
+          };
+          this.registerAgency(mergedFire);
           seenCityCategory.add(fireKey);
         }
       }
