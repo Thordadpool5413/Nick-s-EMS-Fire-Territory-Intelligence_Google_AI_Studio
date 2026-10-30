@@ -4,6 +4,7 @@
  */
 
 import { Agency } from '../types';
+import { validateNpiCheckDigit } from '../services/npiVerificationService';
 
 export interface DataRegistrySource {
   id: string;
@@ -175,9 +176,33 @@ export function auditAgencyDataLineage(
   }
 
   // Independent field verification predicates:
-  const hasVerifiedNpi = Boolean(agency.isVerifiedRecord && agency.npiNumber);
-  const hasVerifiedLegalName = Boolean(agency.isVerifiedRecord && (agency.nppesOfficialName || agency.name));
-  const hasVerifiedAddress = Boolean(agency.isVerifiedRecord && agency.address);
+  const npiFormatCheck = agency.npiNumber ? validateNpiCheckDigit(agency.npiNumber) : { isValid: false, reasons: [] };
+  const isNpiCheckDigitValid = npiFormatCheck.isValid;
+
+  // Strict Source Evidence Gating: Unrelated entities or Type 1 individuals NEVER verify fire/EMS department identity
+  const isUnrelatedOrIndividual =
+    agency.operatingRelationship === 'UNRELATED_ENTITY' ||
+    agency.operatingRelationship === 'RELATIONSHIP_UNRESOLVED' ||
+    agency.npiNumber === '1982736450' || // Dr. Maureen Connolly (NPI-1 Family Medicine)
+    agency.npiNumber === '1184762940';   // Dr. Shawn Allen Anglemyer (NPI-1 Chiropractor)
+
+  const isCorroboratedRelationship =
+    agency.operatingRelationship === 'OPERATING_RELATIONSHIP_CONFIRMED' ||
+    agency.operatingRelationship === 'POSSIBLE_RELATED_ENTITY' ||
+    agency.operatingRelationship === 'DIRECT_OPERATING_AGENCY' ||
+    agency.operatingRelationship === 'PARENT_MUNICIPALITY' ||
+    Boolean(agency.verificationSource?.includes('NPPES') && !isUnrelatedOrIndividual);
+
+  const hasVerifiedNpi = Boolean(
+    isNpiCheckDigitValid &&
+    agency.npiNumber &&
+    agency.isVerifiedRecord &&
+    !isUnrelatedOrIndividual &&
+    isCorroboratedRelationship
+  );
+
+  const hasVerifiedLegalName = Boolean(hasVerifiedNpi && (agency.nppesOfficialName || agency.name));
+  const hasVerifiedAddress = Boolean(hasVerifiedNpi && agency.address);
   const hasVerifiedFdid = Boolean(agency.isFdidVerified && agency.fdid);
   const hasVerifiedOperations = Boolean(agency.isOperationalDataVerified);
   
@@ -219,23 +244,49 @@ export function auditAgencyDataLineage(
     agency.liveFemaAwards.length > 0
   );
 
+  const isParentMunicipality = agency.operatingRelationship === 'PARENT_MUNICIPALITY' ||
+    agency.operatingRelationship === 'POSSIBLE_RELATED_ENTITY' ||
+    Boolean(agency.verificationSource?.includes('Parent Municipality'));
+
   const records: FieldLineageRecord[] = [
     // 1. Operational Telemetry & Identifiers
     {
       category: 'Operational Telemetry',
       fieldName: 'Federal CMS NPI Number',
-      fieldValue: agency.npiNumber || 'Unverified / Sourcing Required',
+      fieldValue: agency.npiNumber
+        ? (isUnrelatedOrIndividual
+            ? `${agency.npiNumber} (Unrelated / Mismatched Entity)`
+            : isNpiCheckDigitValid ? agency.npiNumber : `${agency.npiNumber} (Invalid Check Digit)`)
+        : 'Unverified / Sourcing Required',
       sourceRegistry: 'CMS National Plan and Provider Enumeration System (NPPES)',
       schemaIdentifier: 'NPI Type 2 Organization Record',
-      verificationStatus: hasVerifiedNpi ? 'Verified Official' : agency.npiNumber ? 'Cross-Referenced' : 'Sourcing Required',
-      sourceUrlOrCitation: agency.npiNumber ? `https://npiregistry.cms.hhs.gov/provider-view/${agency.npiNumber}` : undefined,
+      verificationStatus: hasVerifiedNpi
+        ? 'Verified Official'
+        : (agency.npiNumber && !isNpiCheckDigitValid)
+          ? 'Unverified Baseline'
+          : isUnrelatedOrIndividual
+            ? 'Unverified Baseline'
+            : agency.npiNumber ? 'Cross-Referenced' : 'Sourcing Required',
+      sourceUrlOrCitation: agency.npiNumber && isNpiCheckDigitValid && !isUnrelatedOrIndividual
+        ? `https://npiregistry.cms.hhs.gov/provider-view/${agency.npiNumber}`
+        : undefined,
       reportingPeriod: agency.nppesLastUpdated || 'NPPES Dissemination CY2026',
       documentationQuote: agency.npiNumber
-        ? (hasVerifiedNpi
-            ? `NPPES provider enrollment record confirmed: NPI #${agency.npiNumber}.`
-            : `Preliminary candidate NPI #${agency.npiNumber}; pending live federal registry confirmation.`)
+        ? (isUnrelatedOrIndividual
+            ? `NPI #${agency.npiNumber} is registered to an unrelated entity or individual clinician in NPPES; cannot substantiate agency identity.`
+            : !isNpiCheckDigitValid
+              ? `Invalid NPI: Identifier #${agency.npiNumber} failed CMS Luhn mod-10 check digit specification. Uncorroborated.`
+              : hasVerifiedNpi
+                ? (isParentMunicipality
+                    ? `NPPES Type 2 provider record confirmed for parent municipality. Operating department identity corroborated as municipal division; station equipment, fleet age, and operating metrics require separate primary source evidence.`
+                    : `NPPES provider enrollment record confirmed: NPI #${agency.npiNumber}.`)
+                : `Preliminary candidate NPI #${agency.npiNumber}; pending live federal registry confirmation.`)
         : 'No confirmed CMS NPI number recorded; live federal registry query required.',
-      evidenceBasis: hasVerifiedNpi ? 'Direct CMS NPPES Registry Type 2 Provider API enumeration.' : 'Candidate NPI pending corroborated provider lookup.',
+      evidenceBasis: hasVerifiedNpi
+        ? (isParentMunicipality ? 'Parent municipality NPI corroborated under ambulance taxonomy.' : 'Direct CMS NPPES Registry Type 2 Provider API enumeration.')
+        : isUnrelatedOrIndividual
+          ? 'NPPES entity mismatch: Registered to unrelated individual or practitioner.'
+          : (!isNpiCheckDigitValid ? 'Invalid check digit (Luhn-80840 failure).' : 'Candidate NPI pending corroborated provider lookup.'),
       evidenceScope: hasVerifiedNpi ? 'FIELD_VERIFIED' : 'UNVERIFIED',
       isFieldVerified: hasVerifiedNpi
     },

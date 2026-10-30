@@ -67,8 +67,8 @@ export const AgencyQuickPreviewDrawer: React.FC<AgencyQuickPreviewDrawerProps> =
 
   const isFire = agency.agencyType.toLowerCase().includes('fire') || agency.providerCategory === 'FIRE';
   const primaryContact = agency.keyContacts?.[0];
-  const npiNumber = agency.npiNumber || '1407891234';
-  const nppesUrl = agency.nppesRegistryUrl || `https://npiregistry.cms.hhs.gov/provider-view/${npiNumber}`;
+  const npiNumber = agency.npiNumber;
+  const nppesUrl = agency.nppesRegistryUrl || (npiNumber ? `https://npiregistry.cms.hhs.gov/provider-view/${npiNumber}` : 'https://npiregistry.cms.hhs.gov/');
   const usfaUrl = agency.usfaRegistryUrl || 'https://apps.usfa.fema.gov/registry/';
   const mapsUrl =
     agency.googleMapsUri ||
@@ -118,9 +118,9 @@ export const AgencyQuickPreviewDrawer: React.FC<AgencyQuickPreviewDrawerProps> =
                   {isFire ? 'Fire Department' : 'EMS Provider'}
                 </span>
                 <span>·</span>
-                <span>FDID <span className="font-mono text-[11px]">{agency.fdid || '04102'}</span></span>
+                <span>FDID <span className="font-mono text-[11px]">{agency.fdid || 'Not Recorded'}</span></span>
                 <span>·</span>
-                <span>NPI <span className="font-mono text-[11px]">{npiNumber}</span></span>
+                <span>NPI <span className="font-mono text-[11px]">{npiNumber || 'Unassigned'}</span></span>
               </div>
 
               <h2

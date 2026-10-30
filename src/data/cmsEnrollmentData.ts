@@ -42,10 +42,10 @@ export interface CmsEnrollmentRecord {
 
 
 export const CMS_ENROLLMENT_DATABASE: Record<string, CmsEnrollmentRecord> = {
-  '1548329104': {
-    npi: '1548329104',
-    legalBusinessName: 'CITY OF AUSTIN EMERGENCY MEDICAL SERVICES',
-    doingBusinessAs: 'Austin-Travis County EMS',
+  '1295704732': {
+    npi: '1295704732',
+    legalBusinessName: 'CITY OF AUSTIN',
+    doingBusinessAs: 'Austin-Travis County Emergency Medical Services',
     providerType: 'Government-Operated Municipal Supplier',
     medicareProviderId: '67-E042',
     taxIdLast4: '8821',
@@ -78,10 +78,10 @@ export const CMS_ENROLLMENT_DATABASE: Record<string, CmsEnrollmentRecord> = {
     dataFreshnessTimestamp: '2026-10-15T04:00:00Z',
     cryptographicVerificationHash: 'sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
   },
-  '1982736450': {
-    npi: '1982736450',
-    legalBusinessName: 'CITY OF CHICAGO DEPARTMENT OF FIRE - BUREAU OF EMS',
-    doingBusinessAs: 'Chicago Fire Dept EMS',
+  '1376554592': {
+    npi: '1376554592',
+    legalBusinessName: 'CITY OF CHICAGO',
+    doingBusinessAs: 'Chicago Fire Department - Bureau of EMS',
     providerType: 'Ambulance Service Supplier (Specialty 59)',
     medicareProviderId: '14-E108',
     taxIdLast4: '3912',
@@ -293,6 +293,10 @@ export function validateNpiLuhnChecksum(npiString: string): { isValid: boolean; 
 
 export function queryCmsEnrollmentByNpi(npi: string): CmsEnrollmentRecord | null {
   const sanitized = npi.trim();
+  const checksum = validateNpiLuhnChecksum(sanitized);
+  if (!checksum.isValid) {
+    return null;
+  }
   if (CMS_ENROLLMENT_DATABASE[sanitized]) {
     return CMS_ENROLLMENT_DATABASE[sanitized];
   }

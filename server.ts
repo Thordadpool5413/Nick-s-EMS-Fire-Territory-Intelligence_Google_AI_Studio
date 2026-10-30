@@ -11,6 +11,13 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
+import {
+  validateNpiCheckDigit,
+  evaluateOperatingRelationship,
+  queryOfficialNppesByNpi,
+  NpiRegistryEntity,
+  OperatingAgencyRelationshipType
+} from './src/services/npiVerificationService';
 
 dotenv.config();
 
@@ -114,7 +121,10 @@ async function queryFederalNpiRegistry(params: Record<string, string>): Promise<
       return { results: [], available: false, error: `NPPES API returned status ${response.status}` };
     }
     const data = (await response.json()) as { results?: NppesResult[] };
-    return { results: data.results || [], available: true };
+    const rawResults = data.results || [];
+    // Strict CMS check-digit filtering: reject any malformed or invalid Luhn NPI
+    const validResults = rawResults.filter(r => r.number && validateNpiCheckDigit(r.number).isValid);
+    return { results: validResults, available: true };
   } catch (err: unknown) {
     const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
     return {
@@ -244,7 +254,31 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
     stateCode = '',
     zipCode = '',
     category = 'all',
+    npiNumber = '',
   } = req.body || {};
+
+  // P0 Gate: If explicit NPI provided, strictly validate check digit before executing queries
+  if (npiNumber) {
+    const npiCheck = validateNpiCheckDigit(npiNumber);
+    if (!npiCheck.isValid) {
+      res.json({
+        outcome: 'NOT_MATCHED',
+        verified: false,
+        matchConfidence: 0,
+        matchReasons: [npiCheck.error || 'Invalid NPI format: failed CMS Luhn mod-10 check digit algorithm'],
+        verificationSource: 'Federal CMS NPPES NPI Registry (Format Rejected)',
+        npiNumber,
+        operatingRelationship: 'UNRELATED_ENTITY',
+        operatingRelationshipSummary: 'Input NPI failed the CMS-prescribed Luhn mod-10 check digit algorithm with 80840 prefix.',
+        registryEntityConfirmed: false,
+        usfaRegistryUrl: 'https://apps.usfa.fema.gov/registry/',
+        liveFemaAwards: [],
+        authorizedOfficial: null,
+        candidateProviders: []
+      });
+      return;
+    }
+  }
 
   try {
     const cleanCity = String(city).replace(/ Fire & EMS District| County| Parish| Borough/gi, '').trim();
@@ -256,6 +290,17 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
     let anyNpiQueryAttempted = false;
     let anyNpiQuerySucceeded = false;
     const npiErrors: string[] = [];
+
+    // If explicit valid NPI was provided, look it up directly first
+    if (npiNumber && validateNpiCheckDigit(npiNumber).isValid) {
+      anyNpiQueryAttempted = true;
+      const directLookup = await queryFederalNpiRegistry({ number: String(npiNumber).trim() });
+      if (directLookup.available) {
+        anyNpiQuerySucceeded = true;
+        npiMatches.push(...directLookup.results);
+      }
+      if (directLookup.error) npiErrors.push(directLookup.error);
+    }
 
     if (cleanState) {
       anyNpiQueryAttempted = Boolean(cleanCity);
@@ -338,6 +383,8 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
       candidate: NppesResult;
       score: number;
       reasons: string[];
+      relationshipType: OperatingAgencyRelationshipType;
+      relationshipSummary: string;
     }
 
     const scoredCandidates: ScoredCandidate[] = npiMatches.map((cand) => {
@@ -346,11 +393,77 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
       const orgName = (cand.basic?.organization_name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
       const candTokens = orgName.split(/\s+/).filter((w) => w.length > 2);
 
-      // 1. State Verification (Mandatory gate)
+      // 0. Format & Check-Digit Gate
+      const npiValid = cand.number ? validateNpiCheckDigit(cand.number).isValid : false;
+      if (!npiValid) {
+        return {
+          candidate: cand,
+          score: 0,
+          reasons: ['Invalid NPI check digit (Luhn-80840)'],
+          relationshipType: 'UNRELATED_ENTITY',
+          relationshipSummary: 'Candidate NPI fails CMS Luhn mod-10 check digit specification'
+        };
+      }
+
+      // Convert candidate to NpiRegistryEntity for operating relationship check
       const loc = cand.addresses?.find((a) => a.address_purpose === 'LOCATION') || cand.addresses?.[0];
+      const primaryTax = cand.taxonomies?.find((t) => t.primary) || cand.taxonomies?.[0];
+      const isAmbulance = primaryTax
+        ? (primaryTax.code === '341600000X' ||
+           primaryTax.code === '3416L0300X' ||
+           (primaryTax.desc || '').toLowerCase().includes('ambulance') ||
+           (primaryTax.desc || '').toLowerCase().includes('rescue'))
+        : false;
+
+      const candEntity: NpiRegistryEntity = {
+        npi: cand.number,
+        enumerationType: 'NPI-2',
+        legalEntityName: cand.basic?.organization_name || '',
+        isOrganization: true,
+        isIndividual: false,
+        status: cand.basic?.status || 'A',
+        lastUpdated: cand.basic?.last_updated || '',
+        practiceLocationAddress: loc ? {
+          street: [loc.address_1, loc.address_2].filter(Boolean).join(', '),
+          city: loc.city || '',
+          state: loc.state || '',
+          zipCode: (loc.postal_code || '').slice(0, 5),
+          telephone: loc.telephone_number
+        } : undefined,
+        primaryTaxonomy: primaryTax ? {
+          code: primaryTax.code || '',
+          description: primaryTax.desc || '',
+          isAmbulanceRescue: isAmbulance
+        } : undefined,
+        allTaxonomies: (cand.taxonomies || []).map(t => ({
+          code: t.code || '',
+          description: t.desc || '',
+          primary: Boolean(t.primary)
+        }))
+      };
+
+      const relEval = evaluateOperatingRelationship(candEntity, agencyName, cleanCity, cleanState);
+
+      // 1. Mandatory State Isolation & Relationship Gate
       const candState = (loc?.state || '').toUpperCase().trim();
       if (cleanState && candState && candState !== cleanState) {
-        return { candidate: cand, score: 0, reasons: ['State mismatch'] };
+        return {
+          candidate: cand,
+          score: 0,
+          reasons: ['State mismatch'],
+          relationshipType: 'UNRELATED_ENTITY',
+          relationshipSummary: `State mismatch: Candidate in ${candState}, target agency in ${cleanState}`
+        };
+      }
+
+      if (relEval.relationship === 'UNRELATED_ENTITY') {
+        return {
+          candidate: cand,
+          score: 0,
+          reasons: [relEval.summary],
+          relationshipType: 'UNRELATED_ENTITY',
+          relationshipSummary: relEval.summary
+        };
       }
 
       // 2. Organization Name Token Overlap
@@ -372,20 +485,21 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
       }
 
       // 4. Healthcare / Emergency Taxonomy Match
-      const taxonomies = cand.taxonomies || [];
-      const hasAmbulanceTaxonomy = taxonomies.some(
-        (t) =>
-          t.code === '341600000X' ||
-          t.code === '3416L0300X' ||
-          (t.desc || '').toLowerCase().includes('ambulance') ||
-          (t.desc || '').toLowerCase().includes('rescue')
-      );
-      if (hasAmbulanceTaxonomy) {
+      if (isAmbulance) {
         score += 0.20;
         reasons.push('Authorized Emergency Ambulance / Rescue Taxonomy (+20%)');
       }
 
-      // 5. Deduct for known private commercial contractors if searching municipal agency
+      // 5. Operating Relationship Boost
+      if (relEval.relationship === 'OPERATING_RELATIONSHIP_CONFIRMED' || relEval.relationship === 'DIRECT_OPERATING_AGENCY') {
+        score += 0.20;
+        reasons.push(`Direct operating agency match: ${relEval.summary}`);
+      } else if (relEval.relationship === 'POSSIBLE_RELATED_ENTITY' || relEval.relationship === 'PARENT_MUNICIPALITY') {
+        score += 0.15;
+        reasons.push(`Parent municipality match: ${relEval.summary}`);
+      }
+
+      // 6. Deduct for known private commercial contractors if searching municipal agency
       const privateCommercialChains = ['amr', 'american medical response', 'acadian', 'falck', 'superior air-ground'];
       const isCandidatePrivate = privateCommercialChains.some((chain) => orgName.includes(chain));
       const isTargetPrivate = privateCommercialChains.some((chain) => reqLower.includes(chain));
@@ -398,6 +512,8 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
         candidate: cand,
         score: Math.min(1.0, +score.toFixed(2)),
         reasons,
+        relationshipType: relEval.relationship,
+        relationshipSummary: relEval.summary
       };
     });
 
@@ -453,7 +569,7 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
         .filter(Boolean)
         .map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
         .join(' ');
-      const officialTitle = matchedRecord.basic?.authorized_official_title_or_position || 'Authorized Department Official';
+      const officialTitle = matchedRecord.basic?.authorized_official_title_or_position || 'NPPES Authorized Administrative Official';
       const nppesLastUpdated = matchedRecord.basic?.last_updated || '';
 
       const searchQuery = `${agencyName}, ${formattedAddress}`;
@@ -472,6 +588,10 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
         matchReasons: topMatch.reasons,
         verificationSource: 'Federal CMS NPI Registry (NPPES v2.1) & OpenFEMA API',
         npiNumber: matchedRecord.number,
+        operatingRelationship: topMatch.relationshipType,
+        operatingRelationshipSummary: topMatch.relationshipSummary,
+        registryEntityConfirmed: true,
+        addressType: 'NPPES Practice Location',
         taxonomyCode,
         taxonomyDescription,
         nppesOfficialName: officialName,
@@ -490,7 +610,8 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
           ? {
               name: officialName,
               title: officialTitle,
-              phone: '',
+              role: 'NPPES Authorized Official', // Strictly NPPES administrative official, never Fire Chief or EMS Chief
+              phone: matchedRecord.basic?.authorized_official_telephone_number || '',
               email: '',
               isVerifiedOfficial: true,
               verificationSource: `CMS NPPES NPI #${matchedRecord.number}${nppesLastUpdated ? ` (Certified ${nppesLastUpdated})` : ''}`,
@@ -501,6 +622,7 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
           name: sc.candidate.basic?.organization_name || 'Registered Provider',
           score: Math.round(sc.score * 100),
           reasons: sc.reasons,
+          relationship: sc.relationshipType
         })),
       });
       return;
@@ -526,6 +648,9 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
       matchReasons: fallbackReasons,
       verificationSource: fallbackSource,
       npiNumber: null,
+      operatingRelationship: topMatch ? topMatch.relationshipType : 'UNRESOLVED',
+      operatingRelationshipSummary: topMatch ? topMatch.relationshipSummary : 'No corroborated relationship established.',
+      registryEntityConfirmed: false,
       address: `${cleanCity}, ${cleanState} ${zipCode}`.trim(),
       headquartersPhone: '',
       officialWebsite: `https://www.google.com/search?q=${encodeURIComponent(`${agencyName} ${cleanCity} ${cleanState} official government website`)}`,
@@ -538,12 +663,87 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
         name: sc.candidate.basic?.organization_name || 'Registered Provider',
         score: Math.round(sc.score * 100),
         reasons: sc.reasons,
+        relationship: sc.relationshipType
       })),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ outcome: 'ERROR', verified: false, error: 'Live verification failed', details: msg });
   }
+});
+
+/**
+ * Direct NPI Format & NPPES Registry Verification Endpoint
+ * Validates check digit via CMS Luhn-80840, queries live NPPES API,
+ * and assesses organizational vs individual and municipal operating relationships.
+ */
+app.post('/api/npi/verify', async (req: Request, res: Response): Promise<void> => {
+  const { npiNumber: rawNpi, npiCandidate, agencyName = '', city = '', stateCode: rawStateCode, state = '' } = req.body || {};
+  const npiNumber = rawNpi || npiCandidate;
+  const stateCode = rawStateCode || state;
+  const formatValidation = validateNpiCheckDigit(npiNumber);
+
+  if (!formatValidation.isValid) {
+    res.json({
+      npi: String(npiNumber || ''),
+      formatValidation,
+      lookupStatus: 'INVALID_FORMAT',
+      isVerified: false,
+      registryEntityConfirmed: false,
+      relationshipType: 'UNRELATED_ENTITY',
+      relationshipSummary: formatValidation.error || 'NPI failed Luhn-80840 check digit validation',
+      provenance: {
+        sourceEndpoint: 'CMS NPPES Registry API v2.1',
+        sourceStatus: 'INVALID_INPUT',
+        errorDetails: formatValidation.error
+      }
+    });
+    return;
+  }
+
+  const lookup = await queryOfficialNppesByNpi(formatValidation.npi);
+
+  if (lookup.status !== 'SUCCESS' || !lookup.entity) {
+    res.json({
+      npi: formatValidation.npi,
+      formatValidation,
+      lookupStatus: lookup.status === 'NOT_FOUND' ? 'NOT_MATCHED' : 'SOURCE_UNAVAILABLE',
+      isVerified: false,
+      registryEntityConfirmed: false,
+      relationshipType: 'UNRESOLVED',
+      relationshipSummary: lookup.error || 'NPI lookup failed',
+      provenance: {
+        sourceEndpoint: `https://npiregistry.cms.hhs.gov/api/?version=2.1&number=${formatValidation.npi}`,
+        sourceStatus: lookup.status === 'NOT_FOUND' ? 'LIVE_CMS_NPPES_API' : 'UNAVAILABLE',
+        errorDetails: lookup.error
+      }
+    });
+    return;
+  }
+
+  const entity = lookup.entity;
+  const relationshipEval = evaluateOperatingRelationship(entity, agencyName, city, stateCode);
+  const isVerified =
+    relationshipEval.relationship === 'OPERATING_RELATIONSHIP_CONFIRMED' ||
+    relationshipEval.relationship === 'POSSIBLE_RELATED_ENTITY' ||
+    relationshipEval.relationship === 'DIRECT_OPERATING_AGENCY' ||
+    relationshipEval.relationship === 'PARENT_MUNICIPALITY';
+
+  res.json({
+    npi: formatValidation.npi,
+    formatValidation,
+    lookupStatus: isVerified ? 'MATCHED' : relationshipEval.relationship === 'UNRELATED_ENTITY' ? 'UNRELATED_ENTITY' : 'NOT_MATCHED',
+    isVerified,
+    registryEntityConfirmed: true,
+    relationshipType: relationshipEval.relationship,
+    relationshipSummary: relationshipEval.summary,
+    registryEntity: entity,
+    provenance: {
+      sourceEndpoint: `https://npiregistry.cms.hhs.gov/api/?version=2.1&number=${formatValidation.npi}`,
+      retrievedAt: new Date().toISOString(),
+      sourceStatus: 'LIVE_CMS_NPPES_API'
+    }
+  });
 });
 
 /**

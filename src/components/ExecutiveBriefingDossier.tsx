@@ -395,9 +395,9 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                   <p className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-2">
                     <span>{agency.address || `${agency.city}, ${agency.stateCode}`}, {agency.city}, {agency.county}, {agency.stateCode} {agency.zipCode}</span>
                     <span aria-hidden="true">&middot;</span>
-                    <span className="text-slate-700">FDID: {agency.fdid || 'Verified'}</span>
+                    <span className="text-slate-700">FDID: {agency.fdid || 'Not Recorded'}</span>
                     <span aria-hidden="true">&middot;</span>
-                    <span className="text-slate-700">NPI: {agency.npiNumber || '1043298711'}</span>
+                    <span className="text-slate-700">NPI: {agency.npiNumber || 'Unassigned'}</span>
                     <span aria-hidden="true">&middot;</span>
                     <span className="text-slate-700">Taxonomy: {agency.taxonomyCode || '341600000X'}</span>
                   </p>
@@ -686,7 +686,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 <h3 className="text-lg font-semibold text-slate-900">Clinical resuscitation quality, CMS denials &amp; contract timeline</h3>
               </div>
               <div className="text-xs text-slate-600 tabular-nums">
-                NPI #{agency.npiNumber || '1043298711'} &middot; FDID: {agency.fdid || 'Verified'}
+                {agency.npiNumber ? `NPI #${agency.npiNumber}` : 'NPI: Unassigned'} &middot; FDID: {agency.fdid || 'Not Recorded'}
               </div>
             </div>
 
@@ -887,7 +887,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
                 <h3 className="text-lg font-semibold text-slate-900">Commercial TCO, Medicare fee schedule &amp; cooperative purchasing</h3>
               </div>
               <div className="text-xs text-slate-600 tabular-nums">
-                Federal NPI #{agency.npiNumber || '1043298711'}
+                {agency.npiNumber ? `Federal NPI #${agency.npiNumber}` : 'Federal NPI: Unassigned'}
               </div>
             </div>
 
@@ -1113,7 +1113,7 @@ export const ExecutiveBriefingDossier: React.FC<ExecutiveBriefingDossierProps> =
               <div className="space-y-0.5">
                 <div className="font-bold text-slate-900">Authoritative Public Data Sources:</div>
                 <div className="text-[11px]">
-                  CMS NPPES Registry (NPI #{agency.npiNumber || '1043298711'}) · USFA National Fire Registry · NEMSIS v3.5 · CARES Cardiac Arrest Registry
+                  CMS NPPES Registry ({agency.npiNumber ? `NPI #${agency.npiNumber}` : 'Pending Provider Lookup'}) · USFA National Fire Registry · NEMSIS v3.5 · CARES Cardiac Arrest Registry
                 </div>
               </div>
 

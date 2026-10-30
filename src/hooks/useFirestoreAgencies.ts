@@ -591,3 +591,11 @@ export function useFirestoreAgencies({
     setAgenciesState: setAllSanitizedAgencies
   };
 }
+
+/**
+ * Read-only accessor to inspect agencies loaded and sanitized by useFirestoreAgencies
+ * without mutating Firestore production data.
+ */
+export function getInitialFirestoreAgenciesDataset(): Agency[] {
+  return dataSanitizationService.sanitizeAgenciesList(loadStoredAgencies(), undefined, false);
+}

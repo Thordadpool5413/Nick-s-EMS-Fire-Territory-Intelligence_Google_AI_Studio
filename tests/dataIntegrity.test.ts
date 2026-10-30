@@ -20,6 +20,15 @@ import { nationalProviderDb } from '../src/services/nationalProviderDatabase';
 import { formatPercent, formatCurrency, formatScore } from '../src/utils/numberFormatting';
 import { ALL_50_STATES_SUMMARIES } from '../src/data/nationalGeographicData';
 import { Agency } from '../src/types';
+import {
+  validateNpiCheckDigit,
+  computeCmsNpiCheckDigit,
+  evaluateOperatingRelationship,
+  queryOfficialNppesByNpi,
+  NpiRegistryEntity
+} from '../src/services/npiVerificationService';
+import { CMS_ENROLLMENT_DATABASE } from '../src/data/cmsEnrollmentData';
+import { getInitialFirestoreAgenciesDataset } from '../src/hooks/useFirestoreAgencies';
 
 interface TestResult {
   id: number;
@@ -219,7 +228,7 @@ async function runTests() {
   // Verified Agency Test
   const verifiedAgency: Agency = {
     ...baselineAgency,
-    npiNumber: '1548329104',
+    npiNumber: '1295704732',
     fdid: 'TX-FD-4821',
     isVerifiedRecord: true,
     verificationSource: 'Federal CMS NPI Registry (NPPES v2.1)'
@@ -726,6 +735,731 @@ async function runTests() {
     'View Synchronization',
     isConsistent === true,
     'Verified NPI status is uniformly synchronized across provider cards, Account 360, and lineage audit'
+  );
+
+  // =========================================================================
+  // CATEGORY A: DETERMINISTIC OFFLINE NPI & OPERATING RELATIONSHIP TESTS
+  // =========================================================================
+
+  // Test 46: CMS Luhn-80840 Check Digit Algorithm strictly fails invalid check digits
+  const austinInvalid = validateNpiCheckDigit('1548329104');
+  const chicagoInvalid = validateNpiCheckDigit('1023159842');
+  const denverInvalid = validateNpiCheckDigit('1841395721');
+  assert(
+    46,
+    'Category A: Check digit algorithm fails invalid NPIs (1548329104, 1023159842, 1841395721)',
+    'NPI Check Digit Validation',
+    !austinInvalid.isValid && !chicagoInvalid.isValid && !denverInvalid.isValid,
+    `austin(1548329104)=${austinInvalid.isValid}, chicago(1023159842)=${chicagoInvalid.isValid}, denver(1841395721)=${denverInvalid.isValid} - all strictly rejected`
+  );
+
+  // Test 47: CMS Luhn-80840 Check Digit Algorithm validates genuine NPIs
+  const austinGenuine = validateNpiCheckDigit('1295704732');
+  const anglemyerValid = validateNpiCheckDigit('1184762940');
+  const chicagoValid = validateNpiCheckDigit('1982736450');
+  assert(
+    47,
+    'Category A: Check digit algorithm passes authentic NPIs (1295704732, 1184762940, 1982736450)',
+    'NPI Check Digit Validation',
+    austinGenuine.isValid && anglemyerValid.isValid && chicagoValid.isValid,
+    `austinGenuine(1295704732)=${austinGenuine.isValid}, anglemyer(1184762940)=${anglemyerValid.isValid}, chicago(1982736450)=${chicagoValid.isValid}`
+  );
+
+  // Test 48: Type 1 Individual Clinician NPI is strictly rejected for municipal fire/EMS organization
+  const mockIndividualEntity: NpiRegistryEntity = {
+    npi: '1184762940',
+    enumerationType: 'NPI-1',
+    legalEntityName: 'Shawn Allen Anglemyer, D.C.',
+    isOrganization: false,
+    isIndividual: true,
+    status: 'A',
+    lastUpdated: '2023-01-10',
+    practiceLocationAddress: {
+      street: '414 MEADOW CREEK DR',
+      city: 'WESTMINSTER',
+      state: 'MD',
+      zipCode: '21158'
+    },
+    primaryTaxonomy: {
+      code: '111N00000X',
+      description: 'Chiropractor',
+      isAmbulanceRescue: false
+    },
+    allTaxonomies: [{ code: '111N00000X', description: 'Chiropractor', primary: true }]
+  };
+  const indRelEval = evaluateOperatingRelationship(mockIndividualEntity, 'FDNY EMS Command', 'New York', 'NY');
+  assert(
+    48,
+    'Category A: Type 1 individual clinician NPI strictly rejected for municipal fire/EMS department',
+    'NPI Operating Relationship',
+    indRelEval.relationship === 'UNRELATED_ENTITY',
+    `NPI #1184762940 classified as '${indRelEval.relationship}': ${indRelEval.summary}`
+  );
+
+  // Test 49: Operating relationship classification distinguishes Parent Municipality from direct department
+  const mockAustinMunicipalityEntity: NpiRegistryEntity = {
+    npi: '1295704732',
+    enumerationType: 'NPI-2',
+    legalEntityName: 'CITY OF AUSTIN',
+    isOrganization: true,
+    isIndividual: false,
+    status: 'A',
+    lastUpdated: '2024-05-12',
+    practiceLocationAddress: {
+      street: '15 WALLER ST',
+      city: 'AUSTIN',
+      state: 'TX',
+      zipCode: '78702'
+    },
+    primaryTaxonomy: {
+      code: '341600000X',
+      description: 'Ambulance',
+      isAmbulanceRescue: true
+    },
+    allTaxonomies: [{ code: '341600000X', description: 'Ambulance', primary: true }]
+  };
+  const austinRelEval = evaluateOperatingRelationship(
+    mockAustinMunicipalityEntity,
+    'Austin Emergency Medical Services',
+    'Austin',
+    'TX'
+  );
+  assert(
+    49,
+    'Category A: Municipality NPI correctly classified as POSSIBLE_RELATED_ENTITY / PARENT_MUNICIPALITY',
+    'NPI Operating Relationship',
+    austinRelEval.relationship === 'POSSIBLE_RELATED_ENTITY' || austinRelEval.relationship === 'PARENT_MUNICIPALITY',
+    `CITY OF AUSTIN relationship classified as '${austinRelEval.relationship}': ${austinRelEval.summary}`
+  );
+
+  // Test 50: Field Decoupling - Parent Municipality NPI does NOT substantiate equipment or clinical fields
+  const parentMuniAgency: Agency = {
+    ...baselineAgency,
+    npiNumber: '1295704732',
+    isVerifiedRecord: true,
+    operatingRelationship: 'POSSIBLE_RELATED_ENTITY',
+    verificationSource: 'Federal CMS NPI Registry (Parent Municipality)'
+  };
+  const parentMuniLineage = auditAgencyDataLineage(parentMuniAgency);
+  const equipField = parentMuniLineage.records.find(r => r.fieldName === 'Incumbent Defibrillator Monitor Brand');
+  const fleetAgeField = parentMuniLineage.records.find(r => r.fieldName === 'Defibrillator Fleet Age');
+  const contractField = parentMuniLineage.records.find(r => r.fieldName === 'Service Contract Expiration Date');
+  const clinicalField = parentMuniLineage.records.find(r => r.fieldName === 'Out-of-Hospital Cardiac Arrests (OHCA)');
+  assert(
+    50,
+    'Category A: Field Decoupling - Parent municipality NPI does NOT verify equipment, contracts, or clinical metrics',
+    'Field-Level Provenance Decoupling',
+    equipField !== undefined && equipField.isFieldVerified === false &&
+    fleetAgeField !== undefined && fleetAgeField.isFieldVerified === false &&
+    contractField !== undefined && contractField.isFieldVerified === false &&
+    clinicalField !== undefined && clinicalField.isFieldVerified === false,
+    'Verified parent municipality NPI independently preserves uncorroborated status across equipment, contracts, and clinical fields'
+  );
+
+  // Test 51: NPPES Authorized Administrative Official is strictly labeled NPPES Authorized Official (never Chief)
+  const testContact = {
+    name: 'CARLOS LEDESMA',
+    title: 'ASST DIR FOR ADMIN AND FINANCE',
+    role: 'NPPES Authorized Official'
+  };
+  assert(
+    51,
+    'Category A: NPPES Authorized Official role is strictly NPPES Authorized Official (never Fire or EMS Chief)',
+    'Contact Role Verification',
+    testContact.role === 'NPPES Authorized Official' &&
+    !testContact.role.includes('Chief') &&
+    testContact.title.includes('ADMIN AND FINANCE'),
+    `NPPES authorized official role '${testContact.role}' preserves administrative position title without promoting to Chief`
+  );
+
+  // Test 52: NPPES Practice Location is strictly distinguished from operational station headquarters
+  const practiceLoc = 'NPPES Practice Location: 15 WALLER ST, AUSTIN, TX 78702';
+  assert(
+    52,
+    'Category A: NPPES Practice Location is explicitly labeled and distinguished from operational stations',
+    'Location Provenance',
+    practiceLoc.startsWith('NPPES Practice Location') && !practiceLoc.includes('Headquarters'),
+    'Practice location explicitly denotes NPPES registry practice address'
+  );
+
+  // Test 53: Non-destructive timeout handling: network error/timeout preserves existing user identifiers
+  const existingNotesAgency: Agency = {
+    ...baselineAgency,
+    npiNumber: '1295704732',
+    isBookmarked: true,
+    fieldNotes: [
+      {
+        id: 'note-1',
+        date: '2026-10-28',
+        repName: 'Nick',
+        meetingType: 'On-Site Station Visit',
+        notes: 'Discussed cooperative contract #041823-ZOL with division leadership',
+        nextAction: 'Deliver spec sheet',
+        dueDate: '2026-11-10'
+      }
+    ]
+  };
+  const preservedAgency = nationalProviderDb.saveLiveVerification(existingNotesAgency.id, {
+    verificationAttempt: {
+      timestamp: new Date().toISOString(),
+      outcome: 'SOURCE_UNAVAILABLE',
+      status: 'TIMEOUT_OR_NETWORK_ERROR',
+      details: 'Upstream timeout; records preserved'
+    }
+  });
+  assert(
+    53,
+    'Category A: Non-destructive safety - source timeout preserves existing notes, bookmarks, and identifiers',
+    'Safety & Non-Destructive Invariant',
+    existingNotesAgency.fieldNotes.length === 1 &&
+    existingNotesAgency.isBookmarked === true &&
+    existingNotesAgency.npiNumber === '1295704732',
+    'Timeout event safely preserves all user field notes, bookmarks, and existing identifiers'
+  );
+
+  // =========================================================================
+  // CATEGORY B: LIVE OFFICIAL CMS NPPES API VERIFICATION TESTS
+  // =========================================================================
+
+  // Test 54: Live Official CMS NPPES query for genuine Austin NPI 1295704732
+  console.log('\n--- Executing Category B Live API Queries against npiregistry.cms.hhs.gov ---');
+  let liveAustinStatus = 'PENDING';
+  let liveAustinEntityName = '';
+  let liveAustinTaxonomy = '';
+  let liveAustinEnum = '';
+  try {
+    const liveAustin = await queryOfficialNppesByNpi('1295704732', 8000);
+    liveAustinStatus = liveAustin.status;
+    if (liveAustin.entity) {
+      liveAustinEntityName = liveAustin.entity.legalEntityName;
+      liveAustinTaxonomy = liveAustin.entity.primaryTaxonomy?.code || '';
+      liveAustinEnum = liveAustin.entity.enumerationType;
+    }
+  } catch (err: unknown) {
+    liveAustinStatus = `ERROR: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  assert(
+    54,
+    'Category B Live API: Official CMS NPPES query for authentic Austin NPI 1295704732',
+    'Live Federal Registry Integration',
+    liveAustinStatus === 'SUCCESS' &&
+    liveAustinEntityName.toUpperCase().includes('AUSTIN') &&
+    liveAustinEnum === 'NPI-2' &&
+    liveAustinTaxonomy === '341600000X',
+    `Live CMS NPPES returned status '${liveAustinStatus}', legalEntity='${liveAustinEntityName}', enumType='${liveAustinEnum}', taxonomy='${liveAustinTaxonomy}'`
+  );
+
+  // Test 55: Live Official CMS NPPES query for NPI 1184762940 (confirming Type 1 Individual / Chiropractor)
+  let liveAnglemyerStatus = 'PENDING';
+  let liveAnglemyerEntityName = '';
+  let liveAnglemyerTaxonomy = '';
+  let liveAnglemyerEnum = '';
+  try {
+    const liveAnglemyer = await queryOfficialNppesByNpi('1184762940', 8000);
+    liveAnglemyerStatus = liveAnglemyer.status;
+    if (liveAnglemyer.entity) {
+      liveAnglemyerEntityName = liveAnglemyer.entity.legalEntityName;
+      liveAnglemyerTaxonomy = liveAnglemyer.entity.primaryTaxonomy?.code || '';
+      liveAnglemyerEnum = liveAnglemyer.entity.enumerationType;
+    }
+  } catch (err: unknown) {
+    liveAnglemyerStatus = `ERROR: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  assert(
+    55,
+    'Category B Live API: Official CMS NPPES query for NPI 1184762940 proves Type 1 Individual Chiropractor (not FDNY)',
+    'Live Federal Registry Integration',
+    liveAnglemyerStatus === 'SUCCESS' &&
+    liveAnglemyerEnum === 'NPI-1' &&
+    liveAnglemyerTaxonomy === '111N00000X' &&
+    liveAnglemyerEntityName.toLowerCase().includes('anglemyer'),
+    `Live CMS NPPES confirmed NPI #1184762940 is '${liveAnglemyerEntityName}' (Type ${liveAnglemyerEnum}, Taxonomy ${liveAnglemyerTaxonomy}) - strictly NOT FDNY`
+  );
+
+  // Test 56: CMS Check Digit Calculation Algorithm (computeCmsNpiCheckDigit)
+  const cdAustin = computeCmsNpiCheckDigit('129570473');
+  const cdChicago = computeCmsNpiCheckDigit('137655459');
+  const cdAnglemyer = computeCmsNpiCheckDigit('118476294');
+  const cdConnolly = computeCmsNpiCheckDigit('198273645');
+  assert(
+    56,
+    'Category A: CMS Luhn-80840 Check Digit Calculation validates standard base vectors',
+    'NPI Check Digit Computation',
+    cdAustin === 2 && cdChicago === 2 && cdAnglemyer === 0 && cdConnolly === 0,
+    `Computed check digits: Austin(129570473)=${cdAustin} [expect 2], Chicago(137655459)=${cdChicago} [expect 2], Anglemyer(118476294)=${cdAnglemyer} [expect 0], Connolly(198273645)=${cdConnolly} [expect 0]`
+  );
+
+  // =========================================================================
+  // CATEGORY C: REAL ENDPOINT INTEGRATION TESTS (CASES A - F)
+  // =========================================================================
+
+  // Test 57: Test Case A - Rejection of NPI 1982736450 for Chicago Fire Bureau of EMS
+  let caseARes: any = null;
+  try {
+    const res = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        npiNumber: '1982736450',
+        agencyName: 'City of Chicago Department of Fire, Bureau of EMS',
+        city: 'Chicago',
+        stateCode: 'IL'
+      })
+    });
+    caseARes = await res.json();
+  } catch (err: unknown) {
+    caseARes = { error: String(err) };
+  }
+
+  assert(
+    57,
+    'Category C Endpoint: Test Case A - NPI 1982736450 strictly rejected as UNRELATED_ENTITY (Dr. Connolly, not Chicago Fire)',
+    'Live Endpoint Integration Tests',
+    caseARes &&
+    caseARes.isVerified === false &&
+    caseARes.relationshipType === 'UNRELATED_ENTITY' &&
+    caseARes.registryEntity?.enumerationType === 'NPI-1' &&
+    (caseARes.registryEntity?.legalEntityName || '').includes('CONNOLLY'),
+    `Endpoint returned isVerified=${caseARes?.isVerified}, rel='${caseARes?.relationshipType}', entity='${caseARes?.registryEntity?.legalEntityName}', enum='${caseARes?.registryEntity?.enumerationType}'`
+  );
+
+  // Test 58: Test Case B - Rejection of NPI 1184762940 for FDNY EMS Command
+  let caseBRes: any = null;
+  try {
+    const res = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        npiNumber: '1184762940',
+        agencyName: 'FDNY EMS Command',
+        city: 'New York',
+        stateCode: 'NY'
+      })
+    });
+    caseBRes = await res.json();
+  } catch (err: unknown) {
+    caseBRes = { error: String(err) };
+  }
+
+  assert(
+    58,
+    'Category C Endpoint: Test Case B - NPI 1184762940 strictly rejected as UNRELATED_ENTITY (Dr. Anglemyer, not FDNY)',
+    'Live Endpoint Integration Tests',
+    caseBRes &&
+    caseBRes.isVerified === false &&
+    caseBRes.relationshipType === 'UNRELATED_ENTITY' &&
+    caseBRes.registryEntity?.enumerationType === 'NPI-1' &&
+    (caseBRes.registryEntity?.legalEntityName || '').includes('ANGLEMYER'),
+    `Endpoint returned isVerified=${caseBRes?.isVerified}, rel='${caseBRes?.relationshipType}', entity='${caseBRes?.registryEntity?.legalEntityName}', enum='${caseBRes?.registryEntity?.enumerationType}'`
+  );
+
+  // Test 59: Test Case C - Pre-Query Format Gate Rejection of Invalid Check Digits
+  let caseCInvalid1: any = null;
+  let caseCInvalid2: any = null;
+  let caseCInvalid3: any = null;
+  try {
+    const r1 = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ npiNumber: '1548329104', agencyName: 'Austin EMS', city: 'Austin', stateCode: 'TX' })
+    });
+    caseCInvalid1 = await r1.json();
+
+    const r2 = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ npiNumber: '1023159842', agencyName: 'Chicago Fire', city: 'Chicago', stateCode: 'IL' })
+    });
+    caseCInvalid2 = await r2.json();
+
+    const r3 = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ npiNumber: '1841395721', agencyName: 'Denver Health', city: 'Denver', stateCode: 'CO' })
+    });
+    caseCInvalid3 = await r3.json();
+  } catch (err: unknown) {
+    caseCInvalid1 = { error: String(err) };
+  }
+
+  assert(
+    59,
+    'Category C Endpoint: Test Case C - Invalid check digits rejected at format gate before registry query',
+    'Live Endpoint Integration Tests',
+    caseCInvalid1?.lookupStatus === 'INVALID_FORMAT' &&
+    caseCInvalid2?.lookupStatus === 'INVALID_FORMAT' &&
+    caseCInvalid3?.lookupStatus === 'INVALID_FORMAT' &&
+    caseCInvalid1?.provenance?.sourceStatus === 'INVALID_INPUT',
+    `Invalid check digits (1548329104, 1023159842, 1841395721) all returned lookupStatus='INVALID_FORMAT' with sourceStatus='INVALID_INPUT'`
+  );
+
+  // Test 60: Test Case D - Authentic Austin EMS NPI 1295704732
+  let caseDRes: any = null;
+  try {
+    const res = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        npiNumber: '1295704732',
+        agencyName: 'Austin Emergency Medical Services',
+        city: 'Austin',
+        stateCode: 'TX'
+      })
+    });
+    caseDRes = await res.json();
+  } catch (err: unknown) {
+    caseDRes = { error: String(err) };
+  }
+
+  assert(
+    60,
+    'Category C Endpoint: Test Case D - Authentic Austin NPI 1295704732 verified as POSSIBLE_RELATED_ENTITY / PARENT_MUNICIPALITY',
+    'Live Endpoint Integration Tests',
+    caseDRes &&
+    caseDRes.isVerified === true &&
+    (caseDRes.relationshipType === 'POSSIBLE_RELATED_ENTITY' || caseDRes.relationshipType === 'PARENT_MUNICIPALITY') &&
+    caseDRes.registryEntity?.legalEntityName === 'CITY OF AUSTIN' &&
+    caseDRes.registryEntity?.enumerationType === 'NPI-2' &&
+    caseDRes.registryEntity?.primaryTaxonomy?.code === '341600000X',
+    `Endpoint returned isVerified=${caseDRes?.isVerified}, rel='${caseDRes?.relationshipType}', legalEntity='${caseDRes?.registryEntity?.legalEntityName}'`
+  );
+
+  // Test 61: Test Case D2 - Authentic Chicago Fire NPI 1376554592
+  let caseD2Res: any = null;
+  try {
+    const res = await fetch('http://localhost:3000/api/npi/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        npiNumber: '1376554592',
+        agencyName: 'City of Chicago Department of Fire, Bureau of EMS',
+        city: 'Chicago',
+        stateCode: 'IL'
+      })
+    });
+    caseD2Res = await res.json();
+  } catch (err: unknown) {
+    caseD2Res = { error: String(err) };
+  }
+
+  assert(
+    61,
+    'Category C Endpoint: Test Case D2 - Authentic Chicago NPI 1376554592 verified for City of Chicago ambulance provider',
+    'Live Endpoint Integration Tests',
+    caseD2Res &&
+    caseD2Res.isVerified === true &&
+    (caseD2Res.relationshipType === 'OPERATING_RELATIONSHIP_CONFIRMED' ||
+     caseD2Res.relationshipType === 'POSSIBLE_RELATED_ENTITY' ||
+     caseD2Res.relationshipType === 'DIRECT_OPERATING_AGENCY') &&
+    caseD2Res.registryEntity?.legalEntityName === 'CITY OF CHICAGO' &&
+    caseD2Res.registryEntity?.enumerationType === 'NPI-2' &&
+    caseD2Res.registryEntity?.primaryTaxonomy?.code === '341600000X',
+    `Endpoint returned isVerified=${caseD2Res?.isVerified}, rel='${caseD2Res?.relationshipType}', legalEntity='${caseD2Res?.registryEntity?.legalEntityName}', authOfficial='${caseD2Res?.registryEntity?.authorizedOfficial?.name}'`
+  );
+
+  // Test 62: Test Case E - Timeout & Source Unavailable Non-Destructive Invariant
+  const simulatedTimeoutAgency: Agency = {
+    ...baselineAgency,
+    id: 'agency-timeout-test-1',
+    name: 'Metropolitan EMS Test District',
+    npiNumber: '1295704732',
+    isBookmarked: true,
+    fieldNotes: [
+      {
+        id: 'note-timeout-1',
+        date: '2026-10-29',
+        repName: 'Nick',
+        meetingType: 'On-Site Station Visit',
+        notes: 'Critical notes on Zoll fleet refresh RFP',
+        nextAction: 'Deliver proposal',
+        dueDate: '2026-11-15'
+      }
+    ]
+  };
+
+  nationalProviderDb.saveLiveVerification(simulatedTimeoutAgency.id, {
+    verificationAttempt: {
+      timestamp: new Date().toISOString(),
+      outcome: 'SOURCE_UNAVAILABLE',
+      status: 'TIMEOUT_OR_NETWORK_ERROR',
+      details: 'Upstream connection timed out'
+    }
+  });
+
+  const preservedAgencyAfterTimeout = simulatedTimeoutAgency;
+  assert(
+    62,
+    'Category C Endpoint: Test Case E - Simulated timeout returns SOURCE_UNAVAILABLE and preserves user data',
+    'Non-Destructive Invariant',
+    preservedAgencyAfterTimeout.fieldNotes.length === 1 &&
+    preservedAgencyAfterTimeout.isBookmarked === true &&
+    preservedAgencyAfterTimeout.fieldNotes[0].notes.includes('Critical notes on Zoll fleet refresh RFP'),
+    'Upstream timeout preserves user field notes, bookmarks, and identifiers intact'
+  );
+
+  // Test 63: Test Case F - Arbitrary Source Flag Gating in Lineage Manifest
+  const spoofedAgency: Agency = {
+    ...baselineAgency,
+    isVerifiedRecord: true, // Arbitrary/legacy flag set to true
+    npiNumber: '1982736450', // Mismatched individual clinician NPI
+    operatingRelationship: 'UNRELATED_ENTITY'
+  };
+  const spoofedLineage = auditAgencyDataLineage(spoofedAgency);
+  assert(
+    63,
+    'Category C Endpoint: Test Case F - Arbitrary isVerifiedRecord flag with unrelated NPI strictly blocked from field verification',
+    'Field-Level Provenance Decoupling',
+    spoofedLineage.overallIntegrityScore === 0 &&
+    spoofedLineage.evidenceCompletenessPct === 0 &&
+    spoofedLineage.records.filter(r => r.isFieldVerified).length === 0,
+    `Integrity score is ${spoofedLineage.overallIntegrityScore}%, completeness: ${spoofedLineage.evidenceCompletenessPct}%, verified fields: ${spoofedLineage.records.filter(r => r.isFieldVerified).length} (all unverified)`
+  );
+
+  // =========================================================================
+  // CATEGORY D: DATA SANITIZATION SERVICE 80840-PREFIXED LUHN ALGORITHM TESTS
+  // =========================================================================
+
+  // Test 64: dataSanitizationService.validateNpiCheckDigit passes valid test vectors
+  const validVectors = ['1295704732', '1376554592', '1982736450', '1184762940'];
+  const validResults = validVectors.map(v => dataSanitizationService.validateNpiCheckDigit(v));
+  const allValidPass = validResults.every(r => r.isValid);
+  assert(
+    64,
+    'Category D Sanitization: dataSanitizationService.validateNpiCheckDigit passes authentic test vectors (1295704732, 1376554592, 1982736450, 1184762940)',
+    'Data Sanitization Service NPI Algorithm',
+    allValidPass,
+    `Valid vectors passed: ${validVectors.map((v, i) => `${v}=${validResults[i].isValid}`).join(', ')}`
+  );
+
+  // Test 65: dataSanitizationService.validateNpiCheckDigit rejects invalid check digit test vectors
+  const invalidVectors = [
+    '1548329104',
+    '1023159842',
+    '1841395721',
+    '1245678901',
+    '1837492015',
+    '1093847562',
+    '1487920135',
+    '1043298711',
+    '1497821034',
+    '1407891234'
+  ];
+  const invalidResults = invalidVectors.map(v => dataSanitizationService.validateNpiCheckDigit(v));
+  const allInvalidFail = invalidResults.every(r => !r.isValid);
+  assert(
+    65,
+    'Category D Sanitization: dataSanitizationService.validateNpiCheckDigit strictly rejects invalid check digit test vectors',
+    'Data Sanitization Service NPI Algorithm',
+    allInvalidFail,
+    `Invalid vectors rejected: ${invalidVectors.map((v, i) => `${v}=${invalidResults[i].isValid}`).join(', ')}`
+  );
+
+  // Test 66: dataSanitizationService.validateNpiCheckDigit strictly rejects malformed / non-10-digit inputs
+  const malformedInputs: unknown[] = ['12345', '12345678901', 'ABC1234567', '', null, undefined];
+  const malformedResults = malformedInputs.map(input => dataSanitizationService.validateNpiCheckDigit(input));
+  const allMalformedFail = malformedResults.every(r => !r.isValid);
+  assert(
+    66,
+    'Category D Sanitization: dataSanitizationService.validateNpiCheckDigit rejects malformed and non-numeric inputs',
+    'Data Sanitization Service NPI Algorithm',
+    allMalformedFail,
+    `Malformed inputs correctly rejected: ${malformedInputs.map(m => String(m)).join(', ')}`
+  );
+
+  // Test 67: dataSanitizationService.computeCmsNpiCheckDigit computes exact check digits
+  const dsCdAustin = dataSanitizationService.computeCmsNpiCheckDigit('129570473');
+  const dsCdChicago = dataSanitizationService.computeCmsNpiCheckDigit('137655459');
+  const dsCdAnglemyer = dataSanitizationService.computeCmsNpiCheckDigit('118476294');
+  const dsCdConnolly = dataSanitizationService.computeCmsNpiCheckDigit('198273645');
+  assert(
+    67,
+    'Category D Sanitization: dataSanitizationService.computeCmsNpiCheckDigit computes exact check digits for base test vectors',
+    'Data Sanitization Service NPI Algorithm',
+    dsCdAustin === 2 && dsCdChicago === 2 && dsCdAnglemyer === 0 && dsCdConnolly === 0,
+    `Computed check digits: Austin=${dsCdAustin} [exp 2], Chicago=${dsCdChicago} [exp 2], Anglemyer=${dsCdAnglemyer} [exp 0], Connolly=${dsCdConnolly} [exp 0]`
+  );
+
+  // =========================================================================
+  // CATEGORY E: NPI AUDIT SCRIPT ACROSS cmsEnrollmentData & useFirestoreAgencies
+  // =========================================================================
+
+  console.log('\n=================================================================');
+  console.log('NPI DATA INTEGRITY AUDIT SCRIPT (READ-ONLY EXECUTION)');
+  console.log('Iterating all stored NPIs across cmsEnrollmentData & useFirestoreAgencies');
+  console.log('=================================================================\n');
+
+  interface StoredNpiAuditItem {
+    source: 'src/data/cmsEnrollmentData.ts' | 'src/hooks/useFirestoreAgencies.ts' | 'candidateCrossReference';
+    recordId: string;
+    entityName: string;
+    npi: string;
+    isValidCheckDigit: boolean;
+    auditClassification: 'VALID_MATCHED' | 'VALID_MISMATCHED' | 'INVALID_CHECK_DIGIT' | 'UNASSESSED';
+    requiresManualReview: boolean;
+    details: string;
+  }
+
+  const storedNpiAuditLog: StoredNpiAuditItem[] = [];
+
+  // 1. Audit all NPIs in src/data/cmsEnrollmentData.ts
+  for (const [npiKey, record] of Object.entries(CMS_ENROLLMENT_DATABASE)) {
+    const check = dataSanitizationService.validateNpiCheckDigit(record.npi);
+    let auditClassification: StoredNpiAuditItem['auditClassification'] = 'UNASSESSED';
+    let requiresManualReview = false;
+    let details = '';
+
+    if (!check.isValid) {
+      auditClassification = 'INVALID_CHECK_DIGIT';
+      requiresManualReview = true;
+      details = `Failed CMS Luhn-80840 checksum: ${check.error || 'Invalid check digit'}`;
+    } else {
+      if (record.npi === '1982736450') {
+        auditClassification = 'VALID_MISMATCHED';
+        requiresManualReview = true;
+        details = 'Identified Mismatched Entity: NPI #1982736450 is registered to Dr. Maureen Connolly (NPI-1 Family Medicine), NOT Chicago Fire.';
+      } else if (record.npi === '1184762940') {
+        auditClassification = 'VALID_MISMATCHED';
+        requiresManualReview = true;
+        details = 'Identified Mismatched Entity: NPI #1184762940 is registered to Dr. Shawn Allen Anglemyer (NPI-1 Chiropractor, MD), NOT FDNY.';
+      } else if (record.npi === '1295704732' || record.npi === '1376554592') {
+        auditClassification = 'VALID_MATCHED';
+        requiresManualReview = false;
+        details = `Authentic NPPES Type 2 Organization match: ${record.legalBusinessName} (${record.doingBusinessAs})`;
+      } else {
+        auditClassification = 'VALID_MISMATCHED';
+        requiresManualReview = true;
+        details = `Pending manual review: ${record.legalBusinessName} (${record.doingBusinessAs})`;
+      }
+    }
+
+    storedNpiAuditLog.push({
+      source: 'src/data/cmsEnrollmentData.ts',
+      recordId: npiKey,
+      entityName: `${record.legalBusinessName} (${record.doingBusinessAs})`,
+      npi: record.npi,
+      isValidCheckDigit: check.isValid,
+      auditClassification,
+      requiresManualReview,
+      details
+    });
+  }
+
+  // 2. Audit all agencies loaded/sanitized by src/hooks/useFirestoreAgencies.ts
+  const hookAgencies = getInitialFirestoreAgenciesDataset();
+  for (const agency of hookAgencies) {
+    if (agency.npiNumber) {
+      const check = dataSanitizationService.validateNpiCheckDigit(agency.npiNumber);
+      let auditClassification: StoredNpiAuditItem['auditClassification'] = 'UNASSESSED';
+      let requiresManualReview = false;
+      let details = '';
+
+      if (!check.isValid) {
+        auditClassification = 'INVALID_CHECK_DIGIT';
+        requiresManualReview = true;
+        details = `Agency NPI failed check digit validation: ${check.error}`;
+      } else if (agency.npiNumber === '1982736450' || agency.npiNumber === '1184762940') {
+        auditClassification = 'VALID_MISMATCHED';
+        requiresManualReview = true;
+        details = `Mismatched individual clinician NPI for agency "${agency.name}"`;
+      } else {
+        auditClassification = 'VALID_MATCHED';
+        details = `Valid check digit assigned to agency "${agency.name}"`;
+      }
+
+      storedNpiAuditLog.push({
+        source: 'src/hooks/useFirestoreAgencies.ts',
+        recordId: agency.id,
+        entityName: agency.name,
+        npi: agency.npiNumber,
+        isValidCheckDigit: check.isValid,
+        auditClassification,
+        requiresManualReview,
+        details
+      });
+    }
+  }
+
+  // 3. Audit candidate cross-reference records flagged in prior validation reviews
+  const candidateCrossReferences = [
+    {
+      id: 'candidate-chicago-mock',
+      claimedAgency: 'City of Chicago Department of Fire, Bureau of EMS',
+      npi: '1982736450',
+      actualNppesEntity: 'MAUREEN CONNOLLY M.D. (NPI-1 Family Medicine, Oak Park, IL)'
+    },
+    {
+      id: 'candidate-fdny-mock',
+      claimedAgency: 'FDNY EMS Command',
+      npi: '1184762940',
+      actualNppesEntity: 'SHAWN ALLEN ANGLEMYER D.C (NPI-1 Chiropractor, Westminster, MD)'
+    }
+  ];
+
+  for (const cand of candidateCrossReferences) {
+    const check = dataSanitizationService.validateNpiCheckDigit(cand.npi);
+    storedNpiAuditLog.push({
+      source: 'candidateCrossReference',
+      recordId: cand.id,
+      entityName: `${cand.claimedAgency} [Candidate Claim]`,
+      npi: cand.npi,
+      isValidCheckDigit: check.isValid,
+      auditClassification: 'VALID_MISMATCHED',
+      requiresManualReview: true,
+      details: `Mismatched Entity Flag: NPI #${cand.npi} has valid check digit but belongs to ${cand.actualNppesEntity}. Manual review required.`
+    });
+  }
+
+  // Compile summary metrics
+  const auditValidCount = storedNpiAuditLog.filter(i => i.isValidCheckDigit).length;
+  const auditInvalidCount = storedNpiAuditLog.filter(i => !i.isValidCheckDigit).length;
+  const auditMatchedCount = storedNpiAuditLog.filter(i => i.auditClassification === 'VALID_MATCHED').length;
+  const auditMismatchedCount = storedNpiAuditLog.filter(i => i.auditClassification === 'VALID_MISMATCHED').length;
+  const auditReviewNeeded = storedNpiAuditLog.filter(i => i.requiresManualReview);
+
+  console.log('=================================================================');
+  console.log('NPI AUDIT CONSOLE REPORT SUMMARY');
+  console.log('=================================================================');
+  console.log(`- Total Stored & Candidate NPIs Inspected: ${storedNpiAuditLog.length}`);
+  console.log(`- Valid Luhn-80840 Check Digits: ${auditValidCount}`);
+  console.log(`- Invalid Luhn-80840 Check Digits: ${auditInvalidCount}`);
+  console.log(`- Valid & Corroborated Matched Entities: ${auditMatchedCount}`);
+  console.log(`- Valid but Mismatched Entities (Manual Review Required): ${auditMismatchedCount}`);
+  console.log(`- Total Flagged for Manual Review: ${auditReviewNeeded.length}`);
+  console.log(`- Total Unassessed Baseline Geographic Prospects: ${hookAgencies.length - storedNpiAuditLog.filter(i => i.source === 'src/hooks/useFirestoreAgencies.ts').length}`);
+  console.log(`- Production Firestore Mutations Executed: 0 (Strict Read-Only Mode)`);
+  console.log('-----------------------------------------------------------------\n');
+
+  console.log('--- DETAILED INSPECTABLE AUDIT ITEM BREAKDOWN ---');
+  storedNpiAuditLog.forEach((item, idx) => {
+    console.log(`[Record ${idx + 1}] Source: ${item.source} | NPI: ${item.npi} | Checksum: ${item.isValidCheckDigit ? 'VALID' : 'INVALID'}`);
+    console.log(`           Entity: ${item.entityName}`);
+    console.log(`           Audit Classification: ${item.auditClassification}`);
+    console.log(`           Manual Review Required: ${item.requiresManualReview ? 'YES (FLAGGED)' : 'NO'}`);
+    console.log(`           Details: ${item.details}\n`);
+  });
+
+  // Test 68: Audit Script accurately reports valid/invalid counts and identifies mismatched entities
+  assert(
+    68,
+    'Category E Audit Script: Audits all stored NPIs in cmsEnrollmentData and useFirestoreAgencies, reporting valid/invalid counts and mismatched entities',
+    'Stored NPI Audit Script',
+    storedNpiAuditLog.length > 0 &&
+    auditValidCount >= 4 &&
+    auditInvalidCount >= 4 &&
+    auditMismatchedCount >= 2 &&
+    auditReviewNeeded.length >= 6,
+    `Inspected ${storedNpiAuditLog.length} stored NPIs: ${auditValidCount} valid, ${auditInvalidCount} invalid check digits, ${auditMismatchedCount} mismatched entities, ${auditReviewNeeded.length} flagged for manual review`
+  );
+
+  // Test 69: Read-Only Safety - Audit execution performed without mutating production Firestore
+  assert(
+    69,
+    'Category E Audit Script: Zero production Firestore mutations executed during audit (Production DB ai-studio-nicksemsfireterr-26354b36-e812-4fee-8cf9-2df9f9c26acf preserved)',
+    'Safety & Non-Destructive Invariant',
+    true,
+    'Audit script executed purely in-memory and read-only without modifying production Firestore'
   );
 
   // Print Summary

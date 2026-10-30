@@ -545,9 +545,9 @@ export const DealStoryBriefingView: React.FC<DealStoryBriefingViewProps> = ({
             <span>Verified Public Registry Citations</span>
           </span>
           <span aria-hidden="true">·</span>
-          <span>CMS NPPES NPI #{agency.npiNumber || '1376554592'}</span>
+          <span>CMS NPPES NPI: {agency.npiNumber ? `#${agency.npiNumber}` : 'Unassigned'}</span>
           <span aria-hidden="true">·</span>
-          <span>USFA FDID {agency.fdid}</span>
+          <span>USFA FDID: {agency.fdid || 'Not Recorded'}</span>
           <span aria-hidden="true">·</span>
           <span>OpenFEMA AFG {hasGrant ? `Award #${agency.grantStatus?.afgAwardNumber || 'Active'}` : 'Registry'}</span>
         </div>

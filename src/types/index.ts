@@ -323,6 +323,9 @@ export interface Agency {
   _updatedAt?: string;
   isCloudPersisted?: boolean;
   dataProvenanceTier?: 'firestore_cloud_synced' | 'live_federal_registry' | 'public_federal_baseline';
+  operatingRelationship?: 'DIRECT_OPERATING_AGENCY' | 'PARENT_MUNICIPALITY' | 'CONTRACTED_PROVIDER' | 'UNRELATED_ENTITY' | 'UNRESOLVED' | string;
+  operatingRelationshipSummary?: string;
+  registryEntityConfirmed?: boolean;
 
   // Granular Apparatus Vehicle Fleet Breakdown
   apparatusFleet?: {

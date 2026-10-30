@@ -60,7 +60,7 @@ export const PublicHealthcareExplorer: React.FC<PublicHealthcareExplorerProps> =
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80">
                   Locked account CMS telemetry
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">NPI: {activeAccount.npiNumber || '1497821034'}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">NPI: {activeAccount.npiNumber || 'Unassigned'}</span>
               </div>
               <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white tracking-tight mt-0.5">
                 {activeAccount.name} — {activeAccount.city}, {activeAccount.stateCode}

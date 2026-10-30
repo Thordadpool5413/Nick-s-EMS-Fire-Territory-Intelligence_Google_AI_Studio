@@ -46,6 +46,7 @@ import {
   calculateAgencyHcpcsBreakdown,
   getAgencyClinicalProtocolAlignment
 } from '../data/clinicalAndCompetitiveIntelligence';
+import { validateNpiCheckDigit } from '../services/npiVerificationService';
 import { ResuscitationSurvivalFunnel } from './ResuscitationSurvivalFunnel';
 import { TcoCumulativeSavingsChart } from './TcoCumulativeSavingsChart';
 import { QualityScorecard } from './QualityScorecard';
@@ -139,15 +140,15 @@ function ensureCompleteAgencyData(raw: Agency): Agency {
           {
             id: `kc-${raw.id}-hq`,
             name: nppesOfficialName,
-            title: nppesOfficialTitle,
-            role: isFire ? 'Fire Chief' : 'EMS Chief',
+            title: nppesOfficialTitle || 'NPPES Authorized Administrative Official',
+            role: 'NPPES Authorized Official',
             email: '',
             phone: '',
             officialWebsite,
             headquartersAddress: raw.address,
             isVerifiedOfficial: Boolean(raw.isVerifiedRecord),
             verificationSource: raw.isVerifiedRecord ? 'Federal CMS NPPES NPI Registry' : 'Public Agency Baseline',
-            notes: 'Use Official Department Website or Google Maps Station Lookup for verified contact details.'
+            notes: 'NPPES Practice Location. Use Official Department Website or Google Maps Station Lookup for verified contact details.'
           }
         ];
 
@@ -527,15 +528,15 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
           {
             id: `kc-${rawAgency.id}-npi`,
             name: data.authorizedOfficial.name,
-            title: data.authorizedOfficial.title || (isFire ? 'Fire Chief / Authorized Official' : 'EMS Director / Authorized Official'),
-            role: isFire ? 'Fire Chief' : 'EMS Chief',
+            title: data.authorizedOfficial.title || 'NPPES Authorized Administrative Official',
+            role: 'NPPES Authorized Official',
             email: rawAgency.keyContacts?.[0]?.email || '',
-            phone: '',
+            phone: data.authorizedOfficial.phone || '',
             officialWebsite: patch.officialWebsite,
             headquartersAddress: patch.address,
             isVerifiedOfficial: true,
             verificationSource: data.authorizedOfficial.verificationSource || data.verificationSource,
-            notes: `Verified Registered Authorized Official (${data.legalOrganizationName || rawAgency.name}). Official department website and physical headquarters address verified.`
+            notes: `NPPES Practice Location. Verified Registered Authorized Official (${data.legalOrganizationName || rawAgency.name}).`
           },
           ...(rawAgency.keyContacts || []).filter(c => !c.id.includes('npi'))
         ];
@@ -928,11 +929,24 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                   <span aria-hidden="true">·</span>
                   <span>FDID: <span className="font-mono text-[11px]">{agency.fdid || 'Not recorded'}</span></span>
                   <span aria-hidden="true">·</span>
-                  <span>NPI: <span className="font-mono text-[11px]">{agency.npiNumber || 'Unverified'}</span></span>
+                  <span>
+                    NPI:{' '}
+                    {agency.npiNumber ? (
+                      validateNpiCheckDigit(agency.npiNumber).isValid ? (
+                        <span className="font-mono text-[11px] font-semibold">{agency.npiNumber}</span>
+                      ) : (
+                        <span className="font-mono text-[11px] font-semibold text-amber-700 dark:text-amber-400" title="Failed CMS Luhn-80840 check digit validation">
+                          {agency.npiNumber} (Invalid Check Digit)
+                        </span>
+                      )
+                    ) : (
+                      <span className="font-mono text-[11px]">Unverified</span>
+                    )}
+                  </span>
                   <span aria-hidden="true">·</span>
                   <span>Taxonomy: {agency.taxonomyCode || 'Standard EMS/Fire'}</span>
                   <span aria-hidden="true">·</span>
-                  {agency.isVerifiedRecord ? (
+                  {agency.isVerifiedRecord && agency.npiNumber && validateNpiCheckDigit(agency.npiNumber).isValid ? (
                     <button
                       type="button"
                       onClick={() => setIsSourceDrawerOpen(true)}
@@ -958,7 +972,9 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     {agency.name}
                   </h1>
                   <p className="pi-supporting mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="font-semibold text-[#14283F] dark:text-white">{agency.address}</span>
+                    <span className="font-semibold text-[#14283F] dark:text-white">
+                      {agency.isVerifiedRecord ? `NPPES Practice Location: ${agency.address}` : agency.address}
+                    </span>
                     <span aria-hidden="true">·</span>
                     <span>{agency.county}, {agency.state} ({agency.stateCode})</span>
                     <span aria-hidden="true">·</span>
@@ -990,13 +1006,13 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-[#DFE6EF] dark:bg-[#1E2D42] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg overflow-hidden text-xs">
                   <div className="bg-[#F5F7FA] dark:bg-[#16243A] p-3">
                     <div className="text-xs font-medium text-[#53657B] dark:text-slate-400">
-                      Agency leadership
+                      {agency.isVerifiedRecord ? 'NPPES Authorized Official' : 'Agency leadership'}
                     </div>
                     <div className="font-semibold text-[#14283F] dark:text-white mt-0.5 truncate">
-                      {primaryContact?.name || agency.nppesOfficialName}
+                      {agency.nppesOfficialName || primaryContact?.name || 'Administrative Official'}
                     </div>
                     <div className="text-xs text-[#53657B] dark:text-slate-400 truncate mt-0.5">
-                      {primaryContact?.title || agency.nppesOfficialTitle}
+                      {agency.nppesOfficialTitle || primaryContact?.title || 'NPPES Authorized Official'}
                     </div>
                   </div>
 
