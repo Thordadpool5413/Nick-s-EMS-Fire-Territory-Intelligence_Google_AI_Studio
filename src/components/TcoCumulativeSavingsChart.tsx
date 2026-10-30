@@ -8,6 +8,7 @@ import { Agency } from '../types';
 import { calculateAgencyFleetTco } from '../data/clinicalAndCompetitiveIntelligence';
 import { DollarSign, TrendingDown, Award, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { InteractiveSparkline } from './InteractiveSparkline';
+import { formatCurrency, formatInteger } from '../utils/numberFormatting';
 
 interface TcoCumulativeSavingsChartProps {
   agency: Agency;
@@ -67,11 +68,11 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
 
         {/* Unboxed Tabular Total 5-Year Net Savings Readout */}
         <div className="text-left sm:text-right border-l-2 sm:border-l-0 sm:border-r-2 border-emerald-600 pl-3 sm:pl-0 sm:pr-3">
-          <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 font-semibold block">
-            5-Yr Net Cash Savings (Incl. ${tco.totalTradeInCredit.toLocaleString()} Trade-In)
+          <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-semibold block">
+            5-Yr Net Cash Savings (Incl. {formatCurrency(tco.totalTradeInCredit, { compact: false })} Trade-In)
           </span>
-          <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 text-xl tabular-nums">
-            +${tco.totalSavingsIncludingTradeIn.toLocaleString()}
+          <span className="pi-metric-large font-bold text-emerald-700 dark:text-emerald-400">
+            +{formatCurrency(tco.totalSavingsIncludingTradeIn, { compact: false })}
           </span>
         </div>
       </div>
@@ -111,11 +112,11 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
               >
                 <div>
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className={`font-mono font-bold text-xs ${isSelected ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-900 dark:text-white'}`}>
+                    <span className={`font-semibold text-xs pi-data-inline ${isSelected ? 'text-[#1E3A8A] dark:text-blue-400 font-bold' : 'text-slate-900 dark:text-white'}`}>
                       FY0{d.year}
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                      +${(d.cumulativeSavings / 1000).toFixed(0)}K
+                    <span className="text-[10px] pi-data-number font-bold text-emerald-700 dark:text-emerald-400">
+                      +{formatCurrency(d.cumulativeSavings)}
                     </span>
                   </div>
                   <div className={`h-[2px] w-full ${isSelected ? 'bg-[#1E3A8A] dark:bg-blue-400' : 'bg-transparent'}`} />
@@ -124,8 +125,8 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
                 {/* Vertical Comparison Bar Tower */}
                 <div className="h-24 flex items-end justify-center gap-2 my-2 pt-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-5 flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-mono text-rose-700 dark:text-rose-400 font-bold block tabular-nums">
-                      ${(d.incumbentTotal / 1000).toFixed(0)}K
+                    <span className="text-[9px] pi-data-number text-rose-700 dark:text-rose-400 font-bold block">
+                      {formatCurrency(d.incumbentTotal)}
                     </span>
                     <div 
                       className="w-full bg-rose-500 transition-all duration-300"
@@ -133,8 +134,8 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
                     />
                   </div>
                   <div className="w-5 flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 font-bold block tabular-nums">
-                      ${(d.zollTotal / 1000).toFixed(0)}K
+                    <span className="text-[9px] pi-data-number text-emerald-700 dark:text-emerald-400 font-bold block">
+                      {formatCurrency(d.zollTotal)}
                     </span>
                     <div 
                       className="w-full bg-emerald-500 transition-all duration-300"
@@ -144,8 +145,8 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block tabular-nums">
-                    Δ ${(d.cumulativeSavings).toLocaleString()}
+                  <span className="text-[10px] pi-data-inline text-slate-500 dark:text-slate-400 block">
+                    Δ {formatCurrency(d.cumulativeSavings, { compact: false })}
                   </span>
                 </div>
               </div>
@@ -166,17 +167,17 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
               {tco.incumbentModel} Cumulative Operating Burden
             </span>
             <span className="flex-1 border-b border-dotted border-slate-300 dark:border-slate-700 mx-2" />
-            <span className="font-mono font-semibold text-rose-700 dark:text-rose-400 tabular-nums text-right shrink-0">
-              ${activeData.incumbentTotal.toLocaleString()}
+            <span className="pi-metric-table font-semibold text-rose-700 dark:text-rose-400 text-right shrink-0">
+              {formatCurrency(activeData.incumbentTotal, { compact: false })}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2 pt-2">
             <span className="text-slate-700 dark:text-slate-300 font-medium shrink-0">
-              {tco.zollModel} Contracted Burden (Net of ${tco.totalTradeInCredit.toLocaleString()} Trade-In)
+              {tco.zollModel} Contracted Burden (Net of {formatCurrency(tco.totalTradeInCredit, { compact: false })} Trade-In)
             </span>
             <span className="flex-1 border-b border-dotted border-slate-300 dark:border-slate-700 mx-2" />
-            <span className="font-mono font-semibold text-slate-900 dark:text-white tabular-nums text-right shrink-0">
-              ${activeData.zollTotal.toLocaleString()}
+            <span className="pi-metric-table font-semibold text-slate-900 dark:text-white text-right shrink-0">
+              {formatCurrency(activeData.zollTotal, { compact: false })}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
@@ -184,8 +185,8 @@ export const TcoCumulativeSavingsChart: React.FC<TcoCumulativeSavingsChartProps>
               Year {activeData.year} Cumulative Net Budget Variance
             </span>
             <span className="flex-1 border-b border-dotted border-slate-300 dark:border-slate-700 mx-2" />
-            <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400 tabular-nums text-sm text-right shrink-0">
-              +${activeData.cumulativeSavings.toLocaleString()}
+            <span className="pi-metric-table font-bold text-emerald-700 dark:text-emerald-400 text-sm text-right shrink-0">
+              +{formatCurrency(activeData.cumulativeSavings, { compact: false })}
             </span>
           </div>
         </div>

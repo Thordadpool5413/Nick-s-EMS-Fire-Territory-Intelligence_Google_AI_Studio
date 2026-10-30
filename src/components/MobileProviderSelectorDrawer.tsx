@@ -238,7 +238,7 @@ export const MobileProviderSelectorDrawer: React.FC<MobileProviderSelectorDrawer
               }`}
             >
               <span>All</span>
-              <span className="text-[11px] opacity-75 font-mono">({categoryCounts.all})</span>
+              <span className="text-[11px] opacity-75 pi-data-number">({categoryCounts.all})</span>
             </button>
 
             <button
@@ -252,7 +252,7 @@ export const MobileProviderSelectorDrawer: React.FC<MobileProviderSelectorDrawer
             >
               <Siren className="w-3.5 h-3.5 shrink-0" />
               <span>EMS</span>
-              <span className="text-[11px] opacity-75 font-mono">({categoryCounts.ems})</span>
+              <span className="text-[11px] opacity-75 pi-data-number">({categoryCounts.ems})</span>
             </button>
 
             <button
@@ -266,7 +266,7 @@ export const MobileProviderSelectorDrawer: React.FC<MobileProviderSelectorDrawer
             >
               <Flame className="w-3.5 h-3.5 shrink-0" />
               <span>Fire</span>
-              <span className="text-[11px] opacity-75 font-mono">({categoryCounts.fire})</span>
+              <span className="text-[11px] opacity-75 pi-data-number">({categoryCounts.fire})</span>
             </button>
           </div>
 

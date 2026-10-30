@@ -8,6 +8,7 @@ import { Agency } from '../types';
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 import { territoryEngine } from '../services/territoryIntelligenceEngine';
 import { Award, ChevronRight, ExternalLink, Filter, RefreshCw, ShieldCheck } from 'lucide-react';
+import { formatCurrency, formatInteger, formatScore } from '../utils/numberFormatting';
 
 interface LiveOpenFemaRecord {
   id: string;
@@ -162,11 +163,11 @@ export const AfgGrantsTracker: React.FC<AfgGrantsTrackerProps> = ({
 
           <div className="pl-4 sm:border-l border-slate-200 dark:border-slate-800 text-left sm:text-right shrink-0">
             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Modeled territory AFG liquidity</div>
-            <div className="text-[26px] font-[650] text-emerald-700 dark:text-emerald-400 tabular-nums mt-0.5 leading-none">
-              ${(totalAwarded / 1_000_000).toFixed(2)}M
+            <div className="pi-metric-hero font-[650] text-emerald-700 dark:text-emerald-400 mt-0.5 leading-none">
+              {formatCurrency(totalAwarded)}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 tabular-nums">
-              {grantedAgencies.length.toLocaleString()} active recipient accounts &middot; FY Oct 1
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 pi-data-inline">
+              <span className="pi-data-number font-semibold">{formatInteger(grantedAgencies.length)}</span> active recipient accounts &middot; FY Oct 1
             </div>
           </div>
         </div>
@@ -339,10 +340,10 @@ export const AfgGrantsTracker: React.FC<AfgGrantsTrackerProps> = ({
                   </td>
 
                   <td className="py-3.5 px-3 text-right">
-                    <div className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm tabular-nums">
-                      ${agency.grantStatus.afgAwardAmount.toLocaleString()}
+                    <div className="font-semibold text-emerald-700 dark:text-emerald-400 pi-metric-card">
+                      {formatCurrency(agency.grantStatus.afgAwardAmount, { compact: false })}
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 pi-data-inline">
                       FY{agency.grantStatus.afgFiscalYear}
                     </div>
                   </td>
@@ -370,8 +371,8 @@ export const AfgGrantsTracker: React.FC<AfgGrantsTrackerProps> = ({
 
                   <td className="py-3.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex flex-col items-end w-14">
-                      <span className="font-semibold text-xs text-slate-900 dark:text-white tabular-nums">
-                        {agency.zollOpportunity.pulseIqScore}<span className="text-slate-400 font-normal">/100</span>
+                      <span className="font-semibold text-xs text-slate-900 dark:text-white pi-data-inline">
+                        <strong className="pi-data-number text-xs font-semibold">{formatScore(agency.zollOpportunity.pulseIqScore)}</strong>
                       </span>
                       <div className="w-full h-[3px] bg-slate-200 dark:bg-slate-700 overflow-hidden mt-1 rounded-full">
                         <div

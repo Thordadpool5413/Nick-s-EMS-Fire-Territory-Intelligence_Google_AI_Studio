@@ -75,34 +75,11 @@ export function useFirestoreAgencies({
       if (connected && !initialHydratedRef.current) {
         initialHydratedRef.current = true;
         try {
-          // Purge any legacy mock documents (e.g., zoll-lead-*) from Firestore
-          await dataSanitizationService.purgeMockRecordsFromFirestore();
-          if (!isMounted) return;
-
-          // If cloud has fewer than 15 synced records, hydrate initial verified agencies to Firestore
-          if (dataSanitizationService.getCloudSyncedIdsCount() < 15) {
-            const initialSlice = allSanitizedAgencies.slice(0, 25);
-            const synced = await batchSyncAgenciesToFirestore(initialSlice, 25);
-            if (synced > 0 && isMounted) {
-              const syncedIds = initialSlice.map(a => a.id);
-              dataSanitizationService.registerCloudSyncedIds(syncedIds);
-              dataSanitizationService.recordAuditEvent(
-                'CLOUD_HYDRATE',
-                `Automatically hydrated ${synced} verified municipal agencies to Google Cloud Firestore.`,
-                initialSlice.length,
-                0,
-                dataSanitizationService.getCloudSyncedIdsCount()
-              );
-              setCloudSyncCount(dataSanitizationService.getCloudSyncedIdsCount());
-              setAllSanitizedAgencies(prev =>
-                dataSanitizationService.sanitizeAgenciesList(prev, undefined, false)
-              );
-            }
-          } else {
-            setCloudSyncCount(dataSanitizationService.getCloudSyncedIdsCount());
-          }
+          // P0 Safety Safeguard: Never execute automatic wildcard deletion or purges against production Firestore on mount.
+          // Cloud records are inspected in read-only mode during startup.
+          setCloudSyncCount(dataSanitizationService.getCloudSyncedIdsCount());
         } catch (err) {
-          console.warn('Initial cloud sanitization & hydration deferred:', err);
+          console.warn('Initial cloud connectivity check deferred:', err);
         }
       }
     }

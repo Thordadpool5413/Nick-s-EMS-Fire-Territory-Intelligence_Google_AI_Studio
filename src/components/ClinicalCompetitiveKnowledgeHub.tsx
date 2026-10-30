@@ -25,6 +25,7 @@ import {
   Search
 } from 'lucide-react';
 import { QualityScorecard } from './QualityScorecard';
+import { formatCurrency, formatInteger, formatPercent } from '../utils/numberFormatting';
 
 interface ClinicalCompetitiveKnowledgeHubProps {
   agencies: Agency[];
@@ -320,11 +321,11 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
               <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {tcoModel.years}-year incumbent operating cost
               </div>
-              <div className="text-[24px] font-[650] tabular-nums text-rose-700 dark:text-rose-400 mt-1 leading-none">
-                ${tcoModel.incumbentOperatingTotal.toLocaleString()}
+              <div className="pi-metric-large text-rose-700 dark:text-rose-400 mt-1 leading-none">
+                {formatCurrency(tcoModel.incumbentOperatingTotal, { compact: false })}
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                {tcoModel.incumbentModel} ({tcoModel.unitCount} devices)
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 pi-data-inline">
+                {tcoModel.incumbentModel} ({formatInteger(tcoModel.unitCount)} devices)
               </div>
             </div>
 
@@ -332,11 +333,11 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
               <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {tcoModel.years}-year ZOLL net operating cost
               </div>
-              <div className="text-[24px] font-[650] tabular-nums text-slate-900 dark:text-white mt-1 leading-none">
-                ${tcoModel.zollNetOperatingTotal.toLocaleString()}
+              <div className="pi-metric-large text-slate-900 dark:text-white mt-1 leading-none">
+                {formatCurrency(tcoModel.zollNetOperatingTotal, { compact: false })}
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 tabular-nums">
-                After ${tcoModel.totalTradeInCredit.toLocaleString()} fleet trade-in credit
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 pi-data-inline">
+                After {formatCurrency(tcoModel.totalTradeInCredit, { compact: false })} fleet trade-in credit
               </div>
             </div>
 
@@ -344,8 +345,8 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
               <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Direct maintenance &amp; battery savings
               </div>
-              <div className="text-[24px] font-[650] tabular-nums text-emerald-700 dark:text-emerald-400 mt-1 leading-none">
-                +${tcoModel.fiveYearOperatingSavings.toLocaleString()}
+              <div className="pi-metric-large text-emerald-700 dark:text-emerald-400 mt-1 leading-none">
+                +{formatCurrency(tcoModel.fiveYearOperatingSavings, { compact: false })}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 Reduced biomedical &amp; consumable spend
@@ -356,11 +357,11 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
               <div className="text-xs font-medium text-[#1E3A8A] dark:text-blue-400">
                 Total {tcoModel.years}-year net lifecycle savings
               </div>
-              <div className="text-[26px] font-[650] tabular-nums text-emerald-700 dark:text-emerald-400 mt-1 leading-none">
-                ${tcoModel.totalSavingsIncludingTradeIn.toLocaleString()}
+              <div className="pi-metric-hero text-emerald-700 dark:text-emerald-400 mt-1 leading-none">
+                {formatCurrency(tcoModel.totalSavingsIncludingTradeIn, { compact: false })}
               </div>
-              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 tabular-nums">
-                ${Math.round(tcoModel.totalSavingsIncludingTradeIn / tcoModel.unitCount).toLocaleString()} savings per vehicle
+              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 pi-data-inline">
+                {formatCurrency(Math.round(tcoModel.totalSavingsIncludingTradeIn / tcoModel.unitCount), { compact: false })} savings per vehicle
               </div>
             </div>
           </div>

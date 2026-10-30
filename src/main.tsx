@@ -1,3 +1,4 @@
+import '@fontsource-variable/instrument-sans';
 import '@fontsource-variable/manrope';
 import '@fontsource-variable/geist';
 import '@fontsource-variable/inter';

@@ -426,7 +426,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   </button>
                   <div className="flex items-center gap-1 pr-1.5 shrink-0">
                     {(dayRouteCount > 0 || bookmarkedCount > 0) && (
-                      <span className="text-xs font-medium tabular-nums px-1.5 py-0.5 rounded bg-[#172D49] text-slate-200">
+                      <span className="text-xs font-semibold pi-data-number px-1.5 py-0.5 rounded bg-[#172D49] text-slate-200">
                         {dayRouteCount || bookmarkedCount}
                       </span>
                     )}
@@ -686,7 +686,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               <Bell className="w-4 h-4" />
               {unreadAlertCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#285EE8] text-white font-mono text-[10px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#285EE8] text-white pi-data-number text-[10px] font-bold flex items-center justify-center">
                   {unreadAlertCount}
                 </span>
               )}

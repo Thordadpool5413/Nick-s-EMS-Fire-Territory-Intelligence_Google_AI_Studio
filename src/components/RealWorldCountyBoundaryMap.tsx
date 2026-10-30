@@ -165,7 +165,7 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
                   <g>
                     {projectedState.projectedCounties.map((pc) => {
                       const isHovered = hoveredCountyFips === pc.countyFips;
-                      const isHighDenial = pc.medicareDenialRatePct >= 19.5;
+                      const isHighDenial = pc.medicareDenialRatePct !== null && pc.medicareDenialRatePct >= 19.5;
                       const fillColor = isHovered
                         ? '#1E3A8A'
                         : isHighDenial
@@ -244,8 +244,17 @@ export const RealWorldCountyBoundaryMap: React.FC<RealWorldCountyBoundaryMapProp
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
                     <span className="text-[11px] font-sans text-slate-500 block">MCR Denials</span>
                     <span className="text-sm font-bold text-rose-700 mt-0.5 block">
-                      {inspectedCounty.medicareDenialRatePct}%
+                      {inspectedCounty.medicareDenialRatePct !== null
+                        ? `${inspectedCounty.medicareDenialRatePct}%`
+                        : 'Not available'}
                     </span>
+                    {inspectedCounty.medicareDenialRatePct === null && (
+                      <span className="text-[10px] text-slate-500 block mt-0.5 leading-tight font-sans">
+                        {inspectedCounty.stateBenchmarkDenialRatePct !== null && inspectedCounty.stateBenchmarkDenialRatePct !== undefined
+                          ? `State benchmark: ${inspectedCounty.stateBenchmarkDenialRatePct}%`
+                          : 'State denial benchmark unavailable'}
+                      </span>
+                    )}
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/70">
                     <span className="text-[11px] font-sans text-slate-500 block">Avg Transport</span>

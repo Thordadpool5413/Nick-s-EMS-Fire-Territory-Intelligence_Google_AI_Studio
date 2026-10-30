@@ -18,7 +18,7 @@ import {
   FileText,
   Filter
 } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatInteger, formatDate } from '../utils/numberFormatting';
 
 interface ContractExpirationCalendarProps {
   agencies: Agency[];
@@ -138,8 +138,8 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
 
           <div className="pl-4 border-l border-slate-200 dark:border-slate-800 text-right shrink-0">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Expiring Within 90 Days</div>
-            <div className="font-mono text-2xl font-bold text-amber-700 dark:text-amber-400 tabular-nums mt-0.5">
-              {expiringAgencies.filter(a => a.competitorContract.renewalWindowDays <= 90).length.toLocaleString()} Accounts
+            <div className="pi-metric-hero font-bold text-amber-700 dark:text-amber-400 mt-0.5">
+              {formatInteger(expiringAgencies.filter(a => a.competitorContract.renewalWindowDays <= 90).length)} Accounts
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Priority intervention window</div>
           </div>
@@ -216,9 +216,9 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold text-[#0F172A] dark:text-white">
-            Upcoming Maintenance Agreement End Dates ({expiringAgencies.length.toLocaleString()} Matching Agencies)
+            Upcoming Maintenance Agreement End Dates ({formatInteger(expiringAgencies.length)} Matching Agencies)
           </h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-sans tabular-nums">
+          <span className="text-xs text-slate-500 dark:text-slate-400 pi-data-inline">
             Page {currentPage} of {totalPages} · Sorted by expiration date
           </span>
         </div>
@@ -261,26 +261,26 @@ export const ContractExpirationCalendar: React.FC<ContractExpirationCalendarProp
                         {cc.vendor}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">
-                        <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-300">{agency.installedFleet.defibUnitsCount}</span> devices under contract
+                        <span className="font-semibold pi-data-number text-slate-700 dark:text-slate-300">{formatInteger(agency.installedFleet.defibUnitsCount)}</span> devices under contract
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-3 font-semibold text-[#0F172A] dark:text-white tabular-nums hidden sm:table-cell">
-                      {cc.contractEndDate}
+                    <td className="py-3.5 px-3 font-semibold text-[#0F172A] dark:text-white pi-data-inline hidden sm:table-cell">
+                      {formatDate(cc.contractEndDate)}
                     </td>
 
                     <td className="py-3.5 px-3 hidden md:table-cell">
-                      <span className={`text-xs tabular-nums flex items-center gap-1 ${
+                      <span className={`text-xs pi-data-inline flex items-center gap-1 ${
                         isUrgent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'
                       }`}>
                         {isUrgent && <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
-                        <span>{cc.renewalWindowDays} days</span>
+                        <span><strong className="pi-data-number font-semibold">{cc.renewalWindowDays}</strong> days</span>
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-3 text-right tabular-nums text-rose-700 dark:text-rose-400 font-semibold hidden lg:table-cell">
-                      ${cc.annualServiceCostPerUnit.toLocaleString()}
-                      <span className="text-xs text-slate-400 font-normal block">/ unit / yr</span>
+                    <td className="py-3.5 px-3 text-right pi-metric-table text-rose-700 dark:text-rose-400 font-semibold hidden lg:table-cell">
+                      {formatCurrency(cc.annualServiceCostPerUnit, { compact: false })}
+                      <span className="text-[11px] text-slate-400 font-normal block">/ unit / yr</span>
                     </td>
 
                     <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300 text-xs max-w-xs leading-relaxed hidden xl:table-cell">

@@ -87,10 +87,17 @@ interface NppesResult {
   }>;
 }
 
+interface NpiQueryResult {
+  results: NppesResult[];
+  available: boolean;
+  error?: string;
+}
+
 /**
  * Helper to query the official U.S. Federal CMS NPPES NPI Registry API v2.1
+ * Explicitly tracks availability to distinguish empty results from API timeouts/outages.
  */
-async function queryFederalNpiRegistry(params: Record<string, string>): Promise<NppesResult[]> {
+async function queryFederalNpiRegistry(params: Record<string, string>): Promise<NpiQueryResult> {
   try {
     const searchParams = new URLSearchParams({
       version: '2.1',
@@ -103,11 +110,18 @@ async function queryFederalNpiRegistry(params: Record<string, string>): Promise<
       headers: { Accept: 'application/json', 'User-Agent': 'ZOLL-Territory-Intelligence/1.0' },
       signal: AbortSignal.timeout(4500),
     });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      return { results: [], available: false, error: `NPPES API returned status ${response.status}` };
+    }
     const data = (await response.json()) as { results?: NppesResult[] };
-    return data.results || [];
-  } catch {
-    return [];
+    return { results: data.results || [], available: true };
+  } catch (err: unknown) {
+    const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    return {
+      results: [],
+      available: false,
+      error: isTimeout ? 'NPPES API request timed out' : 'NPPES network unreachable'
+    };
   }
 }
 
@@ -239,28 +253,44 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
     // 1. Query Federal CMS NPPES NPI Registry & OpenFEMA AFG API in parallel
     let npiMatches: NppesResult[] = [];
     let femaMatches: OpenFemaAfgRecord[] = [];
+    let anyNpiQueryAttempted = false;
+    let anyNpiQuerySucceeded = false;
+    const npiErrors: string[] = [];
 
     if (cleanState) {
-      const [ambResults, orgResults, cityGovResults, openFemaResults] = await Promise.all([
-        cleanCity
-          ? queryFederalNpiRegistry({ state: cleanState, city: cleanCity, taxonomy_description: 'Ambulance' })
-          : Promise.resolve([]),
-        cleanCity
-          ? queryFederalNpiRegistry({
-              state: cleanState,
-              city: cleanCity,
-              organization_name: category === 'fire' ? '*FIRE*' : '*EMS*',
-            })
-          : Promise.resolve([]),
-        cleanCity
-          ? queryFederalNpiRegistry({
-              state: cleanState,
-              city: cleanCity,
-              organization_name: `*${cleanCity.toUpperCase()}*`,
-            })
-          : Promise.resolve([]),
-        queryOpenFemaAfgGrants({ stateCode: cleanState, city: cleanCity, limit: 10 }),
+      anyNpiQueryAttempted = Boolean(cleanCity);
+      const ambQuery: Promise<NpiQueryResult> = cleanCity
+        ? queryFederalNpiRegistry({ state: cleanState, city: cleanCity, taxonomy_description: 'Ambulance' })
+        : Promise.resolve({ results: [], available: true, error: undefined });
+      const orgQuery: Promise<NpiQueryResult> = cleanCity
+        ? queryFederalNpiRegistry({
+            state: cleanState,
+            city: cleanCity,
+            organization_name: category === 'fire' ? '*FIRE*' : '*EMS*',
+          })
+        : Promise.resolve({ results: [], available: true, error: undefined });
+      const cityGovQuery: Promise<NpiQueryResult> = cleanCity
+        ? queryFederalNpiRegistry({
+            state: cleanState,
+            city: cleanCity,
+            organization_name: `*${cleanCity.toUpperCase()}*`,
+          })
+        : Promise.resolve({ results: [], available: true, error: undefined });
+      const openFemaQuery = queryOpenFemaAfgGrants({ stateCode: cleanState, city: cleanCity, limit: 10 });
+
+      const [ambRes, orgRes, cityGovRes, openFemaResults] = await Promise.all([
+        ambQuery,
+        orgQuery,
+        cityGovQuery,
+        openFemaQuery,
       ]);
+
+      if (ambRes.available || orgRes.available || cityGovRes.available) {
+        anyNpiQuerySucceeded = true;
+      }
+      if (ambRes.error) npiErrors.push(ambRes.error);
+      if (orgRes.error) npiErrors.push(orgRes.error);
+      if (cityGovRes.error) npiErrors.push(cityGovRes.error);
 
       femaMatches = openFemaResults;
       if (femaMatches.length === 0) {
@@ -268,7 +298,7 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
       }
 
       const seenNpis = new Set<string>();
-      for (const r of [...orgResults, ...cityGovResults, ...ambResults]) {
+      for (const r of [...orgRes.results, ...cityGovRes.results, ...ambRes.results]) {
         if (r.number && !seenNpis.has(r.number)) {
           seenNpis.add(r.number);
           npiMatches.push(r);
@@ -277,32 +307,102 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
 
       // If no exact city match, try by 5-digit ZIP prefix
       if (npiMatches.length === 0 && zipCode) {
-        npiMatches = await queryFederalNpiRegistry({
+        anyNpiQueryAttempted = true;
+        const zipRes = await queryFederalNpiRegistry({
           state: cleanState,
           postal_code: `${String(zipCode).slice(0, 5)}*`,
           taxonomy_description: 'Ambulance',
         });
+        if (zipRes.available) anyNpiQuerySucceeded = true;
+        if (zipRes.error) npiErrors.push(zipRes.error);
+        for (const r of zipRes.results) {
+          if (r.number && !seenNpis.has(r.number)) {
+            seenNpis.add(r.number);
+            npiMatches.push(r);
+          }
+        }
       }
     }
 
     const isFireRequest = String(category).toLowerCase() === 'fire' || String(agencyName).toLowerCase().includes('fire');
-    const reqLower = String(agencyName).toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
-    const cityLower = cleanCity.toLowerCase();
+    const reqLower = String(agencyName).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+    const cityLower = cleanCity.toLowerCase().trim();
+    const reqTokens = new Set(
+      reqLower
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !['the', 'and', 'for', 'dept', 'department'].includes(w))
+    );
 
-    const exactNpi =
-      npiMatches.find((r) => {
-        const org = (r.basic?.organization_name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
-        if (!org) return false;
-        const privateVendors = ['amr', 'american medical response', 'acadian', 'falck', 'superior', 'lifeline', 'medstar', 'hospital', 'health system', 'clinic'];
-        for (const v of privateVendors) {
-          if (org.includes(v) && !reqLower.includes(v)) return false;
+    // Deterministic Scoring Engine across CMS NPPES Candidates
+    interface ScoredCandidate {
+      candidate: NppesResult;
+      score: number;
+      reasons: string[];
+    }
+
+    const scoredCandidates: ScoredCandidate[] = npiMatches.map((cand) => {
+      let score = 0;
+      const reasons: string[] = [];
+      const orgName = (cand.basic?.organization_name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+      const candTokens = orgName.split(/\s+/).filter((w) => w.length > 2);
+
+      // 1. State Verification (Mandatory gate)
+      const loc = cand.addresses?.find((a) => a.address_purpose === 'LOCATION') || cand.addresses?.[0];
+      const candState = (loc?.state || '').toUpperCase().trim();
+      if (cleanState && candState && candState !== cleanState) {
+        return { candidate: cand, score: 0, reasons: ['State mismatch'] };
+      }
+
+      // 2. Organization Name Token Overlap
+      if (reqTokens.size > 0 && candTokens.length > 0) {
+        const matchingTokens = candTokens.filter((t) => reqTokens.has(t));
+        const overlap = matchingTokens.length / Math.max(reqTokens.size, 1);
+        if (overlap > 0) {
+          const namePts = Math.min(0.55, overlap * 0.55);
+          score += namePts;
+          reasons.push(`Token overlap: ${matchingTokens.join(', ')} (+${Math.round(namePts * 100)}%)`);
         }
-        const hasCity = cityLower && org.includes(cityLower);
-        const hasCategory = isFireRequest
-          ? org.includes('fire') || org.includes('city of')
-          : org.includes('ems') || org.includes('ambulance') || org.includes('emergency medical') || org.includes('rescue') || org.includes('city of');
-        return Boolean(hasCity && hasCategory);
-      }) || npiMatches[0];
+      }
+
+      // 3. City Match
+      const candCity = (loc?.city || '').toLowerCase().trim();
+      if (cityLower && candCity && (candCity.includes(cityLower) || cityLower.includes(candCity))) {
+        score += 0.25;
+        reasons.push(`City match: ${loc?.city} (+25%)`);
+      }
+
+      // 4. Healthcare / Emergency Taxonomy Match
+      const taxonomies = cand.taxonomies || [];
+      const hasAmbulanceTaxonomy = taxonomies.some(
+        (t) =>
+          t.code === '341600000X' ||
+          t.code === '3416L0300X' ||
+          (t.desc || '').toLowerCase().includes('ambulance') ||
+          (t.desc || '').toLowerCase().includes('rescue')
+      );
+      if (hasAmbulanceTaxonomy) {
+        score += 0.20;
+        reasons.push('Authorized Emergency Ambulance / Rescue Taxonomy (+20%)');
+      }
+
+      // 5. Deduct for known private commercial contractors if searching municipal agency
+      const privateCommercialChains = ['amr', 'american medical response', 'acadian', 'falck', 'superior air-ground'];
+      const isCandidatePrivate = privateCommercialChains.some((chain) => orgName.includes(chain));
+      const isTargetPrivate = privateCommercialChains.some((chain) => reqLower.includes(chain));
+      if (isCandidatePrivate && !isTargetPrivate) {
+        score = Math.max(0, score - 0.40);
+        reasons.push('Private commercial contractor penalty (-40%)');
+      }
+
+      return {
+        candidate: cand,
+        score: Math.min(1.0, +score.toFixed(2)),
+        reasons,
+      };
+    });
+
+    scoredCandidates.sort((a, b) => b.score - a.score);
+    const topMatch = scoredCandidates[0];
 
     const formattedFemaAwards = femaMatches.slice(0, 5).map((f, idx) => {
       const fy = Number(f.fiscalYear || f.programYear) || 2024;
@@ -318,9 +418,27 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
 
     const usfaRegistryUrl = `https://apps.usfa.fema.gov/registry/`;
 
-    if (exactNpi) {
+    // Determine explicit outcome based on deterministic scoring and source availability
+    let outcome: 'MATCHED' | 'AMBIGUOUS' | 'NOT_MATCHED' | 'SOURCE_UNAVAILABLE' | 'ERROR' = 'NOT_MATCHED';
+    if (anyNpiQueryAttempted && !anyNpiQuerySucceeded && npiMatches.length === 0) {
+      outcome = 'SOURCE_UNAVAILABLE';
+    } else if (topMatch && topMatch.score >= 0.70) {
+      const secondMatch = scoredCandidates[1];
+      if (secondMatch && secondMatch.score >= 0.65 && (topMatch.score - secondMatch.score) < 0.08) {
+        outcome = 'AMBIGUOUS';
+      } else {
+        outcome = 'MATCHED';
+      }
+    } else if (topMatch && topMatch.score >= 0.35) {
+      outcome = 'AMBIGUOUS';
+    } else {
+      outcome = 'NOT_MATCHED';
+    }
+
+    if (outcome === 'MATCHED' && topMatch) {
+      const matchedRecord = topMatch.candidate;
       const practiceAddr =
-        exactNpi.addresses?.find((a) => a.address_purpose === 'LOCATION') || exactNpi.addresses?.[0];
+        matchedRecord.addresses?.find((a) => a.address_purpose === 'LOCATION') || matchedRecord.addresses?.[0];
       const street = [practiceAddr?.address_1, practiceAddr?.address_2].filter(Boolean).join(', ');
       const addrCity = practiceAddr?.city || cleanCity;
       const addrState = practiceAddr?.state || cleanState;
@@ -329,28 +447,31 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
         ? `${street}, ${addrCity}, ${addrState} ${addrZip}`.trim()
         : `${addrCity}, ${addrState} ${addrZip}`.trim();
 
-      const officialFirst = exactNpi.basic?.authorized_official_first_name || '';
-      const officialLast = exactNpi.basic?.authorized_official_last_name || '';
+      const officialFirst = matchedRecord.basic?.authorized_official_first_name || '';
+      const officialLast = matchedRecord.basic?.authorized_official_last_name || '';
       const officialName = [officialFirst, officialLast]
         .filter(Boolean)
         .map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase())
         .join(' ');
-      const officialTitle = exactNpi.basic?.authorized_official_title_or_position || 'Authorized Department Official';
-      const nppesLastUpdated = exactNpi.basic?.last_updated || '';
+      const officialTitle = matchedRecord.basic?.authorized_official_title_or_position || 'Authorized Department Official';
+      const nppesLastUpdated = matchedRecord.basic?.last_updated || '';
 
       const searchQuery = `${agencyName}, ${formattedAddress}`;
       const googleMapsUri = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
       const officialWebsite = `https://www.google.com/search?q=${encodeURIComponent(`${agencyName} ${addrCity} ${addrState} official government website`)}`;
 
-      const taxonomy = exactNpi.taxonomies?.find((t) => t.primary) || exactNpi.taxonomies?.[0];
+      const taxonomy = matchedRecord.taxonomies?.find((t) => t.primary) || matchedRecord.taxonomies?.[0];
       const taxonomyCode = taxonomy?.code || (isFireRequest ? '3416L0300X' : '341600000X');
       const taxonomyDescription = taxonomy?.desc || (isFireRequest ? '3416L0300X - Land Transport / Municipal Fire Rescue' : '341600000X - Ambulance Service Provider');
-      const nppesRegistryUrl = `https://npiregistry.cms.hhs.gov/provider-view/${exactNpi.number}`;
+      const nppesRegistryUrl = `https://npiregistry.cms.hhs.gov/provider-view/${matchedRecord.number}`;
 
       res.json({
+        outcome: 'MATCHED',
         verified: true,
+        matchConfidence: Math.round(topMatch.score * 100),
+        matchReasons: topMatch.reasons,
         verificationSource: 'Federal CMS NPI Registry (NPPES v2.1) & OpenFEMA API',
-        npiNumber: exactNpi.number,
+        npiNumber: matchedRecord.number,
         taxonomyCode,
         taxonomyDescription,
         nppesOfficialName: officialName,
@@ -359,7 +480,7 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
         nppesRegistryUrl,
         usfaRegistryUrl,
         liveFemaAwards: formattedFemaAwards,
-        legalOrganizationName: exactNpi.basic?.organization_name,
+        legalOrganizationName: matchedRecord.basic?.organization_name,
         address: formattedAddress,
         zipCode: addrZip || zipCode,
         headquartersPhone: '',
@@ -372,30 +493,39 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
               phone: '',
               email: '',
               isVerifiedOfficial: true,
-              verificationSource: `CMS NPPES NPI #${exactNpi.number}${nppesLastUpdated ? ` (Certified ${nppesLastUpdated})` : ''}`,
+              verificationSource: `CMS NPPES NPI #${matchedRecord.number}${nppesLastUpdated ? ` (Certified ${nppesLastUpdated})` : ''}`,
             }
           : null,
-        allCityNpiProviders: npiMatches.slice(0, 8).map((m) => {
-          const loc = m.addresses?.find((a) => a.address_purpose === 'LOCATION') || m.addresses?.[0];
-          const tax = m.taxonomies?.find((t) => t.primary) || m.taxonomies?.[0];
-          return {
-            npi: m.number,
-            name: m.basic?.organization_name || 'Registered EMS/Fire Provider',
-            address: `${loc?.address_1 || ''}, ${loc?.city || ''}, ${loc?.state || ''} ${(loc?.postal_code || '').slice(0, 5)}`,
-            phone: '',
-            official: [m.basic?.authorized_official_first_name, m.basic?.authorized_official_last_name].filter(Boolean).join(' '),
-            officialTitle: m.basic?.authorized_official_title_or_position || '',
-            taxonomyCode: tax?.code || '341600000X',
-            lastUpdated: m.basic?.last_updated || '',
-          };
-        }),
+        candidateProviders: scoredCandidates.slice(0, 6).map((sc) => ({
+          npi: sc.candidate.number,
+          name: sc.candidate.basic?.organization_name || 'Registered Provider',
+          score: Math.round(sc.score * 100),
+          reasons: sc.reasons,
+        })),
       });
       return;
     }
 
+    // Unverified / Ambiguous / Not Matched / Source Unavailable: strictly verified = false
+    const fallbackSource = outcome === 'SOURCE_UNAVAILABLE'
+      ? 'Federal CMS NPI Registry Temporarily Unavailable (Timeout / Upstream Error)'
+      : outcome === 'AMBIGUOUS'
+        ? 'Ambiguous Multi-Entity Match — Manual Review Required'
+        : 'Unverified — Corroborating Source Required';
+
+    const fallbackReasons = outcome === 'SOURCE_UNAVAILABLE'
+      ? (npiErrors.length > 0 ? npiErrors : ['Federal CMS NPPES NPI Registry API timed out or network connection refused'])
+      : topMatch
+        ? topMatch.reasons
+        : ['No matching NPPES entity found for requested jurisdiction'];
+
     res.json({
-      verified: true,
-      verificationSource: 'Official Municipal Website, USFA Registry & Google Maps Directory',
+      outcome,
+      verified: false,
+      matchConfidence: topMatch ? Math.round(topMatch.score * 100) : 0,
+      matchReasons: fallbackReasons,
+      verificationSource: fallbackSource,
+      npiNumber: null,
       address: `${cleanCity}, ${cleanState} ${zipCode}`.trim(),
       headquartersPhone: '',
       officialWebsite: `https://www.google.com/search?q=${encodeURIComponent(`${agencyName} ${cleanCity} ${cleanState} official government website`)}`,
@@ -403,24 +533,16 @@ app.post('/api/providers/verify-live', async (req: Request, res: Response): Prom
       usfaRegistryUrl,
       liveFemaAwards: formattedFemaAwards,
       authorizedOfficial: null,
-      allCityNpiProviders: npiMatches.slice(0, 8).map((m) => {
-        const loc = m.addresses?.find((a) => a.address_purpose === 'LOCATION') || m.addresses?.[0];
-        const tax = m.taxonomies?.find((t) => t.primary) || m.taxonomies?.[0];
-        return {
-          npi: m.number,
-          name: m.basic?.organization_name || 'Registered EMS/Fire Provider',
-          address: `${loc?.address_1 || ''}, ${loc?.city || ''}, ${loc?.state || ''} ${(loc?.postal_code || '').slice(0, 5)}`,
-          phone: '',
-          official: [m.basic?.authorized_official_first_name, m.basic?.authorized_official_last_name].filter(Boolean).join(' '),
-          officialTitle: m.basic?.authorized_official_title_or_position || '',
-          taxonomyCode: tax?.code || '341600000X',
-          lastUpdated: m.basic?.last_updated || '',
-        };
-      }),
+      candidateProviders: scoredCandidates.slice(0, 6).map((sc) => ({
+        npi: sc.candidate.number,
+        name: sc.candidate.basic?.organization_name || 'Registered Provider',
+        score: Math.round(sc.score * 100),
+        reasons: sc.reasons,
+      })),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: 'Live verification failed', details: msg });
+    res.status(500).json({ outcome: 'ERROR', verified: false, error: 'Live verification failed', details: msg });
   }
 });
 

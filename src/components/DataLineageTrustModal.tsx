@@ -318,16 +318,30 @@ export const DataLineageTrustModal: React.FC<DataLineageTrustModalProps> = ({
                 {activeAgency && (
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs">
-                      <span className="text-[10px] text-slate-400 block font-semibold">Integrity Score</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-sm tabular-nums">100% Verified</span>
+                      <span className="text-[10px] text-slate-400 block font-semibold">Evidence Integrity</span>
+                      <span className={`font-semibold text-sm tabular-nums ${
+                        auditReport?.integrityStatus === 'VERIFIED_CORROBORATED'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : auditReport?.integrityStatus === 'PARTIALLY_CORROBORATED'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-amber-600 dark:text-amber-400'
+                      }`}>
+                        {auditReport?.overallIntegrityScore && auditReport.overallIntegrityScore > 0
+                          ? `${auditReport.overallIntegrityScore}% (${auditReport.integrityStatusLabel})`
+                          : (auditReport?.integrityStatusLabel || 'Incomplete Evidence')}
+                      </span>
                     </div>
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs">
                       <span className="text-[10px] text-slate-400 block font-semibold">FDID / Registry ID</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs tabular-nums">{activeAgency.fdid || 'Active FDID'}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs tabular-nums">{activeAgency.fdid || 'Not Recorded'}</span>
                     </div>
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs">
                       <span className="text-[10px] text-slate-400 block font-semibold">NEMSIS / CMS Match</span>
-                      <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 text-xs">Exact Match</span>
+                      <span className={`font-semibold text-xs ${
+                        activeAgency.isVerifiedRecord ? 'text-[#1E3A8A] dark:text-blue-400' : 'text-slate-500'
+                      }`}>
+                        {activeAgency.isVerifiedRecord ? 'Verified Federal Match' : activeAgency.npiNumber ? 'Candidate Cross-Reference' : 'Sourcing Required'}
+                      </span>
                     </div>
                   </div>
                 )}

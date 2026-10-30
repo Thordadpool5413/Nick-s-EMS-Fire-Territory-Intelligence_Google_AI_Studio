@@ -145,19 +145,32 @@ class NationalProviderDatabaseService {
     if (typeof window !== 'undefined') {
       try {
         const current = this.getSavedVerifications();
-        current[agencyId] = {
-          address: updated.address,
-          zipCode: updated.zipCode,
-          npiNumber: updated.npiNumber,
-          headquartersPhone: '',
-          officialWebsite: updated.officialWebsite,
-          mapSearchUri: updated.mapSearchUri,
-          verificationSource: updated.verificationSource,
-          isVerifiedRecord: true,
-          lastVerifiedAt: new Date().toISOString(),
-          keyContacts: updated.keyContacts,
-        };
-        window.localStorage.setItem(verifiedCacheKey(), JSON.stringify(current));
+        if (updated.isVerifiedRecord) {
+          current[agencyId] = {
+            address: updated.address,
+            zipCode: updated.zipCode,
+            npiNumber: updated.npiNumber,
+            headquartersPhone: '',
+            officialWebsite: updated.officialWebsite,
+            mapSearchUri: updated.mapSearchUri,
+            verificationSource: updated.verificationSource,
+            isVerifiedRecord: true,
+            lastVerifiedAt: updated.lastVerifiedAt || new Date().toISOString(),
+            keyContacts: updated.keyContacts,
+          };
+          window.localStorage.setItem(verifiedCacheKey(), JSON.stringify(current));
+        } else {
+          // P0 Protection: Do NOT delete user-entered or previously source-backed data on failed/timeout verification.
+          // Preserve existing identifiers and record the verification attempt.
+          if (current[agencyId]) {
+            current[agencyId] = {
+              ...current[agencyId],
+              isVerifiedRecord: false,
+              verificationAttempt: updated.verificationAttempt || current[agencyId]?.verificationAttempt,
+            };
+            window.localStorage.setItem(verifiedCacheKey(), JSON.stringify(current));
+          }
+        }
       } catch {
         // Ignore storage quota errors
       }
@@ -266,7 +279,7 @@ class NationalProviderDatabaseService {
     ];
     const dispatchCadVendor = cadVendors[posHash % cadVendors.length];
 
-    const denialRate = +(stSummary.avgMedicareDenialRate + ((posHash % 50) - 25) / 10).toFixed(1);
+    const denialRate = c.medicareDenialRatePct || stSummary.avgMedicareDenialRate || 18.2;
     const recoverableRevenue = Math.round(emsTransports * (isFire ? 34 : 68));
 
     const medicarePayerPct = +(38.0 + (posHash % 14)).toFixed(1);

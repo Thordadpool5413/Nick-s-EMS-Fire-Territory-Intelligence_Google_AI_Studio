@@ -414,6 +414,7 @@ class DataSanitizationService {
       fieldNotes: cleanNotes,
       zollOpportunity: verifiedOpportunity,
       isCloudPersisted: isCloud,
+      isVerifiedRecord: Boolean(agency.isVerifiedRecord),
       dataProvenanceTier: isCloud
         ? 'firestore_cloud_synced'
         : agency.isVerifiedRecord || Boolean(agency.npiNumber)
@@ -487,15 +488,21 @@ class DataSanitizationService {
   }
 
   /**
-   * Connects to Google Cloud Firestore and deletes any legacy mock documents
-   * (`zoll-lead-*`, `mock-*`, or synthetic field notes) from the remote cloud collections.
+   * Connects to Google Cloud Firestore in read-only inspection mode.
+   * Under P0 Safety Controls, mutating deletions against production Firestore are blocked
+   * unless explicitly authorized with allowMutatingDelete: true.
    */
-  public async purgeMockRecordsFromFirestore(): Promise<{
+  public async purgeMockRecordsFromFirestore(allowMutatingDelete: boolean = false): Promise<{
     purgedAgencies: number;
     purgedNotes: number;
   }> {
     let purgedAgencies = 0;
     let purgedNotes = 0;
+
+    if (!allowMutatingDelete) {
+      console.info('P0 Safety Guard: Firestore mutating deletion blocked by default to protect production database ai-studio-nicksemsfireterr-26354b36-e812-4fee-8cf9-2df9f9c26acf.');
+      return { purgedAgencies: 0, purgedNotes: 0 };
+    }
 
     try {
       const agenciesSnap = await getDocs(collections.agencies);

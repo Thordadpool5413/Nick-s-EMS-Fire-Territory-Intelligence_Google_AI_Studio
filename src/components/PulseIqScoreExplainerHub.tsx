@@ -80,10 +80,10 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
           </div>
 
           <div className="flex items-baseline gap-1 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-slate-700 shrink-0">
-            <span className={`text-base font-extrabold font-mono tabular-nums ${getScoreColor(score)}`}>
+            <span className={`text-base font-bold pi-data-number ${getScoreColor(score)}`}>
               {score}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">/100</span>
+            <span className="text-[11px] text-slate-400 pi-data-inline">/100</span>
           </div>
         </div>
 
@@ -102,7 +102,7 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
                       ({factor.weightPct}% weight)
                     </span>
                   </div>
-                  <span className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-[11px] tabular-nums shrink-0">
+                  <span className="pi-data-number font-bold text-indigo-700 dark:text-indigo-400 text-[11px] shrink-0">
                     +{factor.pointsContributed} pts
                   </span>
                 </div>
@@ -175,11 +175,11 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total PulseIQ
             </div>
-            <div className="text-2xl font-bold font-mono text-indigo-900 dark:text-indigo-200 tabular-nums">
+            <div className="pi-metric-hero font-bold text-indigo-900 dark:text-indigo-200">
               {score}<span className="text-sm font-normal text-slate-400">/100</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full border-4 border-indigo-600 dark:border-indigo-400 flex items-center justify-center font-bold text-xs text-indigo-800 dark:text-indigo-200">
+          <div className="w-10 h-10 rounded-full border-4 border-indigo-600 dark:border-indigo-400 flex items-center justify-center font-bold text-xs text-indigo-800 dark:text-indigo-200 pi-data-number">
             {score}%
           </div>
         </div>
@@ -195,13 +195,13 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center font-mono">
+                  <span className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center pi-data-number">
                     {index + 1}
                   </span>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     {factor.name}
                   </h4>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-400 pi-data-inline">
                     (Weight: {factor.weightPct}%)
                   </span>
                 </div>
@@ -210,7 +210,7 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getUrgencyBadge(factor.urgencyLevel)}`}>
                     {factor.urgencyLevel} Urgency
                   </span>
-                  <div className="font-mono font-bold text-sm text-indigo-700 dark:text-indigo-400 tabular-nums bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-100 dark:border-slate-700">
+                  <div className="pi-data-number font-bold text-sm text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-100 dark:border-slate-700">
                     +{factor.pointsContributed} Points
                   </div>
                 </div>
@@ -226,8 +226,8 @@ export const PulseIqScoreExplainerHub: React.FC<PulseIqScoreExplainerHubProps> =
                     />
                   </div>
                 </div>
-                <div className="text-right text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-                  Raw Index: {factor.componentScore}/100
+                <div className="text-right text-xs pi-data-inline font-semibold text-slate-700 dark:text-slate-300">
+                  Raw Index: <span className="pi-data-number font-semibold">{factor.componentScore}/100</span>
                 </div>
               </div>
 

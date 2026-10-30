@@ -44,7 +44,7 @@ import {
   ChevronRight,
   ArrowRight
 } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatScore, formatDistanceMiles, formatInteger } from '../utils/numberFormatting';
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 import { territoryEngine } from '../services/territoryIntelligenceEngine';
 
@@ -931,19 +931,19 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
                           <div className="grid grid-cols-2 gap-2 text-xs mb-2.5 bg-slate-50 p-2 rounded-lg border border-slate-100">
                             <div>
                               <span className="text-[11px] text-slate-500 font-medium block">PulseIQ score</span>
-                              <span className="font-semibold text-blue-700 text-sm tabular-nums">
-                                {infoScore} / 100
+                              <span className="font-semibold text-blue-700 text-sm pi-data-number">
+                                {formatScore(infoScore)}
                               </span>
                             </div>
                             <div>
                               <span className="text-[11px] text-slate-500 font-medium block">Primary fleet</span>
                               <span className="font-semibold text-slate-800 text-xs">
-                                {infoDefibBrand} ({infoDefibAge} yrs)
+                                {infoDefibBrand} (<span className="pi-data-number font-semibold">{infoDefibAge}</span> yrs)
                               </span>
                             </div>
                             <div>
                               <span className="text-[11px] text-slate-500 font-medium block">Medicare volume</span>
-                              <span className="font-semibold text-emerald-700 text-xs tabular-nums">
+                              <span className="font-semibold text-emerald-700 text-xs pi-data-number">
                                 {formatCurrency(infoMedicare, { perYear: true })}
                               </span>
                             </div>
@@ -1053,19 +1053,19 @@ export const GoogleMapsTerritoryExplorer: React.FC<GoogleMapsTerritoryExplorerPr
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="text-xs font-bold text-blue-700 dark:text-blue-400 tabular-nums">
-                            {agency.zollOpportunity?.pulseIqScore}/100
+                          <span className="text-xs font-bold text-blue-700 dark:text-blue-400 pi-data-number">
+                            {formatScore(agency.zollOpportunity?.pulseIqScore)}
                           </span>
                           {dist !== null && (
-                            <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                              {dist} mi away
+                            <span className="block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 pi-data-number">
+                              {formatDistanceMiles(dist)} away
                             </span>
                           )}
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                        <span>Fleet: {agency.installedFleet?.defibUnitsCount}× {agency.installedFleet?.defibBrand?.slice(0, 14)}</span>
+                        <span>Fleet: <strong className="pi-data-number font-semibold">{formatInteger(agency.installedFleet?.defibUnitsCount)}</strong> devices · {agency.installedFleet?.defibBrand?.slice(0, 14)}</span>
                         <span className="text-[#285EE8] font-semibold flex items-center gap-0.5">
                           Open 360 &rarr;
                         </span>

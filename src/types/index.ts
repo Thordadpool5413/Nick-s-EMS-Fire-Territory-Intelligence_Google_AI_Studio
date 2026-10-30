@@ -103,6 +103,7 @@ export interface CountyHealthRecord {
   cities?: string[];
   cityRecords?: CountyCityRecord[];
   medicareDenialRatePct?: number;
+  medicareDenialSource?: string;
 }
 
 export interface GisAndDemographics {
@@ -150,6 +151,9 @@ export interface CompetitorContractExpiry {
   annualServiceCostPerUnit: number;
   status: 'Expiring Soon (90 Days)' | 'Active Term' | 'Active' | 'Month-to-Month / Lapsed' | string;
   actionRecommendation: string;
+  isVerifiedContract?: boolean;
+  contractNumber?: string;
+  contractSourceDoc?: string;
 }
 
 export interface Agency {
@@ -186,7 +190,11 @@ export interface Agency {
   gisData: GisAndDemographics;
 
   // Clinical Quality & Regulatory Measures (NEMSQA, AHA, CARES)
-  qualityMetrics: ClinicalQualityMetrics;
+  qualityMetrics: ClinicalQualityMetrics & {
+    isCaresVerified?: boolean;
+    isNemsqaVerified?: boolean;
+    caresSubmissionId?: string;
+  };
 
   // Competitive Service Contract Expiration Timeline
   competitorContract: CompetitorContractExpiry;
@@ -209,6 +217,9 @@ export interface Agency {
     totalMedicareBilled?: number;
     avgMedicarePaymentPerRun?: number;
     avgBlsPaymentPerRun?: number;
+    isVerifiedCmsClaims?: boolean;
+    cmsClaimPufYear?: string;
+    cmsPufReportingPeriod?: string;
     payerMix?: {
       medicare: number;
       medicaid: number;
@@ -233,6 +244,12 @@ export interface Agency {
     billingSoftware: string; // 'Digitech', 'In-House Municipal', 'ZOLL Billing', 'Optum'
     alsMonitorsCount?: number;
     blsDefibsCount?: number;
+    isVerifiedEquipment?: boolean;
+    procurementResolutionId?: string;
+    procurementSourceDoc?: string;
+    capitalAssetLedgerId?: string;
+    isVerifiedWarranty?: boolean;
+    warrantyContractDoc?: string;
   };
 
   // Public Grants & Budget
@@ -270,6 +287,8 @@ export interface Agency {
 
   // Optional telemetry, verification, and fleet synchronization properties
   providerCategory?: 'FIRE' | 'EMS' | string;
+  isFdidVerified?: boolean;
+  isOperationalDataVerified?: boolean;
   npiNumber?: string;
   taxonomyCode?: string;
   taxonomyDescription?: string;
@@ -293,6 +312,12 @@ export interface Agency {
   verificationSource?: 'Federal CMS NPI Registry' | 'USFA & Municipal Registry' | 'Google Maps Verified' | 'Firestore Cloud Synced' | string;
   isVerifiedRecord?: boolean;
   lastVerifiedAt?: string;
+  verificationAttempt?: {
+    timestamp: string;
+    outcome: string;
+    status: string;
+    details?: string;
+  };
   budgetCycleEndMonth?: string;
   _syncedAt?: string;
   _updatedAt?: string;

@@ -251,11 +251,11 @@ export const InteractiveSparkline: React.FC<InteractiveSparklineProps> = ({
       {/* Floating Hover Tooltip HUD */}
       {hoveredPoint && (
         <div 
-          className="absolute -top-7 z-30 pointer-events-none transform -translate-x-1/2 bg-slate-900 text-white font-mono text-[10px] px-2 py-0.5 rounded shadow-lg whitespace-nowrap border border-slate-700 animate-in fade-in duration-100"
+          className="absolute -top-7 z-30 pointer-events-none transform -translate-x-1/2 bg-slate-900 text-white pi-data-inline text-[11px] px-2 py-0.5 rounded shadow-lg whitespace-nowrap border border-slate-700 animate-in fade-in duration-100"
           style={{ left: `${(hoveredPoint.x / svgWidth) * 100}%` }}
         >
           <span className="text-slate-400 mr-1">{hoveredPoint.label}:</span>
-          <span className="font-bold text-white">
+          <span className="font-bold text-white pi-data-number">
             {valuePrefix}{typeof hoveredPoint.value === 'number' ? hoveredPoint.value.toLocaleString() : hoveredPoint.value}{valueSuffix}
           </span>
         </div>

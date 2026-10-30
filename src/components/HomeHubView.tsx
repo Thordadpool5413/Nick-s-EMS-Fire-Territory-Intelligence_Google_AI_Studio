@@ -29,6 +29,7 @@ import {
 import { ALL_50_STATES_SUMMARIES } from '../data/nationalGeographicData';
 import { US_STATES_SVG_PATHS, EAST_COAST_CALLOUT_STATES } from '../data/usStatesSvgPaths';
 import { territoryEngine } from '../services/territoryIntelligenceEngine';
+import { formatCurrency, formatPercent, formatInteger, formatScore } from '../utils/numberFormatting';
 
 interface HomeHubViewProps {
   agencies: Agency[];
@@ -254,8 +255,8 @@ export const HomeHubView: React.FC<HomeHubViewProps> = ({
                   </button>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-[#14283F] dark:text-slate-200 tabular-nums">
-                      PulseIQ {agency.zollOpportunity?.pulseIqScore || 75}/100
+                    <span className="text-xs font-semibold text-[#14283F] dark:text-slate-200 pi-data-inline">
+                      PulseIQ <strong className="pi-data-number text-xs">{formatScore(agency.zollOpportunity?.pulseIqScore || 75)}</strong>
                     </span>
                     <button
                       type="button"
@@ -471,14 +472,14 @@ export const HomeHubView: React.FC<HomeHubViewProps> = ({
             <div className="p-5 rounded-2xl bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-4">
               <div className="flex items-center justify-between border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-3">
                 <div className="min-w-0">
-                  <span className="text-[10px] font-bold font-mono tracking-wider uppercase text-[#285EE8] dark:text-blue-400 block">
+                  <span className="text-[10px] font-bold tracking-wider uppercase text-[#285EE8] dark:text-blue-400 block">
                     {activeStateSummary.region} Region
                   </span>
                   <h3 className="font-display font-bold text-lg text-[#14283F] dark:text-white truncate">
                     {activeStateSummary.state} ({activeStateSummary.code})
                   </h3>
                 </div>
-                <span className="px-2.5 py-1 rounded-lg text-xs font-bold font-mono bg-[#285EE8] text-white shadow-xs">
+                <span className="px-2.5 py-1 rounded-lg text-xs font-bold pi-data-number bg-[#285EE8] text-white shadow-xs">
                   {displayStateCode}
                 </span>
               </div>
@@ -489,32 +490,32 @@ export const HomeHubView: React.FC<HomeHubViewProps> = ({
                   <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">
                     Counties
                   </span>
-                  <span className="font-bold text-[#14283F] dark:text-white text-base tabular-nums">
-                    {stateStats.countiesCount}
+                  <span className="font-semibold text-[#14283F] dark:text-white text-base pi-metric-card">
+                    {formatInteger(stateStats.countiesCount)}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42]">
                   <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">
                     Monitored
                   </span>
-                  <span className="font-bold text-[#285EE8] dark:text-blue-400 text-base tabular-nums">
-                    {stateStats.count} agencies
+                  <span className="font-semibold text-[#285EE8] dark:text-blue-400 text-base pi-metric-card">
+                    {formatInteger(stateStats.count)} agencies
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42]">
                   <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">
                     Avg PulseIQ
                   </span>
-                  <span className="font-bold text-[#14283F] dark:text-white text-base tabular-nums">
-                    {stateStats.avgPulseIq}/100
+                  <span className="font-semibold text-[#14283F] dark:text-white text-base pi-metric-card">
+                    {formatScore(stateStats.avgPulseIq)}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42]">
                   <span className="text-[#53657B] dark:text-slate-400 block text-[11px]">
                     Denial Rate
                   </span>
-                  <span className="font-bold text-amber-600 dark:text-amber-400 text-base tabular-nums">
-                    {activeStateSummary.avgMedicareDenialRate}%
+                  <span className="font-semibold text-amber-600 dark:text-amber-400 text-base pi-metric-card">
+                    {formatPercent(activeStateSummary.avgMedicareDenialRate)}
                   </span>
                 </div>
               </div>
@@ -523,20 +524,20 @@ export const HomeHubView: React.FC<HomeHubViewProps> = ({
               <div className="space-y-2 text-xs border-t border-[#DFE6EF] dark:border-[#1E2D42] pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[#53657B] dark:text-slate-400">Total Ambulances:</span>
-                  <span className="font-semibold text-[#14283F] dark:text-white tabular-nums">
-                    {stateStats.totalAmbulances} units
+                  <span className="font-medium text-[#14283F] dark:text-white pi-data-number">
+                    {formatInteger(stateStats.totalAmbulances)} units
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#53657B] dark:text-slate-400">Total Fire Engines:</span>
-                  <span className="font-semibold text-[#14283F] dark:text-white tabular-nums">
-                    {stateStats.totalFireEngines} apparatus
+                  <span className="font-medium text-[#14283F] dark:text-white pi-data-number">
+                    {formatInteger(stateStats.totalFireEngines)} apparatus
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#53657B] dark:text-slate-400">Annual Medicare Allowed:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                    ${Math.round(stateStats.medicareAllowed / 1000).toLocaleString()}K
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 pi-data-number">
+                    {formatCurrency(stateStats.medicareAllowed)}
                   </span>
                 </div>
               </div>

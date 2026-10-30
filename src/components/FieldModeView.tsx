@@ -247,8 +247,8 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
               </button>
             )}
 
-            <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 tabular-nums">
-              {dayRouteAgencies.length} stops planned
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 pi-data-inline">
+              <strong className="pi-data-number font-semibold">{dayRouteAgencies.length}</strong> stops planned
             </div>
           </div>
         </div>

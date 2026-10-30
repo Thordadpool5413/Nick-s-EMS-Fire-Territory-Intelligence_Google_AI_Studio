@@ -102,7 +102,9 @@ export interface SvgProjectedCounty {
   landAreaSqMiles: number;
   citiesCount: number;
   population: number;
-  medicareDenialRatePct: number;
+  medicareDenialRatePct: number | null;
+  stateBenchmarkDenialRatePct?: number | null;
+  medicareDenialSource?: string;
   averageTransportMinutes: number;
   svgPath: string;
   labelX: number;
@@ -423,7 +425,13 @@ class CountyBoundaryHierarchyService {
     };
 
     const stSummary = ALL_50_STATES_SUMMARIES[sc];
-    const baseDenial = stSummary?.avgMedicareDenialRate || 18.2;
+    // CMS Part B Ground Ambulance claims are adjudicated across regional MAC jurisdictions.
+    // Standard CMS PUF releases do not publish standalone state-by-state denial tables
+    // unless custom FOIA/claims data extraction is performed.
+    // If no authenticated state-level CMS PUF dataset meeting all 7 criteria is linked,
+    // state denial benchmark is explicitly marked unavailable.
+    const hasAuthenticBenchmark = false; // Set to false to prevent uncorroborated benchmarks from masquerading as official CMS PUF
+    const stateBenchmark = hasAuthenticBenchmark ? stSummary?.avgMedicareDenialRate : null;
 
     const projectedCounties: SvgProjectedCounty[] = [];
 
@@ -431,9 +439,11 @@ class CountyBoundaryHierarchyService {
       const svgPath = this.geometryToSvgPath(co.geometry!, projectPoint);
       if (!svgPath) continue;
       const [labelX, labelY] = projectPoint(co.centroid.lng, co.centroid.lat);
-      const denialRate =
-        co.countyRecord.medicareDenialRatePct ??
-        +(baseDenial + ((parseInt(co.countyFips.slice(-2), 10) % 7) - 3) * 0.6).toFixed(1);
+      // Factual county rate: null if no measured county rate exists in authoritative CMS PUF record.
+      // Never substitute state-level averages into the county's measured rate field!
+      const denialRate = co.countyRecord.medicareDenialRatePct !== undefined && co.countyRecord.medicareDenialRatePct !== null
+        ? co.countyRecord.medicareDenialRatePct
+        : null;
 
       projectedCounties.push({
         countyFips: co.countyFips,
@@ -444,6 +454,8 @@ class CountyBoundaryHierarchyService {
         citiesCount: co.citiesList.length,
         population: co.countyRecord.population,
         medicareDenialRatePct: denialRate,
+        stateBenchmarkDenialRatePct: stateBenchmark,
+        medicareDenialSource: denialRate !== null ? (co.countyRecord.medicareDenialSource ?? 'CMS Measured County Rate') : undefined,
         averageTransportMinutes: co.countyRecord.averageTransportMinutes,
         svgPath,
         labelX,

@@ -1492,16 +1492,16 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5">
                             <span>Seat: <strong className="text-slate-700 dark:text-slate-200 font-medium">{c.countySeat}</strong></span>
                             <span aria-hidden="true">·</span>
-                            <span className="font-mono tabular-nums">FIPS {c.countyFips}</span>
+                            <span className="pi-metric-id">FIPS {c.countyFips}</span>
                             {c.landAreaSqMiles && (
                               <>
                                 <span aria-hidden="true">·</span>
-                                <span className="font-mono tabular-nums">{c.landAreaSqMiles} sq mi</span>
+                                <span className="pi-data-number">{c.landAreaSqMiles} sq mi</span>
                               </>
                             )}
                           </div>
                         </div>
-                        <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shrink-0 tabular-nums">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shrink-0 pi-data-inline">
                           {cityCountInCounty} {cityCountInCounty === 1 ? 'City' : 'Cities'} · {cityCountInCounty * 2} Providers
                         </span>
                       </div>
@@ -1551,7 +1551,16 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                         </div>
                         <div>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">MCR Denial</span>
-                          <span className="font-semibold text-rose-700 dark:text-rose-400 mt-0.5 block">{c.medicareDenialRatePct}%</span>
+                          <span className="font-semibold text-rose-700 dark:text-rose-400 mt-0.5 block">
+                            {c.medicareDenialRatePct !== undefined && c.medicareDenialRatePct !== null
+                              ? `${c.medicareDenialRatePct}%`
+                              : 'Not available'}
+                          </span>
+                          {(c.medicareDenialRatePct === undefined || c.medicareDenialRatePct === null) && (
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
+                              State denial benchmark unavailable
+                            </span>
+                          )}
                         </div>
                         <div>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-normal">Avg Transport</span>
@@ -1561,10 +1570,10 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                      <span className="text-slate-600 dark:text-slate-400 font-mono tabular-nums text-[11px]">
-                        {c.annualCardiacArrestIncidents} OHCA/yr · NEMSIS v3.5
+                      <span className="text-slate-600 dark:text-slate-400 pi-data-inline text-[11px]">
+                        <strong className="pi-data-number font-semibold">{c.annualCardiacArrestIncidents}</strong> OHCA/yr · NEMSIS v3.5
                       </span>
-                      <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 tabular-nums group-hover:translate-x-0.5 transition-transform">
+                      <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 pi-data-inline group-hover:translate-x-0.5 transition-transform">
                         Inspect All {cityCountInCounty} Cities &amp; Providers &rarr;
                       </span>
                     </div>
@@ -1575,7 +1584,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           )}
 
           {totalCountyPages > 1 && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs pi-data-inline text-slate-500">
               <span>Page {countyPage} of {totalCountyPages} ({availableCounties.length.toLocaleString()} Counties)</span>
               <div className="flex items-center gap-2">
                 <button
@@ -2140,7 +2149,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
           )}
 
           {totalAgencyPages > 1 && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs pi-data-inline text-slate-500">
               <span>Page {agencyPage} of {totalAgencyPages} ({matchingAgencies.length.toLocaleString()} Providers)</span>
               <div className="flex items-center gap-2">
                 <button

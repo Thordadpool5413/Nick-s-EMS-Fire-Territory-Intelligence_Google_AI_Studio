@@ -535,7 +535,7 @@ class TerritoryIntelligenceService {
       targetProduct = 'ZOLL Billing / AR Boost';
     }
 
-    const denialRate = +(stSummary.avgMedicareDenialRate + ((posHash % 60) - 30) / 10).toFixed(1);
+    const denialRate = countyRecord.medicareDenialRatePct || stSummary.avgMedicareDenialRate || 18.2;
     const recoverableRevenue = Math.round(countyRecord.annualEmergencyTransports * 68);
 
     const medicarePayerPct = +(38.0 + (posHash % 14)).toFixed(1);

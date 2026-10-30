@@ -101,7 +101,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <Briefcase className={`w-4 h-4 ${isMyWork ? 'text-[#285EE8]' : ''}`} />
           <span className="text-[10px] tracking-tight mt-1">My Work</span>
           {dayRouteCount > 0 && (
-            <span className="absolute top-1.5 right-3 w-4 h-4 rounded-full bg-[#285EE8] text-white font-mono text-[9px] font-bold tabular-nums flex items-center justify-center">
+            <span className="absolute top-1.5 right-3 w-4 h-4 rounded-full bg-[#285EE8] text-white pi-data-number text-[9px] font-bold flex items-center justify-center">
               {dayRouteCount}
             </span>
           )}

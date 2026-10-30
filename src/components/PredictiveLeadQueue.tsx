@@ -409,7 +409,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 }`}
               >
                 <span>All</span>
-                <span className="font-mono text-[10px] opacity-75">({geographicScopePool.length.toLocaleString()})</span>
+                <span className="pi-data-number text-[11px] opacity-75">({geographicScopePool.length.toLocaleString()})</span>
               </button>
               <button
                 type="button"
@@ -422,7 +422,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
               >
                 <Siren className="w-3.5 h-3.5 shrink-0" />
                 <span>EMS</span>
-                <span className="font-mono text-[10px] opacity-80">({emsCount.toLocaleString()})</span>
+                <span className="pi-data-number text-[11px] opacity-80">({emsCount.toLocaleString()})</span>
               </button>
               <button
                 type="button"
@@ -435,7 +435,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
               >
                 <Flame className="w-3.5 h-3.5 shrink-0" />
                 <span>Fire</span>
-                <span className="font-mono text-[10px] opacity-80">({fireCount.toLocaleString()})</span>
+                <span className="pi-data-number text-[11px] opacity-80">({fireCount.toLocaleString()})</span>
               </button>
             </div>
 
@@ -486,7 +486,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
             </div>
 
             <div className="hidden sm:flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 shrink-0 pl-1">
-              <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">
+              <span className="pi-data-number font-bold text-slate-900 dark:text-white">
                 {filteredAgencies.length.toLocaleString()}
               </span>
               <span>results</span>
@@ -525,7 +525,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
               <Filter className="w-3.5 h-3.5" />
               <span>More Filters</span>
               {activeFilterCount > 0 && (
-                <span className="font-mono text-[10px] bg-[#1E3A8A] text-white px-1.5 py-0.2 rounded-full tabular-nums">
+                <span className="pi-data-number text-[11px] bg-[#1E3A8A] text-white px-1.5 py-0.5 rounded font-semibold">
                   {activeFilterCount}
                 </span>
               )}
@@ -1085,16 +1085,16 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                   <div className="pb-2.5 border-b border-slate-200 dark:border-slate-800">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{stage}</span>
-                      <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300 tabular-nums">
+                      <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pi-data-number text-[11px] font-bold text-slate-700 dark:text-slate-300">
                         {stageAgencies.length}
                       </span>
                     </div>
-                    <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono tabular-nums">
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] pi-data-inline">
                       <span className="text-slate-600 dark:text-slate-300">
-                        Total: <strong className="text-slate-900 dark:text-white tabular-nums">${(totalStagePipeline / 1000000).toFixed(2)}M</strong>
+                        Total: <strong className="text-slate-900 dark:text-white pi-data-number">{formatCurrency(totalStagePipeline)}</strong>
                       </span>
-                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
-                        Wtd: ${(weightedStagePipeline / 1000000).toFixed(2)}M
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold pi-data-number">
+                        Wtd: {formatCurrency(weightedStagePipeline)}
                       </span>
                     </div>
                   </div>
@@ -1190,7 +1190,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                     )}
 
                     {stageAgencies.length > visibleDeals.length && (
-                      <div className="text-center py-1.5 text-[11px] font-mono tabular-nums text-slate-500">
+                      <div className="text-center py-1.5 text-[11px] pi-data-inline text-slate-500">
                         +{(stageAgencies.length - visibleDeals.length).toLocaleString()} more in stage
                       </div>
                     )}
@@ -1425,8 +1425,8 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
       {/* Bottom Pagination Bar */}
       {totalPages > 1 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-700 dark:text-slate-300">
-          <div className="font-mono tabular-nums">
-            Page <strong className="text-slate-900 dark:text-white tabular-nums">{currentPage}</strong> of <strong className="text-slate-900 dark:text-white tabular-nums">{totalPages}</strong> · Total Matching: <strong className="text-slate-900 dark:text-white tabular-nums">{filteredAgencies.length.toLocaleString()}</strong> EMS &amp; Fire Accounts
+          <div className="pi-data-table text-xs">
+            Page <strong className="text-slate-900 dark:text-white pi-data-number">{currentPage}</strong> of <strong className="text-slate-900 dark:text-white pi-data-number">{totalPages}</strong> · Total Matching: <strong className="text-slate-900 dark:text-white pi-data-number">{filteredAgencies.length.toLocaleString()}</strong> EMS &amp; Fire Accounts
           </div>
           <div className="flex items-center gap-2">
             <select
