@@ -351,7 +351,7 @@ export function useFirestoreAgencies({
         await saveAgencyToFirestore(targetAgency);
         dataSanitizationService.registerCloudSyncedIds([targetAgency.id]);
         setCloudSyncCount(dataSanitizationService.getCloudSyncedIdsCount());
-        if (onToast) onToast(`Updated stage for ${targetAgency.name} to "${newStage}" in Cloud CRM`, 'success');
+        if (onToast) onToast(`Updated status for ${targetAgency.name} to "${newStage}"`, 'success');
       } catch (err) {
         console.warn('Could not sync stage change to Firestore immediately:', err);
       } finally {
@@ -441,7 +441,7 @@ export function useFirestoreAgencies({
         if (onToast) {
           onToast(
             nextState 
-              ? `Bookmarked "${targetAgency.name}" in Cloud CRM.` 
+              ? `Bookmarked "${targetAgency.name}".` 
               : `Removed bookmark for "${targetAgency.name}".`,
             nextState ? 'success' : 'info'
           );
@@ -493,7 +493,7 @@ export function useFirestoreAgencies({
         ]);
         dataSanitizationService.registerCloudSyncedIds([updatedAgency.id]);
         setCloudSyncCount(dataSanitizationService.getCloudSyncedIdsCount());
-        if (onToast) onToast(`Field note for "${updatedAgency.name}" recorded in Cloud CRM!`, 'success');
+        if (onToast) onToast(`Note for "${updatedAgency.name}" saved!`, 'success');
       } catch (err) {
         console.warn('Field note recorded locally; cloud sync pending:', err);
       } finally {

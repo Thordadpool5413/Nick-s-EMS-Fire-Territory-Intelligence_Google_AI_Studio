@@ -103,7 +103,7 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-            <h2 className="text-base font-bold">Log Field Visit Record</h2>
+            <h2 className="text-base font-bold">Add Agency Note</h2>
           </div>
           <button 
             type="button"
@@ -167,17 +167,17 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-700 dark:text-slate-300 font-medium block mb-1">Interaction Type</label>
+              <label className="text-slate-700 dark:text-slate-300 font-medium block mb-1">Note Category</label>
               <select
                 value={meetingType}
                 onChange={(e) => setMeetingType(e.target.value as any)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
               >
-                <option value="On-Site Station Visit">On-Site Station Visit</option>
-                <option value="Virtual Demo">Virtual Demo</option>
-                <option value="Phone Call">Phone Call</option>
-                <option value="RFP Review">RFP Review</option>
-                <option value="Ride-Along">Ride-Along</option>
+                <option value="General Clinical / Operational Note">General Clinical / Operational Note</option>
+                <option value="Station Discussion">Station Discussion</option>
+                <option value="Defibrillator & Fleet Feedback">Defibrillator & Fleet Feedback</option>
+                <option value="Grant & RFP Update">Grant & RFP Update</option>
+                <option value="Medical Director Protocol Note">Medical Director Protocol Note</option>
               </select>
             </div>
 
@@ -193,12 +193,12 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
           </div>
 
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-medium block mb-1">Meeting Notes &amp; Customer Feedback</label>
+            <label className="text-slate-700 dark:text-slate-300 font-medium block mb-1">Notes &amp; Observations</label>
             <textarea
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Spoke with EMS Battalion Chief. Demoed Real BVM Help and reviewed CMS denial rates..."
+              placeholder="Spoke with EMS Battalion Chief. Reviewed fleet status, resuscitation protocol and CMS denial trends..."
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500"
               required
             />
@@ -228,7 +228,7 @@ export const QuickVisitModal: React.FC<QuickVisitModalProps> = ({
               className="min-h-[38px] px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Save &amp; Log Visit</span>
+              <span>Save Agency Note</span>
             </button>
           </div>
         </form>

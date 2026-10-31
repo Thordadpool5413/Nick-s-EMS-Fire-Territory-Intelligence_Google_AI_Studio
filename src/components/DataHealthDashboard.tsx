@@ -702,7 +702,7 @@ export const DataHealthDashboard: React.FC<DataHealthDashboardProps> = ({
                   Google Cloud Firestore (agencies &amp; field_notes)
                 </td>
                 <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                  Pipeline stages, user-logged field visit notes, day routes, bookmarks &amp; hydrated agency records
+                  User-logged agency notes, operational verifications, day routes, bookmarks &amp; hydrated agency records
                 </td>
                 <td className="py-3.5 px-4 text-right font-semibold tabular-nums text-slate-900 dark:text-white">
                   {report.firestoreSyncedCount.toLocaleString()} records

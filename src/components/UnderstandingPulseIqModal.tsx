@@ -520,10 +520,10 @@ export const UnderstandingPulseIqModal: React.FC<UnderstandingPulseIqModalProps>
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-white uppercase tracking-wider mb-1">
-                      Log Field Visit & Generate Brief
+                      Review Agency Dossier & Add Notes
                     </h5>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      Before walking into headquarters, generate the 1-Page Account Dossier directly from Account 360. Log meeting notes, competitive equipment serial numbers, and update the Sales Stage to &ldquo;Evaluation / Demo Scheduled&rdquo;.
+                      Before visiting headquarters, review the 1-Page Account Dossier directly from Account 360. Add agency notes, apparatus records, and operational observations to the provider&apos;s file.
                     </p>
                   </div>
                 </div>

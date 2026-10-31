@@ -22,9 +22,11 @@ import {
   Check,
   FileText,
   Calculator,
-  Search
+  Search,
+  Cpu
 } from 'lucide-react';
 import { QualityScorecard } from './QualityScorecard';
+import { CadEpcrInteroperabilityMatrix } from './CadEpcrInteroperabilityMatrix';
 import { formatCurrency, formatInteger, formatPercent } from '../utils/numberFormatting';
 
 interface ClinicalCompetitiveKnowledgeHubProps {
@@ -33,7 +35,7 @@ interface ClinicalCompetitiveKnowledgeHubProps {
   onOpenRfpGenerator?: (agency: Agency) => void;
 }
 
-type HubSection = 'tco' | 'recalls' | 'coop' | 'hcpcs_protocols';
+type HubSection = 'tco' | 'recalls' | 'coop' | 'hcpcs_protocols' | 'interop';
 
 export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowledgeHubProps> = ({
   agencies,
@@ -197,6 +199,7 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
         <div className="flex flex-wrap items-center gap-2">
           {[
             { id: 'tco', label: 'Cost & maintenance savings', icon: Calculator },
+            { id: 'interop', label: 'CAD & ePCR interoperability', icon: Cpu },
             { id: 'recalls', label: 'Safety recalls & talk tracks', icon: ShieldAlert },
             { id: 'coop', label: 'Cooperative purchasing vehicles', icon: FileCheck2 },
             { id: 'hcpcs_protocols', label: 'Quality scorecard & fee schedules', icon: Stethoscope }
@@ -771,6 +774,14 @@ export const ClinicalCompetitiveKnowledgeHub: React.FC<ClinicalCompetitiveKnowle
             </div>
           </section>
         </div>
+      )}
+
+      {/* TAB 5: CAD & ePCR INTEROPERABILITY INTELLIGENCE MATRIX */}
+      {activeSection === 'interop' && referenceAgency && (
+        <CadEpcrInteroperabilityMatrix
+          agency={referenceAgency}
+          onOpenRfpGenerator={onOpenRfpGenerator}
+        />
       )}
     </div>
   );

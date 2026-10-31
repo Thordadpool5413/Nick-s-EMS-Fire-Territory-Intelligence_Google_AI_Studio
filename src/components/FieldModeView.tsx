@@ -24,7 +24,8 @@ import {
   Award,
   RefreshCw,
   Download,
-  Printer
+  Printer,
+  Compass
 } from 'lucide-react';
 
 interface FieldModeViewProps {
@@ -167,7 +168,7 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {isOnline 
-                ? 'All field changes (visit notes, stage updates, day routes) sync directly to central records.' 
+                ? 'All field changes (agency notes, day routes) sync directly to central records.' 
                 : 'Full account data and playbooks remain available. Outbox transactions will auto-sync upon reconnection.'}
             </p>
           </div>
@@ -196,11 +197,23 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
               <span>Today's field route itinerary</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Optimized station sequence with verified addresses, navigation links, and rapid post-visit logging.
+              Optimized station sequence with verified addresses, navigation links, and rapid agency notes.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('radar')}
+                className="min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-2xs cursor-pointer"
+                title="Scan for departments near your current location"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>GPS Radar (Agencies Near Me)</span>
+              </button>
+            )}
+
             {dayRouteAgencies.length > 0 && (
               <a
                 href={googleMapsMultiStopUrl}
@@ -312,7 +325,7 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
                         }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>{isLogging ? 'Close Log' : 'Quick Log'}</span>
+                        <span>{isLogging ? 'Cancel Note' : 'Add Note'}</span>
                       </button>
 
                       <button
@@ -324,11 +337,11 @@ export const FieldModeView: React.FC<FieldModeViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Inline Quick Visit Form */}
+                  {/* Inline Quick Note Form */}
                   {isLogging && (
                     <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
                       <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                        Rapid post-visit log for {agency.name}
+                        Add agency note for {agency.name}
                       </div>
 
                       <textarea

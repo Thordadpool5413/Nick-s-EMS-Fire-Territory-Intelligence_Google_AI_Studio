@@ -38,7 +38,8 @@ import {
   FileCheck2,
   Zap,
   HelpCircle,
-  Home
+  Home,
+  Search
 } from 'lucide-react';
 import {
   COOPERATIVE_CONTRACTS,
@@ -60,6 +61,7 @@ import {
 
 interface FocusedProviderProfileProps {
   agency: Agency;
+  allAgencies?: Agency[];
   onBack: () => void;
   onGoHome?: () => void;
   onNavigateGeography?: (state?: string, county?: string, city?: string) => void;
@@ -73,9 +75,10 @@ interface FocusedProviderProfileProps {
 
 type ProfileSection =
   | 'overview'
-  | 'equipment'
-  | 'purchasing'
   | 'decision_makers'
+  | 'equipment'
+  | 'benchmarking'
+  | 'purchasing'
   | 'operations'
   | 'medicare'
   | 'evidence'
@@ -88,6 +91,16 @@ import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
 import { TermTooltip } from './TermTooltip';
 import { AgencyOperationalVerificationModal } from './AgencyOperationalVerificationModal';
+import { PreVisitBriefModal } from './profile/PreVisitBriefModal';
+import { CompetitiveBattlecardLivesSaved } from './profile/CompetitiveBattlecardLivesSaved';
+import { BuyingCommitteeMap } from './profile/BuyingCommitteeMap';
+import { SourcewellCoopMemoModal } from './profile/SourcewellCoopMemoModal';
+import { MedicareDenialEquityAnalyzer } from './profile/MedicareDenialEquityAnalyzer';
+import { CadEpcrInteroperabilityMatrix } from './CadEpcrInteroperabilityMatrix';
+import { CompetitiveBenchmarkingTab } from './profile/CompetitiveBenchmarkingTab';
+import { MutualAidCompatibilityIndex } from './MutualAidCompatibilityIndex';
+import { FemaGrantIntelligenceHub } from './FemaGrantIntelligenceHub';
+import { BiomedicalObsolescenceTcoEscalator } from './BiomedicalObsolescenceTcoEscalator';
 
 /**
  * Guarantees complete agency fields for any selected EMS Provider or Fire Department
@@ -388,6 +401,7 @@ function resolveEquipmentSuppliers(agency: Agency) {
 
 export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   agency: rawAgency,
+  allAgencies,
   onBack,
   onGoHome,
   onNavigateGeography,
@@ -398,6 +412,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   onOpenRfpGenerator,
   onOpenDataLineage
 }) => {
+  const neighborPool = allAgencies && allAgencies.length > 0 ? allAgencies : nationalProviderDb.getProviders();
   const [livePatch, setLivePatch] = useState<Partial<Agency>>({});
   const [isVerifyingLive, setIsVerifyingLive] = useState(false);
   const [showDossierModal, setShowDossierModal] = useState(false);
@@ -430,11 +445,22 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
   const [isSourceDrawerOpen, setIsSourceDrawerOpen] = useState<boolean>(false);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
+  const [showPreVisitBrief, setShowPreVisitBrief] = useState<boolean>(false);
+  const [showCoopMemoModal, setShowCoopMemoModal] = useState<boolean>(false);
 
-  // Field Note Form State
-  const [meetingType, setMeetingType] = useState<FieldNote['meetingType']>('On-Site Station Visit');
+  // Agency Note Form & Filter State
+  const [meetingType, setMeetingType] = useState<string>('General Note');
+  const [noteAuthor, setNoteAuthor] = useState<string>(() => {
+    try {
+      return localStorage.getItem('agency_note_author') || 'Territory Specialist';
+    } catch {
+      return 'Territory Specialist';
+    }
+  });
   const [noteText, setNoteText] = useState('');
   const [nextAction, setNextAction] = useState('');
+  const [noteFilterCategory, setNoteFilterCategory] = useState<string>('all');
+  const [noteSearchQuery, setNoteSearchQuery] = useState<string>('');
 
   // Interactive Actuarial Forecasting Sensitivity Controls (Low / Base / High Confidence Intervals)
   const [customUnitMsrp, setCustomUnitMsrp] = useState<number>(38500);
@@ -607,13 +633,19 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
   const handleNoteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!noteText.trim()) return;
+    const author = noteAuthor.trim() || 'Territory Specialist';
+    try {
+      localStorage.setItem('agency_note_author', author);
+    } catch {
+      // storage unavailable
+    }
     onAddFieldNote(agency.id, {
       date: new Date().toISOString().split('T')[0],
-      repName: 'Territory Director',
+      repName: author,
       meetingType,
       notes: noteText.trim(),
       nextAction: nextAction.trim() || `Follow up with ${agency.keyContacts[0]?.name || 'department leadership'}`,
-      dueDate: '2026-11-15'
+      dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
     });
     setNoteText('');
     setNextAction('');
@@ -629,6 +661,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
     sec:
       | 'deal_story'
       | 'battlecard'
+      | 'benchmarking'
       | 'facts'
       | 'leadership'
       | 'fleet'
@@ -643,9 +676,10 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
     if (activeSection === 'all') return true;
     if (activeSection === 'overview') return sec === 'deal_story' || sec === 'facts';
     if (activeSection === 'equipment') return sec === 'fleet' || sec === 'software' || sec === 'battlecard';
+    if (activeSection === 'benchmarking') return sec === 'benchmarking' || sec === 'battlecard';
     if (activeSection === 'purchasing') return sec === 'suppliers' || sec === 'grants';
     if (activeSection === 'decision_makers') return sec === 'leadership';
-    if (activeSection === 'operations') return sec === 'clinical' || sec === 'fleet';
+    if (activeSection === 'operations') return sec === 'clinical';
     if (activeSection === 'medicare') return sec === 'billing';
     if (activeSection === 'evidence') return sec === 'evidence_ledger' || sec === 'notes';
     return false;
@@ -837,6 +871,69 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
             {/* Primary Account Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+              {/* One-Tap Contact Actions */}
+              <a
+                href={`tel:${(agency.headquartersPhone || agency.keyContacts?.[0]?.phone || '8005550199').replace(/[^0-9+]/g, '')}`}
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer shadow-2xs"
+                title="Call Agency Headquarters directly"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Call HQ</span>
+              </a>
+
+              <a
+                href={agency.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#1E3A8A] dark:text-blue-300 hover:bg-blue-100 transition-colors cursor-pointer shadow-2xs"
+                title="Open station coordinates in Google Maps"
+              >
+                <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>Directions</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setShowPreVisitBrief(true)}
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors cursor-pointer shadow-2xs"
+                title="Open 3-minute mobile pocket brief for in-car and on-site station visits"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                <span>3-Min Visit Brief</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('equipment');
+                  setTimeout(() => {
+                    const el = document.getElementById('cad-epcr-interop-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }, 50);
+                }}
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#EEF3FE] dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#285EE8] dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer shadow-2xs"
+                title="Inspect CAD & ePCR interoperability matrix and crew time savings"
+              >
+                <Cpu className="w-3.5 h-3.5 shrink-0" />
+                <span>CAD &amp; ePCR Interop</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('benchmarking');
+                  setTimeout(() => {
+                    const el = document.getElementById('competitive-benchmarking-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }, 50);
+                }}
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-700 text-[#285EE8] dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer shadow-2xs"
+                title="Inspect side-by-side technical specification comparison against ZOLL"
+              >
+                <Scale className="w-3.5 h-3.5 text-[#285EE8] dark:text-blue-400 shrink-0" />
+                <span>Competitive Benchmarking</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -900,6 +997,24 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
               <button
                 type="button"
+                onClick={() => {
+                  setActiveSection('evidence');
+                  setTimeout(() => {
+                    const el = document.getElementById('agency-notes-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    const txt = document.getElementById('agency-note-textarea');
+                    if (txt) txt.focus();
+                  }, 120);
+                }}
+                className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white transition-colors cursor-pointer shadow-2xs"
+                title="Add an operational note to this EMS provider or fire department"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>Add Note ({agency.fieldNotes.length})</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setIsVerifyModalOpen(true)}
                 className="whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer shadow-2xs"
                 title="Verify and edit ground-truth address, leadership, stations, fleet, volume, and maintenance contracts"
@@ -959,8 +1074,8 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
             aria-label="Account 360 Executive Decision Header"
             className="pi-surface p-5 sm:p-6 lg:p-7 space-y-6"
           >
-            {/* BLOCK 1: AGENCY IDENTITY, OFFICIAL IDENTIFIERS & SOURCE VERIFICATION */}
-            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 pb-6 border-b border-[#DFE6EF] dark:border-[#1E2D42] items-start">
+            {/* AGENCY IDENTITY, OFFICIAL IDENTIFIERS & SOURCE VERIFICATION */}
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
               <div className="space-y-3 min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#53657B] dark:text-slate-400">
                   <span className="font-semibold text-[#285EE8] dark:text-blue-400">
@@ -1119,298 +1234,27 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-[#53657B] dark:text-slate-400 mb-1">
-                    Active pipeline stage
-                  </label>
-                  <select
-                    value={agency.zollOpportunity.salesStage}
-                    onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
-                    className="w-full h-9 bg-white dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-3 text-xs font-medium text-[#14283F] dark:text-white focus:outline-none focus:border-[#285EE8] cursor-pointer"
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-[#DFE6EF] dark:border-[#1E2D42]">
+                  <span className="text-[#53657B] dark:text-slate-400 font-medium">Agency Notes:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSection('evidence');
+                      setTimeout(() => {
+                        const el = document.getElementById('agency-notes-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        const txt = document.getElementById('agency-note-textarea');
+                        if (txt) txt.focus();
+                      }, 120);
+                    }}
+                    className="font-semibold text-xs px-2.5 py-1 rounded-md bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-300 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors inline-flex items-center gap-1 cursor-pointer"
                   >
-                    {stages.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                    <FileText className="w-3 h-3" />
+                    <span>{agency.fieldNotes.length} {agency.fieldNotes.length === 1 ? 'Note' : 'Notes'} · + Add</span>
+                  </button>
                 </div>
               </div>
             </div>
-
-            {/* ================================================================
-                BLOCK 2: ACCOUNT ASSESSMENT (4 EVIDENCE-GROUNDED PILLARS)
-               ================================================================ */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-[#14283F] dark:text-white flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-[#285EE8]" />
-                    <span>Account Assessment</span>
-                  </h2>
-                  <p className="text-xs text-[#53657B] dark:text-slate-400 mt-0.5">
-                    Objective operational situation analysis derived from verified federal public records.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowActuarialMath((prev) => !prev)}
-                  className="text-xs font-semibold text-[#285EE8] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{showActuarialMath ? 'Hide financial assumptions' : 'Calibrate financial assumptions'}</span>
-                  {showActuarialMath ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-
-              {/* 4 Assessment Columns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* 1. What is Known */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#14283F] dark:text-white">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>1. What is known</span>
-                  </div>
-                  <ul className="space-y-1.5 text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
-                    {accountAssessment.whatIsKnown.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 2. Developments That Matter */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#285EE8] dark:text-blue-400">
-                    <Zap className="w-3.5 h-3.5" />
-                    <span>2. Key developments</span>
-                  </div>
-                  <ul className="space-y-1.5 text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
-                    {accountAssessment.developmentsThatMatter.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-[#285EE8] mt-1.5 shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 3. What is Not Yet Confirmed */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span>3. Not yet confirmed</span>
-                  </div>
-                  <ul className="space-y-1.5 text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
-                    {accountAssessment.whatIsNotConfirmed.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-amber-600 mt-1.5 shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 4. Recommended Next Move */}
-                <div className="p-4 rounded-xl bg-[#EEF3FE]/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/70 space-y-2 flex flex-col justify-between">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-[#285EE8] dark:text-blue-400">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>4. Recommended move</span>
-                    </div>
-                    <div className="text-xs font-semibold text-[#14283F] dark:text-white leading-snug">
-                      {accountAssessment.primaryMove.action}
-                    </div>
-                    <p className="text-[11px] text-[#53657B] dark:text-slate-300 leading-relaxed">
-                      {accountAssessment.primaryMove.why}
-                    </p>
-                  </div>
-
-                  <div className="pt-2 border-t border-blue-200 dark:border-blue-800/70">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (accountAssessment.primaryMove.nextStep === 'Prepare for Meeting') {
-                          setActiveSection('overview');
-                          setTimeout(() => {
-                            const el = document.getElementById('meeting-preparation-section');
-                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                          }, 50);
-                        } else if (accountAssessment.primaryMove.nextStep === 'Generate Co-Op RFP' && onOpenRfpGenerator) {
-                          onOpenRfpGenerator(agency);
-                        } else if (accountAssessment.primaryMove.nextStep === 'Review Purchasing') {
-                          setActiveSection('purchasing');
-                        } else if (accountAssessment.primaryMove.nextStep === 'Inspect Medicare') {
-                          setActiveSection('medicare');
-                        } else {
-                          setActiveSection('evidence');
-                        }
-                      }}
-                      className="w-full h-8 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white transition-colors cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs"
-                    >
-                      <span>{accountAssessment.primaryMove.nextStep}</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ================================================================
-                BLOCK 3: WHAT WE KNOW — 4 STRUCTURED INFORMATION CARDS
-               ================================================================ */}
-            <div className="space-y-3">
-              <h2 className="text-xs font-semibold text-[#53657B] dark:text-slate-400">
-                What we know &middot; Structured evidence
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Block 1: Confirmed Findings */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                  <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                    Confirmed findings
-                  </div>
-                  <div className="text-sm font-semibold text-[#14283F] dark:text-white">
-                    {equipDisplay.primary}
-                  </div>
-                  <p className="text-xs text-[#53657B] dark:text-slate-300">
-                    {equipDisplay.secondary}. Adjudicated 911 runs: {agency.annual911Transports.toLocaleString()}/yr.
-                  </p>
-                  <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
-                    Source: USFA FDID {agency.fdid}
-                  </div>
-                </div>
-
-                {/* Block 2: Important Questions */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                  <div className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-                    Important questions
-                  </div>
-                  <div className="text-sm font-semibold text-[#14283F] dark:text-white">
-                    Maintenance cost &amp; replacement plan
-                  </div>
-                  <p className="text-xs text-[#53657B] dark:text-slate-300">
-                    Are annual service contract renewals escalating? Does medical direction mandate Real BVM Help®?
-                  </p>
-                  <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
-                    On-scene discovery required
-                  </div>
-                </div>
-
-                {/* Block 3: Relevant Timing */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                  <div className="text-xs font-semibold text-[#285EE8] dark:text-blue-400">
-                    Relevant timing
-                  </div>
-                  <div className="text-sm font-semibold text-[#14283F] dark:text-white">
-                    Contract expires {agency.competitorContract.contractEndDate}
-                  </div>
-                  <p className="text-xs text-[#53657B] dark:text-slate-300">
-                    Renewal notice window: {agency.competitorContract.renewalWindowDays} days prior. FY budget quarter: {agency.gisData?.fiscalBudgetCycleQuarter || 'Q4'}.
-                  </p>
-                  <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
-                    Purchasing schedule verified
-                  </div>
-                </div>
-
-                {/* Block 4: Potential Product Relevance */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                  <div className="text-xs font-semibold text-[#14283F] dark:text-slate-200">
-                    Potential product fit
-                  </div>
-                  <div className="text-sm font-semibold text-[#14283F] dark:text-white">
-                    {agency.zollOpportunity.primaryTargetProduct}
-                  </div>
-                  <p className="text-xs text-[#53657B] dark:text-slate-300">
-                    Hypothesis based on {agency.installedFleet.defibAgeYears}y fleet age, AHA CCF targets, and {formatCurrency(actuarialForecast.fiveYrTcoBase, { showSign: true })} modeled TCO savings.
-                  </p>
-                  <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
-                    Pre-competed Co-Op eligible
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Expandable Actuarial Sensitivity Controls */}
-            {showActuarialMath && (
-              <div className="p-4 sm:p-5 rounded-xl bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="text-xs font-semibold text-[#285EE8] dark:text-blue-400">
-                      Actuarial sensitivity model ({actuarialForecast.units} frontline units)
-                    </div>
-                    <div className="mt-1 text-xs text-[#53657B] dark:text-slate-300">
-                      PulseIQ ({agency.zollOpportunity.pulseIqScore}/100) = Fleet ({agency.zollOpportunity.scoreBreakdown.fleetObsolescencePts}/25) + CMS denials ({agency.zollOpportunity.scoreBreakdown.cmsFinancialPts}/20) + Acuity ({agency.zollOpportunity.scoreBreakdown.clinicalAcuityPts}/20) + Grants ({agency.zollOpportunity.scoreBreakdown.budgetGrantReadinessPts}/20) + Software ({agency.zollOpportunity.scoreBreakdown.demographicVulnerabilityPts}/15)
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium text-[#53657B] dark:text-slate-300">Unit MSRP assumption</span>
-                      <span className="font-semibold tabular-nums text-[#285EE8] dark:text-blue-400">${customUnitMsrp.toLocaleString()}/unit</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={32000}
-                      max={48000}
-                      step={500}
-                      value={customUnitMsrp}
-                      onChange={e => setCustomUnitMsrp(Number(e.target.value))}
-                      className="w-full accent-[#285EE8] cursor-pointer"
-                    />
-                    <div className="text-xs text-[#53657B] flex justify-between tabular-nums">
-                      <span>Low: {formatCurrency(actuarialForecast.netCapExLow)}</span>
-                      <strong className="text-[#14283F] dark:text-white font-semibold">Base: {formatCurrency(actuarialForecast.netCapExBase)}</strong>
-                      <span>High: {formatCurrency(actuarialForecast.netCapExHigh)}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium text-[#53657B] dark:text-slate-300">OEM trade-in credit / unit</span>
-                      <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">-${customTradeInCredit.toLocaleString()}/unit</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={2000}
-                      max={5500}
-                      step={250}
-                      value={customTradeInCredit}
-                      onChange={e => setCustomTradeInCredit(Number(e.target.value))}
-                      className="w-full accent-emerald-600 cursor-pointer"
-                    />
-                    <div className="text-xs text-[#53657B] flex justify-between tabular-nums">
-                      <span>Low: {formatCurrency(actuarialForecast.fiveYrTcoLow, { showSign: true })}</span>
-                      <strong className="text-emerald-700 dark:text-emerald-400 font-semibold">Base: {formatCurrency(actuarialForecast.fiveYrTcoBase, { showSign: true })}</strong>
-                      <span>High: {formatCurrency(actuarialForecast.fiveYrTcoHigh, { showSign: true })}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium text-[#53657B] dark:text-slate-300">CO-16 denial capture rate</span>
-                      <span className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">{customDenialCapturePct}% recovered</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={35}
-                      max={85}
-                      step={5}
-                      value={customDenialCapturePct}
-                      onChange={e => setCustomDenialCapturePct(Number(e.target.value))}
-                      className="w-full accent-amber-600 cursor-pointer"
-                    />
-                    <div className="text-xs text-[#53657B] flex justify-between tabular-nums">
-                      <span>Low: {formatCurrency(actuarialForecast.annualRecoveryLow, { perYear: true, showSign: true })}</span>
-                      <strong className="text-[#14283F] dark:text-white font-semibold">Base: {formatCurrency(actuarialForecast.annualRecoveryBase, { perYear: true, showSign: true })}</strong>
-                      <span>High: {formatCurrency(actuarialForecast.annualRecoveryHigh, { perYear: true, showSign: true })}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </section>
 
           {/* ================================================================
@@ -1422,27 +1266,30 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
           >
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
               {[
-                { id: 'overview', label: '1. Overview' },
-                { id: 'equipment', label: '2. Equipment & Tech' },
-                { id: 'purchasing', label: '3. Purchasing & Grants' },
-                { id: 'decision_makers', label: '4. Decision Makers' },
-                { id: 'operations', label: '5. Operations' },
-                { id: 'medicare', label: '6. Medicare & Financial' },
-                { id: 'evidence', label: `7. Evidence (${agency.fieldNotes.length} Notes)` }
+                { id: 'overview', label: '1. Executive Summary', icon: Activity },
+                { id: 'decision_makers', label: '2. Command & Leadership', icon: UserCheck },
+                { id: 'equipment', label: '3. Fleet & Defibrillators', icon: Truck },
+                { id: 'benchmarking', label: '4. Competitive Benchmarking', icon: Scale },
+                { id: 'operations', label: '5. Clinical & Cath Labs', icon: HeartPulse },
+                { id: 'purchasing', label: '6. Purchasing & Grants', icon: Award },
+                { id: 'medicare', label: '7. Medicare & Financial', icon: DollarSign },
+                { id: 'evidence', label: `8. Notes & Evidence (${agency.fieldNotes.length})`, icon: FileText }
               ].map((tab) => {
+                const TabIcon = tab.icon;
                 const isActive = activeSection === tab.id;
                 return (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveSection(tab.id as ProfileSection)}
-                    className={`whitespace-nowrap shrink-0 px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    className={`whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                       isActive
                         ? 'bg-[#285EE8] text-white shadow-2xs'
                         : 'text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white hover:bg-[#F5F7FA] dark:hover:bg-slate-800'
                     }`}
                   >
-                    {tab.label}
+                    <TabIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
@@ -1461,9 +1308,12 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
             </button>
           </nav>
 
-          {/* TOPIC 4: DECISION MAKERS & AUTHORIZED COMMAND ROSTER */}
+          {/* TOPIC: DECISION MAKERS & BUYING COMMITTEE ORG MAP */}
           {showSection('leadership') && (
-            <section className="pi-surface p-6 space-y-5">
+            <div className="space-y-6">
+              <BuyingCommitteeMap agency={agency} onOpenCoopMemo={() => setShowCoopMemoModal(true)} />
+
+              <section className="pi-surface p-6 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-4">
                 <div>
                   <h2 className="pi-section-heading">
@@ -1513,6 +1363,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 ))}
               </div>
             </section>
+          </div>
           )}
 
           {/* 1. Executive Deal Story & Conversion Playbook Section */}
@@ -1528,7 +1379,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
           {/* 2. Competitive Battlecard & Head-to-Head Spec Matrix Section */}
           {showSection('battlecard') && (
-            <CompetitiveBattlecardView agency={agency} variant="full" />
+            <CompetitiveBattlecardLivesSaved agency={agency} />
           )}
 
           {/* 3. Pure Empirical Agency Facts & Operational Baseline Section */}
@@ -1988,7 +1839,10 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
 
         {/* SECTION: INSURANCE OUTCOMES (MEDICARE, MEDICAID, COMMERCIAL, SELF-PAY) & DENIALS / RECOVERABLE */}
         {showSection('billing') && (
-          <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-6">
+          <div className="space-y-6">
+            <MedicareDenialEquityAnalyzer agency={agency} />
+
+            <section className="bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
@@ -2165,6 +2019,7 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
               </div>
             </div>
           </section>
+        </div>
         )}
 
         {/* SECTION: ACTUAL EQUIPMENT IN USE & CURRENT VENDOR SUPPLIERS (ALL 3 MODALITIES: 1, 2, AND 3) */}
@@ -2638,12 +2493,45 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* CAD & ePCR Interoperability Intelligence Matrix */}
+            <div id="cad-epcr-interop-section" className="pt-2">
+              <CadEpcrInteroperabilityMatrix agency={agency} onOpenRfpGenerator={onOpenRfpGenerator} />
+            </div>
+
+            {/* Mutual Aid Hardware Compatibility Index */}
+            <div id="mutual-aid-interop-section" className="pt-2">
+              <MutualAidCompatibilityIndex agency={agency} allAgencies={neighborPool} />
+            </div>
+          </section>
+        )}
+
+        {/* TOPIC 4: COMPETITIVE BENCHMARKING (SIDE-BY-SIDE TECHNICAL SPECIFICATION COMPARISON) */}
+        {(activeSection === 'benchmarking' || activeSection === 'all') && (
+          <section id="competitive-benchmarking-section" className="space-y-6">
+            <CompetitiveBenchmarkingTab
+              agency={agency}
+              onOpenRfpGenerator={onOpenRfpGenerator}
+            />
           </section>
         )}
 
         {/* SECTION: FEDERAL FEMA GRANT READINESS & FUNDING STATUS + JURISDICTION & SERVICE DEMOGRAPHICS */}
         {showSection('grants') && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* FEMA AFG & SAFER Grant Intelligence & Narrative Generator */}
+            <FemaGrantIntelligenceHub
+              agency={agency}
+              onOpenCoopMemo={() => setShowCoopMemoModal(true)}
+            />
+
+            {/* Biomedical Battery & Obsolescence TCO Escalator */}
+            <BiomedicalObsolescenceTcoEscalator
+              agency={agency}
+              onOpenCoopMemo={() => setShowCoopMemoModal(true)}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Federal FEMA Grant Readiness & Funding Status */}
             <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
@@ -2749,6 +2637,15 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
                     Authorized national cooperative purchasing contracts allowing {agency.name} to bypass 6-to-9 month municipal RFP delays
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCoopMemoModal(true)}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Generate 1-Click Co-Op Memo</span>
+                </button>
               </div>
 
               <div className="overflow-x-auto border border-slate-200 rounded-lg">
@@ -2830,106 +2727,235 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
               </section>
             )}
 
+            </div>
           </div>
         )}
 
-        {/* SECTION: FIELD NOTES & CRM INTERACTION LOG */}
+        {/* SECTION: AGENCY & DEPARTMENT NOTES */}
         {showSection('notes') && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Left: Past Notes History (7 cols) */}
-            <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#1E3A8A]" />
-                <span>Field Interaction History</span>
-              </h2>
-
-              {agency.fieldNotes.length === 0 ? (
-                <div className="text-xs text-slate-500 py-6 text-center">
-                  No notes recorded yet. Use the form on the right to log your first interaction.
+          <div id="agency-notes-section" className="space-y-4 scroll-mt-24">
+            <div className="bg-white dark:bg-[#111C2D] rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] p-6 shadow-2xs space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-4">
+                <div>
+                  <div className="text-xs font-mono font-bold uppercase tracking-wider text-[#285EE8] dark:text-blue-400 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#285EE8]" />
+                    <span>{isFire ? 'Fire Department' : 'EMS Provider'} Operational Notes</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-[#14283F] dark:text-white mt-0.5">
+                    Agency Notes &amp; Activity Log
+                  </h2>
+                  <p className="text-xs text-[#53657B] dark:text-slate-400 mt-0.5">
+                    Add and review field observations, station visit notes, dispatch details, and operational records for {agency.name}.
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {agency.fieldNotes.map(note => (
-                    <div key={note.id} className="p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[#0F172A]">{note.meetingType}</span>
-                        <span className="text-[11px] font-mono tabular-nums text-slate-500">{note.date} · {note.repName}</span>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-300 border border-blue-200 dark:border-blue-900/50">
+                    {agency.fieldNotes.length} {agency.fieldNotes.length === 1 ? 'Note Recorded' : 'Notes Recorded'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left: Notes History & Feed (7 cols) */}
+                <div className="lg:col-span-7 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-[#14283F] dark:text-white flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-[#285EE8]" />
+                      <span>Past Notes History</span>
+                    </h3>
+
+                    {agency.fieldNotes.length > 0 && (
+                      <div className="relative w-full sm:w-56">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={noteSearchQuery}
+                          onChange={(e) => setNoteSearchQuery(e.target.value)}
+                          placeholder="Search notes..."
+                          className="w-full pl-8 pr-2.5 py-1 text-xs bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg text-[#14283F] dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#285EE8]"
+                        />
                       </div>
-                      <p className="text-slate-700 leading-relaxed">{note.notes}</p>
-                      {note.nextAction && (
-                        <div className="text-[11px] text-[#0F172A] bg-white border border-slate-200 rounded-md p-2 mt-1">
-                          <strong>Next Action:</strong> {note.nextAction} {note.dueDate && `(Due ${note.dueDate})`}
-                        </div>
-                      )}
+                    )}
+                  </div>
+
+                  {agency.fieldNotes.length === 0 ? (
+                    <div className="p-8 text-center rounded-xl border border-dashed border-[#DFE6EF] dark:border-[#1E2D42] bg-[#F5F7FA]/60 dark:bg-[#16243A]/40 space-y-2">
+                      <FileText className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
+                      <div className="text-sm font-semibold text-[#14283F] dark:text-white">
+                        No notes recorded for this agency yet
+                      </div>
+                      <p className="text-xs text-[#53657B] dark:text-slate-400 max-w-sm mx-auto">
+                        Use the form on the right to add your first observation, equipment record, or operational note for {agency.name}.
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
+                      {agency.fieldNotes
+                        .filter(note => {
+                          if (noteFilterCategory !== 'all' && note.meetingType !== noteFilterCategory) return false;
+                          if (noteSearchQuery.trim()) {
+                            const q = noteSearchQuery.toLowerCase();
+                            const matchText = (note.notes || '').toLowerCase().includes(q);
+                            const matchAuthor = (note.repName || '').toLowerCase().includes(q);
+                            const matchType = (note.meetingType || '').toLowerCase().includes(q);
+                            const matchAction = (note.nextAction || '').toLowerCase().includes(q);
+                            return matchText || matchAuthor || matchType || matchAction;
+                          }
+                          return true;
+                        })
+                        .map(note => (
+                          <div
+                            key={note.id}
+                            className="p-4 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] bg-[#F5F7FA] dark:bg-[#16243A] space-y-2 text-xs"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-xs px-2.5 py-0.5 rounded-md bg-white dark:bg-[#111C2D] text-[#285EE8] dark:text-blue-300 border border-[#DFE6EF] dark:border-[#1E2D42]">
+                                  {note.meetingType || 'General Note'}
+                                </span>
+                                <span className="font-medium text-[#14283F] dark:text-slate-200">
+                                  {note.repName || 'Specialist'}
+                                </span>
+                              </div>
+                              <span className="font-mono text-[11px] tabular-nums text-[#53657B] dark:text-slate-400">
+                                {note.date}
+                              </span>
+                            </div>
+
+                            <p className="text-[#14283F] dark:text-slate-200 leading-relaxed whitespace-pre-line text-xs">
+                              {note.notes}
+                            </p>
+
+                            {note.nextAction && (
+                              <div className="flex items-start gap-1.5 p-2 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] text-[11px] text-[#53657B] dark:text-slate-300 mt-1">
+                                <span className="font-semibold text-[#14283F] dark:text-white shrink-0">Action:</span>
+                                <span className="flex-1">{note.nextAction}</span>
+                                {note.dueDate && (
+                                  <span className="font-mono text-slate-400 dark:text-slate-500 shrink-0">
+                                    (Due {note.dueDate})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* Right: Quick Note Logger Form (5 cols) */}
+                <div className="lg:col-span-5 bg-[#F5F7FA] dark:bg-[#16243A] rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42] p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-3">
+                    <h3 className="text-sm font-bold text-[#14283F] dark:text-white flex items-center gap-1.5">
+                      <Plus className="w-4 h-4 text-[#285EE8]" />
+                      <span>Add Note to {isFire ? 'Department' : 'Agency'}</span>
+                    </h3>
+                    <span className="text-[11px] text-[#53657B] dark:text-slate-400">
+                      Auto-saved to cloud
+                    </span>
+                  </div>
+
+                  {/* 1-Tap Quick Observation Chips */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-[#53657B] dark:text-slate-400">
+                      Quick Observation Templates:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Station Visit', text: 'Station visit completed: Toured quarters, met with command staff and inspected apparatus readiness.' },
+                        { label: 'Fleet Audit', text: 'Fleet audit: Verified frontline monitor fleet age, maintenance status, and defibrillator inventory.' },
+                        { label: 'Spoke with Chief', text: `Spoke with ${agency.nppesOfficialName || 'Command Staff'}: Discussed response volume, clinical protocols, and replacement timelines.` },
+                        { label: 'Hospital Transport', text: `Transport logistics: Confirmed primary receiving facility at ${agency.gisData?.primaryReceivingHospital || 'regional hospital'} and cath lab bypass.` },
+                        { label: 'General Update', text: 'Operational update: Reviewed staffing, stations count, and regional EMS/Fire coordination.' }
+                      ].map((chip) => (
+                        <button
+                          key={chip.label}
+                          type="button"
+                          onClick={() => {
+                            setNoteText(prev => prev ? `${prev}\n${chip.text}` : chip.text);
+                            setMeetingType(chip.label === 'Station Visit' ? 'Station Visit' : chip.label === 'Spoke with Chief' ? 'Phone Conversation' : 'General Note');
+                          }}
+                          className="px-2 py-1 rounded-md text-[11px] font-medium bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] hover:border-[#285EE8] text-[#14283F] dark:text-slate-200 hover:text-[#285EE8] transition-colors cursor-pointer"
+                        >
+                          + {chip.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleNoteSubmit} className="space-y-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#14283F] dark:text-slate-200 mb-1">
+                          Note Category
+                        </label>
+                        <select
+                          value={meetingType}
+                          onChange={(e) => setMeetingType(e.target.value)}
+                          className="w-full bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#14283F] dark:text-white focus:outline-none focus:border-[#285EE8]"
+                        >
+                          <option value="General Note">General Note</option>
+                          <option value="Station Visit">Station / Facility Visit</option>
+                          <option value="Phone Conversation">Phone Conversation</option>
+                          <option value="Fleet & Apparatus">Apparatus &amp; Fleet Status</option>
+                          <option value="Clinical & Transport">Clinical &amp; Transport Operations</option>
+                          <option value="Leadership & Staffing">Leadership &amp; Staffing</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#14283F] dark:text-slate-200 mb-1">
+                          Author / Specialist
+                        </label>
+                        <input
+                          type="text"
+                          value={noteAuthor}
+                          onChange={(e) => setNoteAuthor(e.target.value)}
+                          placeholder="Your name or title"
+                          className="w-full bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1.5 text-xs text-[#14283F] dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#285EE8]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="agency-note-textarea" className="block text-[11px] font-semibold text-[#14283F] dark:text-slate-200 mb-1">
+                        Note Content *
+                      </label>
+                      <textarea
+                        id="agency-note-textarea"
+                        rows={5}
+                        value={noteText}
+                        onChange={(e) => setNoteText(e.target.value)}
+                        placeholder={`Write notes regarding ${agency.name} (station findings, fleet status, command discussions, transport logistics)...`}
+                        className="w-full bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg p-2.5 text-xs text-[#14283F] dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#285EE8] leading-relaxed resize-y"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#14283F] dark:text-slate-200 mb-1">
+                        Optional Action Item / Follow-up
+                      </label>
+                      <input
+                        type="text"
+                        value={nextAction}
+                        onChange={(e) => setNextAction(e.target.value)}
+                        placeholder="e.g., Deliver apparatus spec sheet; verify battery inventory"
+                        className="w-full bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1.5 text-xs text-[#14283F] dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#285EE8]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={!noteText.trim()}
+                      className="w-full py-2.5 px-4 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Save Agency Note</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
-
-            {/* Right: Quick Note Logger Form (5 cols) */}
-            <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-6 shadow-[0_1px_3px_rgba(15,23,42,0.03)] space-y-4">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <Plus className="w-4 h-4 text-[#1E3A8A]" />
-                <span>Log New Interaction</span>
-              </h2>
-
-              <form onSubmit={handleNoteSubmit} className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Meeting / Call Type
-                  </label>
-                  <select
-                    value={meetingType}
-                    onChange={(e) => setMeetingType(e.target.value as any)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#0F172A] focus:outline-none focus:border-[#1E3A8A]"
-                  >
-                    <option value="On-Site Station Visit">On-Site Station Visit</option>
-                    <option value="Phone Call">Phone Call</option>
-                    <option value="Virtual Demo">Virtual Demo</option>
-                    <option value="RFP Review">RFP Review</option>
-                    <option value="Ride-Along">Ride-Along</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Meeting Notes
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    placeholder="Describe discussion, chief priorities, clinical interest..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Next Follow-up Action
-                  </label>
-                  <input
-                    type="text"
-                    value={nextAction}
-                    onChange={(e) => setNextAction(e.target.value)}
-                    placeholder="e.g. Deliver pre-emptive RFP specification"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!noteText.trim()}
-                  className="w-full py-2 px-4 rounded-lg text-xs font-semibold bg-[#0F172A] text-white hover:bg-[#1E3A8A] disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Save Interaction to Cloud CRM</span>
-                </button>
-              </form>
-            </div>
-
           </div>
         )}
 
@@ -3091,6 +3117,327 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
           </section>
         )}
 
+        {/* ================================================================
+            WHAT WE KNOW · STRUCTURED OPERATIONAL EVIDENCE
+            (Positioned towards the bottom of the Account 360 workspace)
+           ================================================================ */}
+        <section
+          aria-label="Structured Evidence and Operational Facts"
+          className="pi-surface p-5 sm:p-6 lg:p-7 space-y-4 border-t-2 border-[#285EE8]/40 mt-8"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-4">
+            <div>
+              <div className="text-xs font-mono font-bold uppercase tracking-wider text-[#285EE8] dark:text-blue-400 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#285EE8]" />
+                <span>Structured Intelligence Base</span>
+              </div>
+              <h2 className="text-xl font-bold text-[#14283F] dark:text-white mt-0.5">
+                What we know &middot; Structured evidence
+              </h2>
+              <p className="pi-supporting mt-0.5">
+                Multi-source corroborated operational findings, critical discovery questions, purchasing timing, and product alignment.
+              </p>
+            </div>
+
+            {/* Agency Notes Status & Action */}
+            <div className="flex items-center gap-2 bg-[#F5F7FA] dark:bg-[#16243A] p-2 rounded-xl border border-[#DFE6EF] dark:border-[#1E2D42]">
+              <span className="text-xs font-bold text-[#14283F] dark:text-white whitespace-nowrap pl-1">
+                Agency notes:
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('evidence');
+                  setTimeout(() => {
+                    const el = document.getElementById('agency-notes-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    const txt = document.getElementById('agency-note-textarea');
+                    if (txt) txt.focus();
+                  }, 120);
+                }}
+                className="h-8 px-3 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{agency.fieldNotes.length} Logged &middot; Add Note</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Block 1: Confirmed Findings */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+              <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                Confirmed findings
+              </div>
+              <div className="text-sm font-semibold text-[#14283F] dark:text-white">
+                {equipDisplay.primary}
+              </div>
+              <p className="text-xs text-[#53657B] dark:text-slate-300">
+                {equipDisplay.secondary}. Adjudicated 911 runs: {agency.annual911Transports.toLocaleString()}/yr.
+              </p>
+              <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
+                Source: USFA FDID {agency.fdid}
+              </div>
+            </div>
+
+            {/* Block 2: Important Questions */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+              <div className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                Important questions
+              </div>
+              <div className="text-sm font-semibold text-[#14283F] dark:text-white">
+                Maintenance cost &amp; replacement plan
+              </div>
+              <p className="text-xs text-[#53657B] dark:text-slate-300">
+                Are annual service contract renewals escalating? Does medical direction mandate Real BVM Help®?
+              </p>
+              <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
+                On-scene discovery required
+              </div>
+            </div>
+
+            {/* Block 3: Relevant Timing */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+              <div className="text-xs font-semibold text-[#285EE8] dark:text-blue-400">
+                Relevant timing
+              </div>
+              <div className="text-sm font-semibold text-[#14283F] dark:text-white">
+                Contract expires {agency.competitorContract.contractEndDate}
+              </div>
+              <p className="text-xs text-[#53657B] dark:text-slate-300">
+                Renewal notice window: {agency.competitorContract.renewalWindowDays} days prior. FY budget quarter: {agency.gisData?.fiscalBudgetCycleQuarter || 'Q4'}.
+              </p>
+              <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
+                Purchasing schedule verified
+              </div>
+            </div>
+
+            {/* Block 4: Potential Product Relevance */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+              <div className="text-xs font-semibold text-[#14283F] dark:text-slate-200">
+                Potential product fit
+              </div>
+              <div className="text-sm font-semibold text-[#14283F] dark:text-white">
+                {agency.zollOpportunity.primaryTargetProduct}
+              </div>
+              <p className="text-xs text-[#53657B] dark:text-slate-300">
+                Hypothesis based on {agency.installedFleet.defibAgeYears}y fleet age, AHA CCF targets, and {formatCurrency(actuarialForecast.fiveYrTcoBase, { showSign: true })} modeled TCO savings.
+              </p>
+              <div className="text-[11px] text-[#53657B] dark:text-slate-400 pt-1">
+                Pre-competed Co-Op eligible
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================================
+            EXECUTIVE ACCOUNT ASSESSMENT & STRATEGIC SITUATIONAL ANALYSIS
+            (Positioned towards the bottom of the Account 360 workspace)
+           ================================================================ */}
+        <section
+          aria-label="Comprehensive Executive Account Assessment"
+          className="pi-surface p-5 sm:p-6 lg:p-7 space-y-5 border-t-2 border-[#285EE8]/40 mt-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DFE6EF] dark:border-[#1E2D42] pb-4">
+            <div>
+              <div className="text-xs font-mono font-bold uppercase tracking-wider text-[#285EE8] dark:text-blue-400 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#285EE8]" />
+                <span>Executive Situational Synthesis</span>
+              </div>
+              <h2 className="text-xl font-bold text-[#14283F] dark:text-white mt-0.5">
+                Account Assessment
+              </h2>
+              <p className="pi-supporting mt-0.5">
+                Objective operational situation analysis derived from verified federal public records, fleet ages, and field intelligence.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowActuarialMath((prev) => !prev)}
+              className="text-xs font-semibold text-[#285EE8] dark:text-blue-400 hover:underline inline-flex items-center gap-1.5 cursor-pointer bg-[#EEF3FE] dark:bg-blue-950/60 px-3.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors"
+            >
+              <span>{showActuarialMath ? 'Hide financial assumptions' : 'Calibrate financial assumptions'}</span>
+              {showActuarialMath ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {/* 4 Assessment Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. What is Known */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#14283F] dark:text-white">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>1. What is known</span>
+              </div>
+              <ul className="space-y-1.5 text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+                {accountAssessment.whatIsKnown.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 2. Developments That Matter */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#285EE8] dark:text-blue-400">
+                <Zap className="w-3.5 h-3.5" />
+                <span>2. Key developments</span>
+              </div>
+              <ul className="space-y-1.5 text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+                {accountAssessment.developmentsThatMatter.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-[#285EE8] mt-1.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 3. What is Not Yet Confirmed */}
+            <div className="p-4 rounded-xl bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>3. Not yet confirmed</span>
+              </div>
+              <ul className="space-y-1.5 text-xs text-[#53657B] dark:text-slate-300 leading-relaxed">
+                {accountAssessment.whatIsNotConfirmed.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-amber-600 mt-1.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 4. Recommended Next Move */}
+            <div className="p-4 rounded-xl bg-[#EEF3FE]/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/70 space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#285EE8] dark:text-blue-400">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>4. Recommended move</span>
+                </div>
+                <div className="text-xs font-semibold text-[#14283F] dark:text-white leading-snug">
+                  {accountAssessment.primaryMove.action}
+                </div>
+                <p className="text-[11px] text-[#53657B] dark:text-slate-300 leading-relaxed">
+                  {accountAssessment.primaryMove.why}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-blue-200 dark:border-blue-800/70">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (accountAssessment.primaryMove.nextStep === 'Prepare for Meeting') {
+                      setActiveSection('overview');
+                      setTimeout(() => {
+                        const el = document.getElementById('meeting-preparation-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }, 50);
+                    } else if (accountAssessment.primaryMove.nextStep === 'Generate Co-Op RFP' && onOpenRfpGenerator) {
+                      onOpenRfpGenerator(agency);
+                    } else if (accountAssessment.primaryMove.nextStep === 'Review Purchasing') {
+                      setActiveSection('purchasing');
+                    } else if (accountAssessment.primaryMove.nextStep === 'Inspect Medicare') {
+                      setActiveSection('medicare');
+                    } else {
+                      setActiveSection('evidence');
+                    }
+                  }}
+                  className="w-full h-8 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white transition-colors cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs"
+                >
+                  <span>{accountAssessment.primaryMove.nextStep}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Expandable Actuarial Sensitivity Controls */}
+          {showActuarialMath && (
+            <div className="p-4 sm:p-5 rounded-xl bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold text-[#285EE8] dark:text-blue-400">
+                    Actuarial sensitivity model ({actuarialForecast.units} frontline units)
+                  </div>
+                  <div className="mt-1 text-xs text-[#53657B] dark:text-slate-300">
+                    PulseIQ ({agency.zollOpportunity.pulseIqScore}/100) = Fleet ({agency.zollOpportunity.scoreBreakdown.fleetObsolescencePts}/25) + CMS denials ({agency.zollOpportunity.scoreBreakdown.cmsFinancialPts}/20) + Acuity ({agency.zollOpportunity.scoreBreakdown.clinicalAcuityPts}/20) + Grants ({agency.zollOpportunity.scoreBreakdown.budgetGrantReadinessPts}/20) + Software ({agency.zollOpportunity.scoreBreakdown.demographicVulnerabilityPts}/15)
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-3 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-[#53657B] dark:text-slate-300">Unit MSRP assumption</span>
+                    <span className="font-semibold tabular-nums text-[#285EE8] dark:text-blue-400">${customUnitMsrp.toLocaleString()}/unit</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={32000}
+                    max={48000}
+                    step={500}
+                    value={customUnitMsrp}
+                    onChange={e => setCustomUnitMsrp(Number(e.target.value))}
+                    className="w-full accent-[#285EE8] cursor-pointer"
+                  />
+                  <div className="text-xs text-[#53657B] flex justify-between tabular-nums">
+                    <span>Low: {formatCurrency(actuarialForecast.netCapExLow)}</span>
+                    <strong className="text-[#14283F] dark:text-white font-semibold">Base: {formatCurrency(actuarialForecast.netCapExBase)}</strong>
+                    <span>High: {formatCurrency(actuarialForecast.netCapExHigh)}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-[#53657B] dark:text-slate-300">OEM trade-in credit / unit</span>
+                    <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">-${customTradeInCredit.toLocaleString()}/unit</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={2000}
+                    max={5500}
+                    step={250}
+                    value={customTradeInCredit}
+                    onChange={e => setCustomTradeInCredit(Number(e.target.value))}
+                    className="w-full accent-emerald-600 cursor-pointer"
+                  />
+                  <div className="text-xs text-[#53657B] flex justify-between tabular-nums">
+                    <span>Low: {formatCurrency(actuarialForecast.fiveYrTcoLow, { showSign: true })}</span>
+                    <strong className="text-emerald-700 dark:text-emerald-400 font-semibold">Base: {formatCurrency(actuarialForecast.fiveYrTcoBase, { showSign: true })}</strong>
+                    <span>High: {formatCurrency(actuarialForecast.fiveYrTcoHigh, { showSign: true })}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-[#53657B] dark:text-slate-300">CO-16 denial capture rate</span>
+                    <span className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">{customDenialCapturePct}% recovered</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={35}
+                    max={85}
+                    step={5}
+                    value={customDenialCapturePct}
+                    onChange={e => setCustomDenialCapturePct(Number(e.target.value))}
+                    className="w-full accent-amber-600 cursor-pointer"
+                  />
+                  <div className="text-xs text-[#53657B] flex justify-between tabular-nums">
+                    <span>Low: {formatCurrency(actuarialForecast.annualRecoveryLow, { perYear: true, showSign: true })}</span>
+                    <strong className="text-[#14283F] dark:text-white font-semibold">Base: {formatCurrency(actuarialForecast.annualRecoveryBase, { perYear: true, showSign: true })}</strong>
+                    <span>High: {formatCurrency(actuarialForecast.annualRecoveryHigh, { perYear: true, showSign: true })}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
       </div>
       </main>
 
@@ -3100,30 +3447,34 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
         className="fixed bottom-0 left-0 md:left-[280px] right-0 z-40 bg-white/95 dark:bg-[#111C2D]/95 backdrop-blur-md border-t border-[#DFE6EF] dark:border-[#1E2D42] px-3 sm:px-6 py-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] print:hidden transition-all"
       >
         <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
-          {/* Left: Department Identity & Quick Pipeline Stage Switcher */}
+          {/* Left: Department Identity & Quick Note Action */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="hidden sm:block min-w-0">
               <div className="text-xs font-bold text-[#14283F] dark:text-white truncate max-w-[240px] lg:max-w-[360px]">
                 {agency.name}
               </div>
               <div className="text-[11px] text-[#53657B] dark:text-slate-400 truncate">
-                {agency.city}, {agency.stateCode} · <span className="tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">{formatCurrency(agency.zollOpportunity.projectedPipelineValue)} pipeline</span>
+                {agency.city}, {agency.stateCode} · <span className="tabular-nums text-slate-700 dark:text-slate-300 font-medium">{agency.stationsCount} Stations · {agency.totalAmbulances} Ambulances</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase font-bold text-[#53657B] dark:text-slate-400 hidden xl:inline">Stage:</span>
-              <select
-                value={agency.zollOpportunity.salesStage}
-                onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
-                className="h-10 bg-[#F5F7FA] dark:bg-[#16243A] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-3 text-xs font-bold text-[#14283F] dark:text-white focus:outline-none focus:border-[#285EE8] cursor-pointer"
-                title="Update CRM Sales Pipeline Stage"
-              >
-                {stages.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection('evidence');
+                setTimeout(() => {
+                  const el = document.getElementById('agency-notes-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  const txt = document.getElementById('agency-note-textarea');
+                  if (txt) txt.focus();
+                }, 120);
+              }}
+              className="h-9 px-3 rounded-lg text-xs font-semibold bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-300 border border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+              title="Add a note for this provider or department"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>{agency.fieldNotes?.length || 0} Notes · + Add Note</span>
+            </button>
           </div>
 
           {/* Right: Action Buttons */}
@@ -3315,6 +3666,21 @@ export const FocusedProviderProfile: React.FC<FocusedProviderProfileProps> = ({
         onSaved={(updatedAgency) => {
           setLivePatch(updatedAgency);
         }}
+      />
+
+      {/* 3-Minute Mobile Pocket Brief Modal */}
+      <PreVisitBriefModal
+        isOpen={showPreVisitBrief}
+        onClose={() => setShowPreVisitBrief(false)}
+        agency={agency}
+        onAddFieldNote={onAddFieldNote}
+      />
+
+      {/* Sourcewell & HGACBuy Cooperative Purchasing Piggyback Memo Modal */}
+      <SourcewellCoopMemoModal
+        isOpen={showCoopMemoModal}
+        onClose={() => setShowCoopMemoModal(false)}
+        agency={agency}
       />
     </div>
   );

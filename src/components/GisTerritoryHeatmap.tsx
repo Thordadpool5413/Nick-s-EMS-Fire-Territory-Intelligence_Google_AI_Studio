@@ -108,6 +108,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 }) => {
   const [selectedLayer, setSelectedLayer] = useState<'nemsis_cardiac' | 'cardiac' | 'aed' | 'transport' | 'cms'>('nemsis_cardiac');
   const [nemsisAcuityFilter, setNemsisAcuityFilter] = useState<'all' | 'high' | 'critical'>('all');
+  const [fleetDensityFilter, setFleetDensityFilter] = useState<'all' | 'dense' | 'hub' | 'metro'>('all');
   const [layerThresholdFilter, setLayerThresholdFilter] = useState<'all' | 'high' | 'critical'>('all');
   const [selectedClusterId, setSelectedClusterId] = useState<string>('all');
   const [selectedTargetProduct, setSelectedTargetProduct] = useState<string>('all');
@@ -159,6 +160,37 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showLegend, setShowLegend] = useState<boolean>(true);
 
+  // Optimal zoom level calculator tailored to geographic footprint of each state
+  const getOptimalStateZoom = (stateCode: string): number => {
+    if (['TX', 'CA', 'MT', 'AK'].includes(stateCode)) return 2.1;
+    if (['FL', 'MI', 'NM', 'AZ', 'NV', 'CO', 'OR', 'WY', 'ID', 'UT', 'KS', 'NE', 'SD', 'ND', 'MN', 'MO', 'OK'].includes(stateCode)) return 2.6;
+    if (['OH', 'PA', 'NY', 'IL', 'IN', 'WI', 'GA', 'NC', 'VA', 'TN', 'AL', 'MS', 'AR', 'LA', 'KY', 'SC', 'IA'].includes(stateCode)) return 3.1;
+    if (['WV', 'ME', 'MD', 'VT', 'NH', 'MA', 'NJ', 'HI', 'CT', 'DE', 'RI', 'DC'].includes(stateCode)) return 4.2;
+    return 2.5;
+  };
+
+  // Authoritative state selection and smooth cartographic centering handler
+  const handleSelectState = (stateCode: string) => {
+    setSelectedState(stateCode);
+    setSelectedCounty('all');
+    setSelectedCity('all');
+    if (onSelectState) onSelectState(stateCode);
+    if (onSelectCounty) onSelectCounty('all');
+    if (onSelectCity) onSelectCity('all');
+
+    if (stateCode !== 'all' && US_STATES_SVG_PATHS[stateCode]) {
+      const boundary = US_STATES_SVG_PATHS[stateCode];
+      const zoom = getOptimalStateZoom(stateCode);
+      const tx = -(boundary.labelX - 460) * zoom;
+      const ty = -(boundary.labelY - 250) * zoom;
+      setZoomLevel(zoom);
+      setPanOffset({ x: Math.round(tx), y: Math.round(ty) });
+    } else {
+      setZoomLevel(1);
+      setPanOffset({ x: 0, y: 0 });
+    }
+  };
+
   // Escape key closes Theater Mode
   React.useEffect(() => {
     if (!isTheaterModal) return;
@@ -174,13 +206,17 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   React.useEffect(() => {
     setLayerThresholdFilter('all');
     setNemsisAcuityFilter('all');
+    setFleetDensityFilter('all');
     if (selectedLayer === 'nemsis_cardiac') {
       setSidebarTab('nemsis_epicenters');
     }
-  }, [selectedLayer]);
+  }, [selectedLayer, heatmapMetricMode]);
 
   React.useEffect(() => {
-    if (globalState !== undefined) setSelectedState(resolveStateCode(globalState));
+    if (globalState !== undefined) {
+      const sc = resolveStateCode(globalState);
+      handleSelectState(sc);
+    }
   }, [globalState]);
 
   React.useEffect(() => {
@@ -242,8 +278,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       }
       if (selectedTargetProduct !== 'all' && a.zollOpportunity.primaryTargetProduct !== selectedTargetProduct) return false;
 
-      // Active Layer Threshold Filtering
-      if (selectedLayer === 'nemsis_cardiac') {
+      // Operational Fleet & Apparatus Density Filtering vs Clinical Layer Threshold Filtering
+      if (heatmapMetricMode === 'apparatus_density') {
+        const fleet = a.apparatusFleet?.totalActiveUnits || 
+          ((a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.stationsCount || 1) * 2);
+        if (fleetDensityFilter === 'dense' && fleet < 25) return false;
+        if (fleetDensityFilter === 'hub' && fleet < 60) return false;
+        if (fleetDensityFilter === 'metro' && fleet < 100) return false;
+      } else if (selectedLayer === 'nemsis_cardiac') {
         const calls = a.annualCardiacArrestCalls || Math.round((a.annual911Transports || 3000) * 0.12);
         if (nemsisAcuityFilter === 'high' && calls < 400) return false;
         if (nemsisAcuityFilter === 'critical' && calls < 800) return false;
@@ -275,10 +317,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       return [activeAccount, ...base.filter(a => a.id !== activeAccount.id)];
     }
     return base;
-  }, [agencies, selectedState, selectedCounty, selectedCity, selectedCategory, selectedClusterId, selectedTargetProduct, activeAccount, selectedLayer, nemsisAcuityFilter, layerThresholdFilter]);
+  }, [agencies, selectedState, selectedCounty, selectedCity, selectedCategory, selectedClusterId, selectedTargetProduct, activeAccount, selectedLayer, nemsisAcuityFilter, layerThresholdFilter, heatmapMetricMode, fleetDensityFilter]);
 
   // Layer-specific metric evaluation function for accurate hotspot ranking
   const getLayerMetric = (a: Agency, layer: string): number => {
+    if (heatmapMetricMode === 'apparatus_density') {
+      return a.apparatusFleet?.totalActiveUnits || 
+        ((a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.stationsCount || 1) * 2);
+    }
     if (layer === 'nemsis_cardiac') {
       return a.annualCardiacArrestCalls || Math.round((a.annual911Transports || 3000) * 0.12);
     }
@@ -329,7 +375,15 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         totalRecoverableRevenue: 0,
         autoPulseNeedCount: 0,
         agingDefibCount: 0,
-        ventOpportunityCount: 0
+        ventOpportunityCount: 0,
+        totalApparatusFleet: 0,
+        totalAlsAmbulances: 0,
+        totalFireEngines: 0,
+        totalStations: 0,
+        metroFleetAgenciesCount: 0,
+        urbanFleetAgenciesCount: 0,
+        avgFleetAgeYears: 6.8,
+        agingFleetNeedCount: 0
       };
     }
 
@@ -351,6 +405,16 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     let agingDefibCount = 0;
     let ventOpportunityCount = 0;
 
+    // Operational Apparatus Fleet Metrics
+    let totalApparatusFleet = 0;
+    let totalAlsAmbulances = 0;
+    let totalFireEngines = 0;
+    let totalStations = 0;
+    let metroFleetAgenciesCount = 0;
+    let urbanFleetAgenciesCount = 0;
+    let sumVehicleAge = 0;
+    let agingFleetNeedCount = 0;
+
     for (let i = 0; i < len; i++) {
       const a = filteredAgencies[i];
       const cardiacCalls = a.annualCardiacArrestCalls || 0;
@@ -364,6 +428,13 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       const mechCpr = a.installedFleet?.mechanicalCPR;
       const vent = a.installedFleet?.transportVentilator;
 
+      const fleetUnits = a.apparatusFleet?.totalActiveUnits || 
+        ((a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.stationsCount || 1) * 2);
+      const alsUnits = a.apparatusFleet?.alsAmbulances || a.totalAmbulances || 0;
+      const engineUnits = a.apparatusFleet?.fireEngines || a.totalFireEngines || 0;
+      const stations = a.stationsCount || 1;
+      const vAge = a.apparatusFleet?.avgVehicleAgeYears || a.installedFleet?.defibAgeYears || 7;
+
       totalCardiacCalls += cardiacCalls;
       total911Transports += transports;
       sumSurvival += survival;
@@ -371,6 +442,15 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       sumTransportTime += transportTime;
       sumDenialRate += denialRate;
       totalRecoverableRevenue += recoverableRev;
+
+      totalApparatusFleet += fleetUnits;
+      totalAlsAmbulances += alsUnits;
+      totalFireEngines += engineUnits;
+      totalStations += stations;
+      sumVehicleAge += vAge;
+
+      if (fleetUnits >= 60) metroFleetAgenciesCount++;
+      else if (fleetUnits >= 25) urbanFleetAgenciesCount++;
 
       if (cardiacCalls >= 800) criticalCount++;
       if (cardiacCalls >= 400 && defibAge >= 7) agingFleetInCardiacZonesCount++;
@@ -381,6 +461,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       if (denialRate >= 19) highDenialCount++;
       if (!mechCpr || mechCpr.includes('None')) autoPulseNeedCount++;
       if (defibAge >= 7) agingDefibCount++;
+      if (vAge >= 7 || defibAge >= 7) agingFleetNeedCount++;
       if (transportTime >= 20 && (!vent || vent.includes('None'))) ventOpportunityCount++;
     }
 
@@ -389,6 +470,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     const avgAedDeficit = Math.round(sumAedDeficit / len);
     const avgTransportTime = +(sumTransportTime / len).toFixed(1);
     const avgDenialRate = +(sumDenialRate / len).toFixed(1);
+    const avgFleetAgeYears = +(sumVehicleAge / len).toFixed(1);
 
     return {
       totalCardiacCalls,
@@ -408,7 +490,15 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       totalRecoverableRevenue,
       autoPulseNeedCount,
       agingDefibCount,
-      ventOpportunityCount
+      ventOpportunityCount,
+      totalApparatusFleet,
+      totalAlsAmbulances,
+      totalFireEngines,
+      totalStations,
+      metroFleetAgenciesCount,
+      urbanFleetAgenciesCount,
+      avgFleetAgeYears,
+      agingFleetNeedCount
     };
   }, [filteredAgencies]);
 
@@ -454,14 +544,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     }
 
     return sampled;
-  }, [filteredAgencies, selectedLayer, selectedState]);
+  }, [filteredAgencies, selectedLayer, selectedState, heatmapMetricMode]);
 
-  // Ranked hotspots for the active layer
+  // Ranked hotspots / fleet concentrations for the active mode & layer
   const topCardiacEpicenters = useMemo(() => {
     return [...filteredAgencies]
       .sort((a, b) => getLayerMetric(b, selectedLayer) - getLayerMetric(a, selectedLayer))
-      .slice(0, 8);
-  }, [filteredAgencies, selectedLayer]);
+      .slice(0, 10);
+  }, [filteredAgencies, selectedLayer, heatmapMetricMode]);
 
   const acuityDistributionStats = useMemo(() => {
     let criticalCount = 0;
@@ -765,8 +855,8 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   // True 2D Gaussian Kernel Density Estimation (KDE) Thermal Canvas Surface
   const kdeThermalDataUrl = useMemo<string>(() => {
     if (typeof document === 'undefined' || mapRenderedAgencies.length === 0) return '';
-    const gridW = 230;
-    const gridH = 125;
+    const gridW = 460;
+    const gridH = 250;
     const scaleX = gridW / mapWidth;
     const scaleY = gridH / mapHeight;
 
@@ -781,7 +871,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       if (heatmapMetricMode === 'apparatus_density') {
         const fleet = a.apparatusFleet?.totalActiveUnits;
         if (typeof fleet === 'number' && fleet > 0) return fleet;
-        return (a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.totalFireStations || 1) * 2;
+        return (a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.stationsCount || 1) * 2;
       }
       return getLayerMetric(a, selectedLayer);
     });
@@ -793,7 +883,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     }
     const metricSpan = Math.max(1e-5, maxM - minM);
 
-    const sigmaGrid = Math.max(2.2, (kdeBandwidth * scaleX) * 0.42);
+    const sigmaGrid = Math.max(3.2, (kdeBandwidth * scaleX) * 0.42);
     const twoSigmaSq = 2 * sigmaGrid * sigmaGrid;
     const cutoffRadius = Math.ceil(sigmaGrid * 3.1);
 
@@ -834,18 +924,18 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
     for (let i = 0; i < densityField.length; i++) {
       const rawNorm = densityField[i] / maxDensity;
-      if (rawNorm < 0.045) continue;
+      if (rawNorm < 0.038) continue;
 
       // Non-linear gamma boost for rich mid-range thermal visibility
-      const t = Math.pow(rawNorm, 0.72);
+      const t = Math.pow(rawNorm, 0.70);
       const [r, g, b] = sampleSpectrumRgb(t, colorSpectrum);
 
       // Topographic Iso-Density Contour Ring Detection
       let isContourLine = false;
       if (showIsoContours) {
-        const bands = [0.25, 0.45, 0.65, 0.84];
+        const bands = [0.22, 0.42, 0.64, 0.84];
         for (let bIdx = 0; bIdx < bands.length; bIdx++) {
-          if (Math.abs(t - bands[bIdx]) < 0.014) {
+          if (Math.abs(t - bands[bIdx]) < 0.012) {
             isContourLine = true;
             break;
           }
@@ -854,12 +944,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
       const idx = i * 4;
       if (isContourLine) {
-        data[idx] = Math.min(255, r + 65);
-        data[idx + 1] = Math.min(255, g + 65);
-        data[idx + 2] = Math.min(255, b + 65);
-        data[idx + 3] = Math.round(Math.min(255, (0.45 + t * 0.55) * 255));
+        data[idx] = Math.min(255, r + 70);
+        data[idx + 1] = Math.min(255, g + 70);
+        data[idx + 2] = Math.min(255, b + 70);
+        data[idx + 3] = Math.round(Math.min(255, (0.55 + t * 0.45) * 255));
       } else {
-        const smoothAlpha = t < 0.18 ? (t / 0.18) * 0.55 : Math.min(0.96, 0.55 + (t - 0.18) * 0.5);
+        const smoothAlpha = basemapTheme === 'dark'
+          ? (t < 0.16 ? (t / 0.16) * 0.45 : Math.min(0.94, 0.45 + (t - 0.16) * 0.52))
+          : (t < 0.16 ? (t / 0.16) * 0.35 : Math.min(0.85, 0.35 + (t - 0.16) * 0.55));
         data[idx] = r;
         data[idx + 1] = g;
         data[idx + 2] = b;
@@ -869,7 +961,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
     ctx.putImageData(imgData, 0, 0);
     return canvas.toDataURL('image/png');
-  }, [mapRenderedAgencies, selectedLayer, kdeBandwidth, colorSpectrum, showIsoContours, heatmapMetricMode]);
+  }, [mapRenderedAgencies, selectedLayer, kdeBandwidth, colorSpectrum, showIsoContours, heatmapMetricMode, basemapTheme]);
 
   // H3 Spatial Hexagonal Tessellation & Aggregation Engine
   const hexBinCells = useMemo<HexBinCell[]>(() => {
@@ -896,7 +988,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       const cell = bins.get(key)!;
       cell.agencies.push(a);
       const m = heatmapMetricMode === 'apparatus_density'
-        ? (a.apparatusFleet?.totalActiveUnits || ((a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.totalFireStations || 1) * 2))
+        ? (a.apparatusFleet?.totalActiveUnits || ((a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.stationsCount || 1) * 2))
         : getLayerMetric(a, selectedLayer);
       cell.metricSum += m;
     }
@@ -935,7 +1027,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         totalCalls += calls;
         sumSurv += (ag.utsteinSurvivalRate || 10.8);
         const m = heatmapMetricMode === 'apparatus_density'
-          ? (ag.apparatusFleet?.totalActiveUnits || ((ag.totalAmbulances || 0) + (ag.totalFireEngines || 0) + (ag.totalFireStations || 1) * 2))
+          ? (ag.apparatusFleet?.totalActiveUnits || ((ag.totalAmbulances || 0) + (ag.totalFireEngines || 0) + (ag.stationsCount || 1) * 2))
           : getLayerMetric(ag, selectedLayer);
         if (m > topMetric) {
           topMetric = m;
@@ -996,6 +1088,68 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   }
 
   const getAgencyLayerVisual = (agency: Agency, layer: string): AgencyLayerVisual => {
+    if (heatmapMetricMode === 'apparatus_density') {
+      const fleet = agency.apparatusFleet?.totalActiveUnits || 
+        ((agency.totalAmbulances || 0) + (agency.totalFireEngines || 0) + (agency.stationsCount || 1) * 2);
+      const als = agency.apparatusFleet?.alsAmbulances || agency.totalAmbulances || 0;
+      const stations = agency.stationsCount || 1;
+
+      if (fleet >= 60) {
+        return {
+          gradientId: 'fleet-metro-gradient',
+          ringColor: '#f59e0b',
+          ringOpacity: 0.85,
+          isCritical: true,
+          markerFill: '#d97706',
+          markerStroke: '#fef3c7',
+          markerRadius: 7,
+          heatRadius: 62,
+          tierLabel: 'Tier 1 Metro Core Fleet (≥60 Units)',
+          metricDisplay: `${fleet} Active Units · ${stations} Stations`
+        };
+      }
+      if (fleet >= 25) {
+        return {
+          gradientId: 'fleet-urban-gradient',
+          ringColor: '#ea580c',
+          ringOpacity: 0.65,
+          isCritical: false,
+          markerFill: '#c2410c',
+          markerStroke: '#ffedd5',
+          markerRadius: 5.5,
+          heatRadius: 46,
+          tierLabel: 'Tier 2 Dense Urban Fleet (25–59 Units)',
+          metricDisplay: `${fleet} Active Units · ${stations} Stations`
+        };
+      }
+      if (fleet >= 12) {
+        return {
+          gradientId: 'fleet-suburban-gradient',
+          ringColor: '#0284c7',
+          ringOpacity: 0.45,
+          isCritical: false,
+          markerFill: '#0369a1',
+          markerStroke: '#e0f2fe',
+          markerRadius: 4.5,
+          heatRadius: 32,
+          tierLabel: 'Tier 3 Suburban Fleet (12–24 Units)',
+          metricDisplay: `${fleet} Active Units · ${stations} Stations`
+        };
+      }
+      return {
+        gradientId: 'fleet-rural-gradient',
+        ringColor: '#10b981',
+        ringOpacity: 0.35,
+        isCritical: false,
+        markerFill: '#059669',
+        markerStroke: '#d1fae5',
+        markerRadius: 4,
+        heatRadius: 20,
+        tierLabel: 'Tier 4 Rural / Local Fleet (<12 Units)',
+        metricDisplay: `${fleet} Active Units · ${stations} Stations`
+      };
+    }
+
     if (layer === 'nemsis_cardiac') {
       const calls = agency.annualCardiacArrestCalls || Math.round((agency.annual911Transports || 3000) * 0.12);
       if (calls >= 800) {
@@ -1485,15 +1639,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 <span className="text-xs text-[#53657B] dark:text-slate-400 font-medium">State:</span>
                 <select
                   value={selectedState}
-                  onChange={(e) => {
-                    const st = e.target.value;
-                    setSelectedState(st);
-                    setSelectedCounty('all');
-                    setSelectedCity('all');
-                    if (onSelectState) onSelectState(st);
-                    if (onSelectCounty) onSelectCounty('all');
-                    if (onSelectCity) onSelectCity('all');
-                  }}
+                  onChange={(e) => handleSelectState(e.target.value)}
                   className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-lg px-2.5 py-1 text-xs text-[#14283F] dark:text-slate-200 font-semibold focus:outline-none focus:border-[#285EE8] shadow-2xs cursor-pointer"
                 >
                   <option value="all">All 50 States (National)</option>
@@ -1596,18 +1742,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
 
               {/* Reset Jurisdiction Filter */}
-              {(selectedClusterId !== 'all' || selectedState !== 'all' || selectedCounty !== 'all' || selectedCity !== 'all' || selectedCategory !== 'all' || nemsisAcuityFilter !== 'all') && (
+              {(selectedClusterId !== 'all' || selectedState !== 'all' || selectedCounty !== 'all' || selectedCity !== 'all' || selectedCategory !== 'all' || nemsisAcuityFilter !== 'all' || fleetDensityFilter !== 'all') && (
                 <button
                   onClick={() => {
                     setSelectedClusterId('all');
-                    setSelectedState('all');
-                    setSelectedCounty('all');
-                    setSelectedCity('all');
+                    handleSelectState('all');
                     setSelectedCategory('all');
                     setNemsisAcuityFilter('all');
-                    if (onSelectState) onSelectState('all');
-                    if (onSelectCounty) onSelectCounty('all');
-                    if (onSelectCity) onSelectCity('all');
+                    setFleetDensityFilter('all');
                     if (onSelectCategory) onSelectCategory('all');
                   }}
                   className="px-2.5 py-1 text-xs text-[#285EE8] bg-[#285EE8]/10 hover:bg-[#285EE8]/15 border border-[#285EE8]/30 rounded-lg font-medium cursor-pointer transition-colors whitespace-nowrap shrink-0"
@@ -1642,26 +1784,107 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Fast State Quick-Picks Navigation Strip */}
+            <div className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2.5 mt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42] text-xs">
+              <span className="text-[11px] text-[#53657B] dark:text-slate-400 font-medium shrink-0">Quick Zoom:</span>
+              {[
+                { code: 'all', label: 'All 50 States (National)' },
+                { code: 'OH', label: 'Ohio' },
+                { code: 'TX', label: 'Texas' },
+                { code: 'CA', label: 'California' },
+                { code: 'FL', label: 'Florida' },
+                { code: 'IL', label: 'Illinois' },
+                { code: 'PA', label: 'Pennsylvania' },
+                { code: 'NY', label: 'New York' },
+                { code: 'NC', label: 'North Carolina' },
+                { code: 'GA', label: 'Georgia' }
+              ].map((st) => {
+                const isAct = selectedState === st.code;
+                return (
+                  <button
+                    key={`quick-st-${st.code}`}
+                    type="button"
+                    onClick={() => handleSelectState(st.code)}
+                    className={`px-2.5 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                      isAct
+                        ? 'bg-[#285EE8] text-white shadow-2xs'
+                        : 'bg-white dark:bg-[#111C2D] text-[#53657B] dark:text-slate-300 hover:text-[#14283F] dark:hover:text-white border border-[#DFE6EF] dark:border-[#1E2D42]'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Dynamic GIS Telemetry & Layer Filter Strip (Active across all 5 layers) */}
+          {/* Dynamic GIS Telemetry & Layer Filter Strip (Active across all modes & layers) */}
           <div className={`p-4 sm:p-5 text-white border-b min-w-0 ${
-            selectedLayer === 'nemsis_cardiac' ? 'bg-gradient-to-r from-rose-950 via-slate-900 to-slate-950 border-rose-900/40' :
-            selectedLayer === 'cardiac' ? 'bg-gradient-to-r from-red-950 via-slate-900 to-slate-950 border-red-900/40' :
-            selectedLayer === 'aed' ? 'bg-gradient-to-r from-fuchsia-950 via-slate-900 to-slate-950 border-fuchsia-900/40' :
-            selectedLayer === 'transport' ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 border-amber-900/40' :
-            'bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border-emerald-900/40'
+            heatmapMetricMode === 'apparatus_density'
+              ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 border-amber-900/40'
+              : selectedLayer === 'nemsis_cardiac' ? 'bg-gradient-to-r from-rose-950 via-slate-900 to-slate-950 border-rose-900/40' :
+              selectedLayer === 'cardiac' ? 'bg-gradient-to-r from-red-950 via-slate-900 to-slate-950 border-red-900/40' :
+              selectedLayer === 'aed' ? 'bg-gradient-to-r from-fuchsia-950 via-slate-900 to-slate-950 border-fuchsia-900/40' :
+              selectedLayer === 'transport' ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-slate-950 border-amber-900/40' :
+              'bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 border-emerald-900/40'
           }`}>
+            {/* Primary Mode Selector: Resuscitation Acuity vs Fleet & Apparatus Density */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-white/10">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-700/80 rounded-xl shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setHeatmapMetricMode('acuity')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    heatmapMetricMode === 'acuity'
+                      ? 'bg-[#285EE8] text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <HeartPulse className="w-4 h-4 text-rose-400" />
+                  <span>Resuscitation Acuity Heatmap</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeatmapMetricMode('apparatus_density')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    heatmapMetricMode === 'apparatus_density'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Flame className="w-4 h-4 text-amber-300" />
+                  <span>Fleet &amp; Apparatus Density Heatmap</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-medium">
+                  {heatmapMetricMode === 'acuity'
+                    ? 'Clinical Resuscitation & Survival Deficit Surfaces'
+                    : 'Active Apparatus & Municipal Station Concentrations'}
+                </span>
+                <span className="text-slate-500 hidden sm:inline">·</span>
+                <span className="text-slate-400 hidden sm:inline tabular-nums">
+                  {filteredAgencies.length.toLocaleString()} Providers Active
+                </span>
+              </div>
+            </div>
+
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
               <div className="flex items-start sm:items-center gap-3 min-w-0">
                 <div className={`p-2.5 border rounded-xl shrink-0 ${
-                  selectedLayer === 'nemsis_cardiac' ? 'bg-rose-600/30 border-rose-500/40 text-rose-400' :
-                  selectedLayer === 'cardiac' ? 'bg-red-600/30 border-red-500/40 text-red-400' :
-                  selectedLayer === 'aed' ? 'bg-fuchsia-600/30 border-fuchsia-500/40 text-fuchsia-400' :
-                  selectedLayer === 'transport' ? 'bg-amber-600/30 border-amber-500/40 text-amber-400' :
-                  'bg-emerald-600/30 border-emerald-500/40 text-emerald-400'
+                  heatmapMetricMode === 'apparatus_density'
+                    ? 'bg-amber-600/30 border-amber-500/40 text-amber-400'
+                    : selectedLayer === 'nemsis_cardiac' ? 'bg-rose-600/30 border-rose-500/40 text-rose-400' :
+                    selectedLayer === 'cardiac' ? 'bg-red-600/30 border-red-500/40 text-red-400' :
+                    selectedLayer === 'aed' ? 'bg-fuchsia-600/30 border-fuchsia-500/40 text-fuchsia-400' :
+                    selectedLayer === 'transport' ? 'bg-amber-600/30 border-amber-500/40 text-amber-400' :
+                    'bg-emerald-600/30 border-emerald-500/40 text-emerald-400'
                 }`}>
-                  {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-5 h-5 text-rose-500 animate-pulse" /> :
+                  {heatmapMetricMode === 'apparatus_density' ? <Flame className="w-5 h-5 text-amber-400 animate-pulse" /> :
+                   selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-5 h-5 text-rose-500 animate-pulse" /> :
                    selectedLayer === 'cardiac' ? <Activity className="w-5 h-5 text-red-500 animate-pulse" /> :
                    selectedLayer === 'aed' ? <Zap className="w-5 h-5 text-fuchsia-400 animate-pulse" /> :
                    selectedLayer === 'transport' ? <Clock className="w-5 h-5 text-amber-400 animate-pulse" /> :
@@ -1671,27 +1894,33 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-sm sm:text-base text-white tracking-tight flex items-center gap-1.5 flex-wrap">
                       <span>
-                        {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS High-Acuity Cardiac Telemetry' :
-                         selectedLayer === 'cardiac' ? 'Cardiac Arrest Survival Deficit Zones' :
-                         selectedLayer === 'aed' ? 'Public Access AED Need & Demographics' :
-                         selectedLayer === 'transport' ? 'Extended Transport Isochrones (>20 min)' :
-                         'CMS Medicare Claim Denial Concentrations'}
+                        {heatmapMetricMode === 'apparatus_density'
+                          ? 'GIS Operational Fleet & Apparatus Density Telemetry'
+                          : selectedLayer === 'nemsis_cardiac' ? 'NEMSIS High-Acuity Cardiac Telemetry' :
+                          selectedLayer === 'cardiac' ? 'Cardiac Arrest Survival Deficit Zones' :
+                          selectedLayer === 'aed' ? 'Public Access AED Need & Demographics' :
+                          selectedLayer === 'transport' ? 'Extended Transport Isochrones (>20 min)' :
+                          'CMS Medicare Claim Denial Concentrations'}
                       </span>
                       <span className="text-xs text-slate-300 font-normal">
-                        · {selectedLayer === 'nemsis_cardiac' ? 'v3.5 Live Dataset' :
-                           selectedLayer === 'cardiac' ? 'Utstein Resuscitation Registry' :
-                           selectedLayer === 'aed' ? 'GIS PAD Census' :
-                           selectedLayer === 'transport' ? 'NEMSIS Transit Registry' :
-                           'Medicare MAC Revenue Audit'}
+                        · {heatmapMetricMode === 'apparatus_density'
+                            ? 'USFA & NEMSIS Live Registry'
+                            : selectedLayer === 'nemsis_cardiac' ? 'v3.5 Live Dataset' :
+                            selectedLayer === 'cardiac' ? 'Utstein Resuscitation Registry' :
+                            selectedLayer === 'aed' ? 'GIS PAD Census' :
+                            selectedLayer === 'transport' ? 'NEMSIS Transit Registry' :
+                            'Medicare MAC Revenue Audit'}
                       </span>
                     </h3>
                   </div>
                   <p className="text-xs text-slate-300 mt-1 leading-relaxed max-w-3xl">
-                    {selectedLayer === 'nemsis_cardiac' && `Territory-wide Out-of-Hospital Cardiac Arrest (OHCA) call volume, STEMI transmissions & Utstein survival telemetry across ${selectedCounty !== 'all' ? selectedCounty : selectedState !== 'all' ? selectedState : 'all 50 states'}.`}
-                    {selectedLayer === 'cardiac' && `Identifying severe survival deficits (<26% Utstein survival rate) where ZOLL AutoPulse and ResQCPR generate highest clinical resuscitation impact.`}
-                    {selectedLayer === 'aed' && `Mapping public access AED deficits and age 65+ demographic vulnerability to deploy ZOLL AED 3 community networks.`}
-                    {selectedLayer === 'transport' && `Long transport corridors (>20 min) requiring EMV+ mechanical transport ventilators and uninterrupted patient monitoring.`}
-                    {selectedLayer === 'cms' && `Medicare Part B claim denials (>18%) addressable through ZOLL RescueNet Billing and AR Boost automated revenue recovery.`}
+                    {heatmapMetricMode === 'apparatus_density'
+                      ? `Mapping frontline ALS ambulances, fire engines, ladders, heavy rescues, and active fire/EMS stations across ${selectedCounty !== 'all' ? selectedCounty : selectedState !== 'all' ? selectedState : 'all 50 states'} to identify fleet replacement and capital upgrade opportunities.`
+                      : selectedLayer === 'nemsis_cardiac' ? `Territory-wide Out-of-Hospital Cardiac Arrest (OHCA) call volume, STEMI transmissions & Utstein survival telemetry across ${selectedCounty !== 'all' ? selectedCounty : selectedState !== 'all' ? selectedState : 'all 50 states'}.`
+                      : selectedLayer === 'cardiac' ? `Identifying severe survival deficits (<26% Utstein survival rate) where ZOLL AutoPulse and ResQCPR generate highest clinical resuscitation impact.`
+                      : selectedLayer === 'aed' ? `Mapping public access AED deficits and age 65+ demographic vulnerability to deploy ZOLL AED 3 community networks.`
+                      : selectedLayer === 'transport' ? `Long transport corridors (>20 min) requiring EMV+ mechanical transport ventilators and uninterrupted patient monitoring.`
+                      : `Medicare Part B claim denials (>18%) addressable through ZOLL RescueNet Billing and AR Boost automated revenue recovery.`}
                   </p>
                 </div>
               </div>
@@ -1701,8 +1930,57 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 rounded-xl p-1 text-xs shrink-0">
                   <span className="text-xs text-slate-300 font-medium px-1.5 shrink-0">Filter:</span>
                   
-                  {/* Layer: nemsis_cardiac */}
-                  {selectedLayer === 'nemsis_cardiac' && (
+                  {/* Mode: Apparatus Density Filtering */}
+                  {heatmapMetricMode === 'apparatus_density' && (
+                    <>
+                      <button
+                        onClick={() => setFleetDensityFilter('all')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          fleetDensityFilter === 'all'
+                            ? 'bg-white text-slate-900 font-semibold shadow-xs'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        All Fleets
+                      </button>
+                      <button
+                        onClick={() => setFleetDensityFilter('dense')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                          fleetDensityFilter === 'dense'
+                            ? 'bg-amber-500 text-slate-950 font-semibold shadow-xs'
+                            : 'text-amber-300 hover:text-amber-200'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                        <span className="tabular-nums">≥25 Units (Dense)</span>
+                      </button>
+                      <button
+                        onClick={() => setFleetDensityFilter('hub')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                          fleetDensityFilter === 'hub'
+                            ? 'bg-orange-600 text-white font-semibold shadow-xs'
+                            : 'text-orange-300 hover:text-orange-200'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+                        <span className="tabular-nums">≥60 Units (Hub)</span>
+                      </button>
+                      <button
+                        onClick={() => setFleetDensityFilter('metro')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                          fleetDensityFilter === 'metro'
+                            ? 'bg-rose-600 text-white font-semibold shadow-xs'
+                            : 'text-rose-400 hover:text-rose-300'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                        <span className="tabular-nums">≥100 Units (Metro Core)</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Mode: Clinical Acuity Layers */}
+                  {heatmapMetricMode === 'acuity' && selectedLayer === 'nemsis_cardiac' && (
                     <>
                       <button
                         onClick={() => setNemsisAcuityFilter('all')}
@@ -1740,7 +2018,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
 
                   {/* Layer: cardiac (Survival Deficit) */}
-                  {selectedLayer === 'cardiac' && (
+                  {heatmapMetricMode === 'acuity' && selectedLayer === 'cardiac' && (
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
@@ -1778,7 +2056,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
 
                   {/* Layer: aed */}
-                  {selectedLayer === 'aed' && (
+                  {heatmapMetricMode === 'acuity' && selectedLayer === 'aed' && (
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
@@ -1816,7 +2094,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
 
                   {/* Layer: transport */}
-                  {selectedLayer === 'transport' && (
+                  {heatmapMetricMode === 'acuity' && selectedLayer === 'transport' && (
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
@@ -1854,7 +2132,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   )}
 
                   {/* Layer: cms */}
-                  {selectedLayer === 'cms' && (
+                  {heatmapMetricMode === 'acuity' && selectedLayer === 'cms' && (
                     <>
                       <button
                         onClick={() => setLayerThresholdFilter('all')}
@@ -2024,201 +2302,331 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </div>
             </div>
 
-            {/* Telemetry Metric KPI Cards */}
+            {/* Telemetry Metric KPI Cards (Dynamic for Acuity Mode & Apparatus Density Mode) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-800/80 min-w-0">
               
-              {/* CARD 1 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
-                <div className="min-w-0">
-                  <span className="text-xs text-slate-400 font-medium truncate block">
-                    {selectedLayer === 'nemsis_cardiac' ? 'Total Cardiac Arrests' :
-                     selectedLayer === 'cardiac' ? 'Avg Utstein Survival' :
-                     selectedLayer === 'aed' ? 'Avg Public Access Deficit' :
-                     selectedLayer === 'transport' ? 'Avg Emergency Transit' :
-                     'Avg Claim Denial Rate'}
-                  </span>
-                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
-                    <span className="text-xl sm:text-2xl font-semibold text-rose-400 tabular-nums">
-                      {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.totalCardiacCalls.toLocaleString()}`}
-                      {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.avgSurvival}%`}
-                      {selectedLayer === 'aed' && `${nemsisTerritoryStats.avgAedDeficit}%`}
-                      {selectedLayer === 'transport' && `${nemsisTerritoryStats.avgTransportTime} min`}
-                      {selectedLayer === 'cms' && `${nemsisTerritoryStats.avgDenialRate}%`}
-                    </span>
-                    <span className="text-xs text-slate-400 truncate">
-                      {selectedLayer === 'nemsis_cardiac' ? 'OHCA/yr' :
-                       selectedLayer === 'cardiac' ? 'vs 29.7% bench' :
-                       selectedLayer === 'aed' ? 'community gap' :
-                       selectedLayer === 'transport' ? 'to hospital' :
-                       'Part B Medicare'}
-                    </span>
+              {heatmapMetricMode === 'apparatus_density' ? (
+                <>
+                  {/* FLEET CARD 1: Total Active Apparatus Fleet */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-400 font-medium truncate block">
+                        Total Active Apparatus
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-amber-400 tabular-nums">
+                          {nemsisTerritoryStats.totalApparatusFleet.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          active units
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.round(nemsisTerritoryStats.totalApparatusFleet * 0.88),
+                          Math.round(nemsisTerritoryStats.totalApparatusFleet * 0.92),
+                          Math.round(nemsisTerritoryStats.totalApparatusFleet * 0.95),
+                          Math.round(nemsisTerritoryStats.totalApparatusFleet * 0.98),
+                          nemsisTerritoryStats.totalApparatusFleet
+                        ]}
+                        color="amber"
+                        height={20}
+                        valueSuffix=" units"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mt-2.5 pt-1 border-t border-slate-800">
-                  <InteractiveSparkline
-                    data={
-                      selectedLayer === 'nemsis_cardiac' ? [
-                        Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.86),
-                        Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.90),
-                        Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.94),
-                        Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.98),
-                        nemsisTerritoryStats.totalCardiacCalls
-                      ] :
-                      selectedLayer === 'cardiac' ? [
-                        +(nemsisTerritoryStats.avgSurvival - 1.1).toFixed(1),
-                        +(nemsisTerritoryStats.avgSurvival - 0.7).toFixed(1),
-                        +(nemsisTerritoryStats.avgSurvival - 0.4).toFixed(1),
-                        +(nemsisTerritoryStats.avgSurvival - 0.1).toFixed(1),
-                        nemsisTerritoryStats.avgSurvival
-                      ] :
-                      selectedLayer === 'aed' ? [
-                        Math.round(nemsisTerritoryStats.avgAedDeficit * 0.92),
-                        Math.round(nemsisTerritoryStats.avgAedDeficit * 0.95),
-                        Math.round(nemsisTerritoryStats.avgAedDeficit * 0.97),
-                        Math.round(nemsisTerritoryStats.avgAedDeficit * 0.99),
-                        nemsisTerritoryStats.avgAedDeficit
-                      ] :
-                      selectedLayer === 'transport' ? [
-                        +(nemsisTerritoryStats.avgTransportTime - 1.2).toFixed(1),
-                        +(nemsisTerritoryStats.avgTransportTime - 0.8).toFixed(1),
-                        +(nemsisTerritoryStats.avgTransportTime - 0.5).toFixed(1),
-                        +(nemsisTerritoryStats.avgTransportTime - 0.2).toFixed(1),
-                        nemsisTerritoryStats.avgTransportTime
-                      ] :
-                      [
-                        +(nemsisTerritoryStats.avgDenialRate - 1.2).toFixed(1),
-                        +(nemsisTerritoryStats.avgDenialRate - 0.8).toFixed(1),
-                        +(nemsisTerritoryStats.avgDenialRate - 0.4).toFixed(1),
-                        +(nemsisTerritoryStats.avgDenialRate - 0.1).toFixed(1),
-                        nemsisTerritoryStats.avgDenialRate
-                      ]
-                    }
-                    color={selectedLayer === 'cms' ? 'emerald' : selectedLayer === 'transport' ? 'amber' : 'rose'}
-                    height={20}
-                    valueSuffix={selectedLayer === 'transport' ? ' min' : selectedLayer === 'nemsis_cardiac' ? ' calls' : '%'}
-                  />
-                </div>
-              </div>
 
-              {/* CARD 2 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
-                <div className="min-w-0">
-                  <span className="text-xs text-slate-400 font-medium truncate block">
-                    {selectedLayer === 'nemsis_cardiac' ? 'STEMI Pre-Hospital Alerts' :
-                     selectedLayer === 'cardiac' ? 'Critical Deficits (<22%)' :
-                     selectedLayer === 'aed' ? 'High Need AED Zones (≥50%)' :
-                     selectedLayer === 'transport' ? 'Prolonged Routes (≥20 min)' :
-                     'High Denial Providers (≥19%)'}
-                  </span>
-                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
-                    <span className="text-xl sm:text-2xl font-semibold text-amber-400 tabular-nums">
-                      {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.totalStemiTransmissions.toLocaleString()}`}
-                      {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.criticalSurvivalCount}`}
-                      {selectedLayer === 'aed' && `${nemsisTerritoryStats.highAedNeedCount}`}
-                      {selectedLayer === 'transport' && `${nemsisTerritoryStats.longTransportCount}`}
-                      {selectedLayer === 'cms' && `${nemsisTerritoryStats.highDenialCount}`}
-                    </span>
-                    <span className="text-xs text-slate-400 truncate">
-                      {selectedLayer === 'nemsis_cardiac' ? 'transmissions' : 'agencies'}
-                    </span>
+                  {/* FLEET CARD 2: Frontline ALS Ambulances */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-400 font-medium truncate block">
+                        ALS Frontline Ambulances
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-sky-400 tabular-nums">
+                          {nemsisTerritoryStats.totalAlsAmbulances.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          paramedic units
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.round(nemsisTerritoryStats.totalAlsAmbulances * 0.85),
+                          Math.round(nemsisTerritoryStats.totalAlsAmbulances * 0.90),
+                          Math.round(nemsisTerritoryStats.totalAlsAmbulances * 0.94),
+                          Math.round(nemsisTerritoryStats.totalAlsAmbulances * 0.97),
+                          nemsisTerritoryStats.totalAlsAmbulances
+                        ]}
+                        color="sky"
+                        height={20}
+                        valueSuffix=" ALS"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mt-2.5 pt-1 border-t border-slate-800">
-                  <InteractiveSparkline
-                    data={[
-                      Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.82),
-                      Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.89),
-                      Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.93),
-                      Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.97),
-                      nemsisTerritoryStats.totalStemiTransmissions || 100
-                    ]}
-                    color="amber"
-                    height={20}
-                    valueSuffix=" alerts"
-                  />
-                </div>
-              </div>
 
-              {/* CARD 3 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
-                <div className="min-w-0">
-                  <span className="text-xs text-slate-400 font-medium truncate block">
-                    {selectedLayer === 'nemsis_cardiac' ? 'Active 911 Call Load' :
-                     selectedLayer === 'cardiac' ? 'AutoPulse CPR Need' :
-                     selectedLayer === 'aed' ? 'Total Population Served' :
-                     selectedLayer === 'transport' ? 'Extreme Rural Routes (≥28 min)' :
-                     'Estimated Recoverable Revenue'}
-                  </span>
-                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
-                    <span className="text-xl sm:text-2xl font-semibold text-emerald-400 tabular-nums">
-                      {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.total911Transports.toLocaleString()}`}
-                      {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.autoPulseNeedCount}`}
-                      {selectedLayer === 'aed' && `${nemsisTerritoryStats.total911Transports.toLocaleString()}`}
-                      {selectedLayer === 'transport' && `${nemsisTerritoryStats.extremeTransportCount}`}
-                      {selectedLayer === 'cms' && `$${(nemsisTerritoryStats.totalRecoverableRevenue / 1000000).toFixed(1)}M`}
-                    </span>
-                    <span className="text-xs text-slate-400 truncate">
-                      {selectedLayer === 'cardiac' ? 'agencies without mech CPR' :
-                       selectedLayer === 'transport' ? 'extended transit zones' :
-                       selectedLayer === 'cms' ? 'recoverable cash' :
-                       'transports/yr'}
-                    </span>
+                  {/* FLEET CARD 3: Active Fire & EMS Stations */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-400 font-medium truncate block">
+                        Active Stations Deployed
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-emerald-400 tabular-nums">
+                          {nemsisTerritoryStats.totalStations.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          facilities
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.round(nemsisTerritoryStats.totalStations * 0.90),
+                          Math.round(nemsisTerritoryStats.totalStations * 0.93),
+                          Math.round(nemsisTerritoryStats.totalStations * 0.96),
+                          Math.round(nemsisTerritoryStats.totalStations * 0.98),
+                          nemsisTerritoryStats.totalStations
+                        ]}
+                        color="emerald"
+                        height={20}
+                        valueSuffix=" stns"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mt-2.5 pt-1 border-t border-slate-800">
-                  <InteractiveSparkline
-                    data={[
-                      Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.85),
-                      Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.89),
-                      Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.94),
-                      Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.98),
-                      nemsisTerritoryStats.autoPulseNeedCount || 50
-                    ]}
-                    color="emerald"
-                    height={20}
-                    valueSuffix={selectedLayer === 'cms' ? 'M' : ' units'}
-                  />
-                </div>
-              </div>
 
-              {/* CARD 4 */}
-              <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
-                <div className="min-w-0">
-                  <span className="text-xs text-rose-300 font-medium truncate block">
-                    {selectedLayer === 'nemsis_cardiac' ? 'High-Acuity Defib Deficit' :
-                     selectedLayer === 'cardiac' ? 'Aging Fleets in Deficit' :
-                     selectedLayer === 'aed' ? 'AED 3 Upgrade Target' :
-                     selectedLayer === 'transport' ? 'Ventilator Expansion Need' :
-                     'Avg Denial Recovery / Agency'}
-                  </span>
-                  <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
-                    <span className="text-xl sm:text-2xl font-semibold text-rose-300 tabular-nums">
-                      {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.agingFleetInCardiacZonesCount}`}
-                      {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.agingDefibCount}`}
-                      {selectedLayer === 'aed' && `${Math.round(nemsisTerritoryStats.avgAedDeficit * 16.5)}`}
-                      {selectedLayer === 'transport' && `${nemsisTerritoryStats.ventOpportunityCount}`}
-                      {selectedLayer === 'cms' && `$${Math.round(nemsisTerritoryStats.totalRecoverableRevenue / Math.max(1, filteredAgencies.length) / 1000)}k`}
-                    </span>
-                    <span className="text-xs text-slate-400 truncate">
-                      {selectedLayer === 'cms' ? '/agency upside' : 'priority replacements'}
-                    </span>
+                  {/* FLEET CARD 4: Aging Fleet & Defib Priority */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-rose-300 font-medium truncate block">
+                        Aging Fleet / Defib Target
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-rose-300 tabular-nums">
+                          {nemsisTerritoryStats.agingFleetNeedCount.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          accounts (≥7y old)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.max(1, Math.round(nemsisTerritoryStats.agingFleetNeedCount * 0.70)),
+                          Math.max(1, Math.round(nemsisTerritoryStats.agingFleetNeedCount * 0.80)),
+                          Math.max(1, Math.round(nemsisTerritoryStats.agingFleetNeedCount * 0.90)),
+                          Math.max(1, Math.round(nemsisTerritoryStats.agingFleetNeedCount * 0.95)),
+                          nemsisTerritoryStats.agingFleetNeedCount
+                        ]}
+                        color="rose"
+                        height={20}
+                        valueSuffix=" target accounts"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mt-2.5 pt-1 border-t border-slate-800">
-                  <InteractiveSparkline
-                    data={[
-                      Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.70)),
-                      Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.80)),
-                      Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.90)),
-                      Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.95)),
-                      nemsisTerritoryStats.agingDefibCount || 40
-                    ]}
-                    color="rose"
-                    height={20}
-                    valueSuffix=" target accounts"
-                  />
-                </div>
-              </div>
+                </>
+              ) : (
+                <>
+                  {/* CLINICAL CARD 1 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-400 font-medium truncate block">
+                        {selectedLayer === 'nemsis_cardiac' ? 'Total Cardiac Arrests' :
+                         selectedLayer === 'cardiac' ? 'Avg Utstein Survival' :
+                         selectedLayer === 'aed' ? 'Avg Public Access Deficit' :
+                         selectedLayer === 'transport' ? 'Avg Emergency Transit' :
+                         'Avg Claim Denial Rate'}
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-rose-400 tabular-nums">
+                          {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.totalCardiacCalls.toLocaleString()}`}
+                          {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.avgSurvival}%`}
+                          {selectedLayer === 'aed' && `${nemsisTerritoryStats.avgAedDeficit}%`}
+                          {selectedLayer === 'transport' && `${nemsisTerritoryStats.avgTransportTime} min`}
+                          {selectedLayer === 'cms' && `${nemsisTerritoryStats.avgDenialRate}%`}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          {selectedLayer === 'nemsis_cardiac' ? 'OHCA/yr' :
+                           selectedLayer === 'cardiac' ? 'vs 29.7% bench' :
+                           selectedLayer === 'aed' ? 'community gap' :
+                           selectedLayer === 'transport' ? 'to hospital' :
+                           'Part B Medicare'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={
+                          selectedLayer === 'nemsis_cardiac' ? [
+                            Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.86),
+                            Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.90),
+                            Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.94),
+                            Math.round(nemsisTerritoryStats.totalCardiacCalls * 0.98),
+                            nemsisTerritoryStats.totalCardiacCalls
+                          ] :
+                          selectedLayer === 'cardiac' ? [
+                            +(nemsisTerritoryStats.avgSurvival - 1.1).toFixed(1),
+                            +(nemsisTerritoryStats.avgSurvival - 0.7).toFixed(1),
+                            +(nemsisTerritoryStats.avgSurvival - 0.4).toFixed(1),
+                            +(nemsisTerritoryStats.avgSurvival - 0.1).toFixed(1),
+                            nemsisTerritoryStats.avgSurvival
+                          ] :
+                          selectedLayer === 'aed' ? [
+                            Math.round(nemsisTerritoryStats.avgAedDeficit * 0.92),
+                            Math.round(nemsisTerritoryStats.avgAedDeficit * 0.95),
+                            Math.round(nemsisTerritoryStats.avgAedDeficit * 0.97),
+                            Math.round(nemsisTerritoryStats.avgAedDeficit * 0.99),
+                            nemsisTerritoryStats.avgAedDeficit
+                          ] :
+                          selectedLayer === 'transport' ? [
+                            +(nemsisTerritoryStats.avgTransportTime - 1.2).toFixed(1),
+                            +(nemsisTerritoryStats.avgTransportTime - 0.8).toFixed(1),
+                            +(nemsisTerritoryStats.avgTransportTime - 0.5).toFixed(1),
+                            +(nemsisTerritoryStats.avgTransportTime - 0.2).toFixed(1),
+                            nemsisTerritoryStats.avgTransportTime
+                          ] :
+                          [
+                            +(nemsisTerritoryStats.avgDenialRate - 1.2).toFixed(1),
+                            +(nemsisTerritoryStats.avgDenialRate - 0.8).toFixed(1),
+                            +(nemsisTerritoryStats.avgDenialRate - 0.4).toFixed(1),
+                            +(nemsisTerritoryStats.avgDenialRate - 0.1).toFixed(1),
+                            nemsisTerritoryStats.avgDenialRate
+                          ]
+                        }
+                        color={selectedLayer === 'cms' ? 'emerald' : selectedLayer === 'transport' ? 'amber' : 'rose'}
+                        height={20}
+                        valueSuffix={selectedLayer === 'transport' ? ' min' : selectedLayer === 'nemsis_cardiac' ? ' calls' : '%'}
+                      />
+                    </div>
+                  </div>
+
+                  {/* CLINICAL CARD 2 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-400 font-medium truncate block">
+                        {selectedLayer === 'nemsis_cardiac' ? 'STEMI Pre-Hospital Alerts' :
+                         selectedLayer === 'cardiac' ? 'Critical Deficits (<22%)' :
+                         selectedLayer === 'aed' ? 'High Need AED Zones (≥50%)' :
+                         selectedLayer === 'transport' ? 'Prolonged Routes (≥20 min)' :
+                         'High Denial Providers (≥19%)'}
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-amber-400 tabular-nums">
+                          {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.totalStemiTransmissions.toLocaleString()}`}
+                          {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.criticalSurvivalCount}`}
+                          {selectedLayer === 'aed' && `${nemsisTerritoryStats.highAedNeedCount}`}
+                          {selectedLayer === 'transport' && `${nemsisTerritoryStats.longTransportCount}`}
+                          {selectedLayer === 'cms' && `${nemsisTerritoryStats.highDenialCount}`}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          {selectedLayer === 'nemsis_cardiac' ? 'transmissions' : 'agencies'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.82),
+                          Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.89),
+                          Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.93),
+                          Math.round((nemsisTerritoryStats.totalStemiTransmissions || 100) * 0.97),
+                          nemsisTerritoryStats.totalStemiTransmissions || 100
+                        ]}
+                        color="amber"
+                        height={20}
+                        valueSuffix=" alerts"
+                      />
+                    </div>
+                  </div>
+
+                  {/* CLINICAL CARD 3 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-400 font-medium truncate block">
+                        {selectedLayer === 'nemsis_cardiac' ? 'Active 911 Call Load' :
+                         selectedLayer === 'cardiac' ? 'AutoPulse CPR Need' :
+                         selectedLayer === 'aed' ? 'Total Population Served' :
+                         selectedLayer === 'transport' ? 'Extreme Rural Routes (≥28 min)' :
+                         'Estimated Recoverable Revenue'}
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-emerald-400 tabular-nums">
+                          {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.total911Transports.toLocaleString()}`}
+                          {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.autoPulseNeedCount}`}
+                          {selectedLayer === 'aed' && `${nemsisTerritoryStats.total911Transports.toLocaleString()}`}
+                          {selectedLayer === 'transport' && `${nemsisTerritoryStats.extremeTransportCount}`}
+                          {selectedLayer === 'cms' && `$${(nemsisTerritoryStats.totalRecoverableRevenue / 1000000).toFixed(1)}M`}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          {selectedLayer === 'cardiac' ? 'agencies without mech CPR' :
+                           selectedLayer === 'transport' ? 'extended transit zones' :
+                           selectedLayer === 'cms' ? 'recoverable cash' :
+                           'transports/yr'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.85),
+                          Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.89),
+                          Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.94),
+                          Math.round((nemsisTerritoryStats.autoPulseNeedCount || 50) * 0.98),
+                          nemsisTerritoryStats.autoPulseNeedCount || 50
+                        ]}
+                        color="emerald"
+                        height={20}
+                        valueSuffix={selectedLayer === 'cms' ? 'M' : ' units'}
+                      />
+                    </div>
+                  </div>
+
+                  {/* CLINICAL CARD 4 */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-between min-w-0 overflow-hidden">
+                    <div className="min-w-0">
+                      <span className="text-xs text-rose-300 font-medium truncate block">
+                        {selectedLayer === 'nemsis_cardiac' ? 'High-Acuity Defib Deficit' :
+                         selectedLayer === 'cardiac' ? 'Aging Fleets in Deficit' :
+                         selectedLayer === 'aed' ? 'AED 3 Upgrade Target' :
+                         selectedLayer === 'transport' ? 'Ventilator Expansion Need' :
+                         'Avg Denial Recovery / Agency'}
+                      </span>
+                      <div className="flex items-baseline gap-1.5 mt-1 min-w-0 flex-wrap">
+                        <span className="text-xl sm:text-2xl font-semibold text-rose-300 tabular-nums">
+                          {selectedLayer === 'nemsis_cardiac' && `${nemsisTerritoryStats.agingFleetInCardiacZonesCount}`}
+                          {selectedLayer === 'cardiac' && `${nemsisTerritoryStats.agingDefibCount}`}
+                          {selectedLayer === 'aed' && `${Math.round(nemsisTerritoryStats.avgAedDeficit * 16.5)}`}
+                          {selectedLayer === 'transport' && `${nemsisTerritoryStats.ventOpportunityCount}`}
+                          {selectedLayer === 'cms' && `$${Math.round(nemsisTerritoryStats.totalRecoverableRevenue / Math.max(1, filteredAgencies.length) / 1000)}k`}
+                        </span>
+                        <span className="text-xs text-slate-400 truncate">
+                          {selectedLayer === 'cms' ? '/agency upside' : 'priority replacements'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-2.5 pt-1 border-t border-slate-800">
+                      <InteractiveSparkline
+                        data={[
+                          Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.70)),
+                          Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.80)),
+                          Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.90)),
+                          Math.max(1, Math.round((nemsisTerritoryStats.agingDefibCount || 40) * 0.95)),
+                          nemsisTerritoryStats.agingDefibCount || 40
+                        ]}
+                        color="rose"
+                        height={20}
+                        valueSuffix=" target accounts"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>
@@ -2519,23 +2927,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           onMouseLeave={() => setHoveredStateCode(null)}
                           onClick={() => {
                             const next = selectedState === sc ? 'all' : sc;
-                            setSelectedState(next);
-                            setSelectedCounty('all');
-                            setSelectedCity('all');
-                            if (onSelectState) onSelectState(next);
-                            if (onSelectCounty) onSelectCounty('all');
-                            if (onSelectCity) onSelectCity('all');
-
-                            if (next !== 'all' && boundary) {
-                              setZoomLevel(1.55);
-                              setPanOffset({
-                                x: (mapWidth / 2 - boundary.labelX) * 0.7,
-                                y: (mapHeight / 2 - boundary.labelY) * 0.7
-                              });
-                            } else {
-                              setZoomLevel(1);
-                              setPanOffset({ x: 0, y: 0 });
-                            }
+                            handleSelectState(next);
                           }}
                           className="cursor-pointer transition-colors duration-150"
                         >
@@ -2557,7 +2949,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     opacity={kdeOpacity}
                     preserveAspectRatio="none"
                     className="pointer-events-none"
-                    style={{ mixBlendMode: basemapTheme === 'dark' ? 'screen' : 'multiply' }}
+                    style={{ mixBlendMode: basemapTheme === 'dark' ? 'screen' : 'normal', imageRendering: 'auto' }}
                   />
                 )}
 
@@ -2708,12 +3100,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           onMouseLeave={() => setHoveredStateCode(null)}
                           onClick={() => {
                             const next = selectedState === callout.code ? 'all' : callout.code;
-                            setSelectedState(next);
-                            setSelectedCounty('all');
-                            setSelectedCity('all');
-                            if (onSelectState) onSelectState(next);
-                            if (onSelectCounty) onSelectCounty('all');
-                            if (onSelectCity) onSelectCity('all');
+                            handleSelectState(next);
                           }}
                         >
                           <line
@@ -3320,8 +3707,12 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               <div className="absolute bottom-12 left-4 z-20 backdrop-blur-md bg-slate-950/90 border border-white/15 text-white rounded-xl p-3.5 shadow-2xl max-w-sm pointer-events-auto transition-all animate-in fade-in duration-150">
                 <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2 mb-2">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-400">
-                      <HeartPulse className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />
+                    <div className={`flex items-center gap-1.5 text-xs font-semibold ${heatmapMetricMode === 'apparatus_density' ? 'text-amber-400' : 'text-rose-400'}`}>
+                      {heatmapMetricMode === 'apparatus_density' ? (
+                        <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      ) : (
+                        <HeartPulse className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />
+                      )}
                       <span className="truncate">{getAgencyLayerVisual(hoveredAgency, selectedLayer).tierLabel}</span>
                     </div>
                     <h4 className="font-semibold text-sm text-white leading-tight mt-0.5 truncate">
@@ -3332,7 +3723,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     </p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded font-semibold shrink-0 tabular-nums ${
-                    getAgencyLayerVisual(hoveredAgency, selectedLayer).isCritical
+                    heatmapMetricMode === 'apparatus_density'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      : getAgencyLayerVisual(hoveredAgency, selectedLayer).isCritical
                       ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                       : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
                   }`}>
@@ -3340,36 +3733,78 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 py-1 text-center bg-slate-900/80 rounded-lg p-2 border border-white/10 mb-2.5">
-                  <div>
-                    <span className="text-xs text-slate-400 block font-medium">Annual OHCA</span>
-                    <span className="text-xs font-semibold text-rose-400 tabular-nums">
-                      {(hoveredAgency.annualCardiacArrestCalls || Math.round((hoveredAgency.annual911Transports || 3000) * 0.12)).toLocaleString()}
-                    </span>
+                {heatmapMetricMode === 'apparatus_density' ? (
+                  <div className="grid grid-cols-3 gap-2 py-1 text-center bg-slate-900/80 rounded-lg p-2 border border-white/10 mb-2.5">
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">Active Apparatus</span>
+                      <span className="text-xs font-semibold text-amber-300 tabular-nums">
+                        {hoveredAgency.apparatusFleet?.totalActiveUnits || (hoveredAgency.totalAmbulances || 0) + (hoveredAgency.totalFireEngines || 0) + (hoveredAgency.stationsCount || 1) * 2} Units
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">ALS Ambulances</span>
+                      <span className="text-xs font-semibold text-sky-300 tabular-nums">
+                        {hoveredAgency.apparatusFleet?.alsAmbulances || hoveredAgency.totalAmbulances || 0}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">Stations</span>
+                      <span className="text-xs font-semibold text-emerald-300 tabular-nums">
+                        {hoveredAgency.stationsCount || 1} Active
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-400 block font-medium">Utstein Survival</span>
-                    <span className="text-xs font-semibold text-emerald-400 tabular-nums">
-                      {hoveredAgency.utsteinSurvivalRate || 10.8}%
-                    </span>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 py-1 text-center bg-slate-900/80 rounded-lg p-2 border border-white/10 mb-2.5">
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">Annual OHCA</span>
+                      <span className="text-xs font-semibold text-rose-400 tabular-nums">
+                        {(hoveredAgency.annualCardiacArrestCalls || Math.round((hoveredAgency.annual911Transports || 3000) * 0.12)).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">Utstein Survival</span>
+                      <span className="text-xs font-semibold text-emerald-400 tabular-nums">
+                        {hoveredAgency.utsteinSurvivalRate || 10.8}%
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">Priority Score</span>
+                      <span className="text-xs font-semibold text-amber-400 tabular-nums">
+                        {hoveredAgency.zollOpportunity.pulseIqScore} / 100
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-400 block font-medium">Priority Score</span>
-                    <span className="text-xs font-semibold text-amber-400 tabular-nums">
-                      {hoveredAgency.zollOpportunity.pulseIqScore} / 100
-                    </span>
-                  </div>
-                </div>
+                )}
 
                 <div className="text-xs text-slate-300 space-y-1 mb-2.5 leading-snug">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Incumbent Defib:</span>
-                    <span className="font-semibold text-white">{hoveredAgency.installedFleet.defibBrand} ({hoveredAgency.installedFleet.defibAgeYears} yrs)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Target Solution:</span>
-                    <span className="font-semibold text-sky-400">{hoveredAgency.zollOpportunity.primaryTargetProduct}</span>
-                  </div>
+                  {heatmapMetricMode === 'apparatus_density' ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Fire Apparatus:</span>
+                        <span className="font-semibold text-white">
+                          {hoveredAgency.apparatusFleet?.fireEngines || hoveredAgency.totalFireEngines || 0} Engines · {hoveredAgency.apparatusFleet?.ladderTrucks || 1} Ladders
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Monitor Fleet:</span>
+                        <span className="font-semibold text-sky-400">
+                          {hoveredAgency.installedFleet.defibBrand} ({hoveredAgency.installedFleet.defibUnitsCount || 10} units, {hoveredAgency.installedFleet.defibAgeYears}y)
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Incumbent Defib:</span>
+                        <span className="font-semibold text-white">{hoveredAgency.installedFleet.defibBrand} ({hoveredAgency.installedFleet.defibAgeYears} yrs)</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">Target Solution:</span>
+                        <span className="font-semibold text-sky-400">{hoveredAgency.zollOpportunity.primaryTargetProduct}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -3477,12 +3912,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                   type="button"
                   onClick={() => {
                     const next = selectedState === hoveredStateCode ? 'all' : hoveredStateCode;
-                    setSelectedState(next);
-                    setSelectedCounty('all');
-                    setSelectedCity('all');
-                    if (onSelectState) onSelectState(next);
-                    if (onSelectCounty) onSelectCounty('all');
-                    if (onSelectCity) onSelectCity('all');
+                    handleSelectState(next);
                   }}
                   className="w-full py-1.5 px-3 bg-[#285EE8] hover:bg-[#194BC8] text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
@@ -3547,12 +3977,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 onClick={() => setSidebarTab('nemsis_epicenters')}
                 className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                   sidebarTab === 'nemsis_epicenters'
-                    ? 'bg-white dark:bg-[#111C2D] text-rose-600 dark:text-rose-400 font-semibold shadow-2xs'
+                    ? heatmapMetricMode === 'apparatus_density'
+                      ? 'bg-white dark:bg-[#111C2D] text-amber-600 dark:text-amber-400 font-semibold shadow-2xs'
+                      : 'bg-white dark:bg-[#111C2D] text-rose-600 dark:text-rose-400 font-semibold shadow-2xs'
                     : 'text-[#53657B] dark:text-slate-400 hover:text-[#14283F] dark:hover:text-white'
                 }`}
               >
-                <Flame className="w-3.5 h-3.5 text-rose-500" />
-                <span>Epicenters</span>
+                <Flame className={`w-3.5 h-3.5 ${heatmapMetricMode === 'apparatus_density' ? 'text-amber-500' : 'text-rose-500'}`} />
+                <span>{heatmapMetricMode === 'apparatus_density' ? 'Fleet Hubs' : 'Epicenters'}</span>
               </button>
               <button
                 onClick={() => setSidebarTab('acuity_distribution')}
@@ -3580,19 +4012,25 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
           </div>
 
           {sidebarTab === 'nemsis_epicenters' ? (
-            /* Ranked High-Acuity Cardiac Epicenters in Territory */
+            /* Ranked High-Acuity Cardiac Epicenters or Fleet Hubs in Territory */
             <div className="space-y-3 min-w-0">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-[#14283F] dark:text-white">Top High-Acuity Resuscitation Hotspots</span>
-                <span className="text-xs text-[#53657B] dark:text-slate-400">By OHCA Volume</span>
+                <span className="font-semibold text-[#14283F] dark:text-white">
+                  {heatmapMetricMode === 'apparatus_density'
+                    ? 'Top Operational Fleet Concentrations'
+                    : 'Top High-Acuity Resuscitation Hotspots'}
+                </span>
+                <span className="text-xs text-[#53657B] dark:text-slate-400">
+                  {heatmapMetricMode === 'apparatus_density' ? 'By Total Apparatus' : 'By OHCA Volume'}
+                </span>
               </div>
 
               <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
                 {topCardiacEpicenters.map((agency, idx) => {
                   const calls = agency.annualCardiacArrestCalls || Math.round((agency.annual911Transports || 3000) * 0.12);
+                  const totalFleetUnits = agency.apparatusFleet?.totalActiveUnits || (agency.totalAmbulances || 0) + (agency.totalFireEngines || 0) + (agency.stationsCount || 1) * 2;
                   const isExtreme = calls >= 800;
                   const isHigh = calls >= 400 && calls < 800;
-                  const isStryker = agency.installedFleet.defibBrand.toLowerCase().includes('stryker') || agency.installedFleet.defibBrand.toLowerCase().includes('lifepak');
                   const isOldFleet = agency.installedFleet.defibAgeYears >= 7;
 
                   return (
@@ -3605,7 +4043,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                         <div className="flex items-center gap-2 min-w-0">
                           <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 tabular-nums ${
                             idx === 0 
-                              ? 'bg-rose-600 text-white shadow-xs' 
+                              ? heatmapMetricMode === 'apparatus_density' ? 'bg-amber-600 text-white shadow-xs' : 'bg-rose-600 text-white shadow-xs' 
                               : idx === 1 
                                 ? 'bg-amber-500 text-white' 
                                 : 'bg-[#DFE6EF] dark:bg-[#1E2D42] text-[#14283F] dark:text-slate-200'
@@ -3622,31 +4060,54 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           </div>
                         </div>
 
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 tabular-nums ${
-                          isExtreme
-                            ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
-                            : isHigh
-                              ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
-                              : 'bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300'
-                        }`}>
-                          {calls.toLocaleString()} OHCA
-                        </span>
+                        {heatmapMetricMode === 'apparatus_density' ? (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded shrink-0 tabular-nums bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
+                            {totalFleetUnits} Units
+                          </span>
+                        ) : (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 tabular-nums ${
+                            isExtreme
+                              ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40'
+                              : isHigh
+                                ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40'
+                                : 'bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300'
+                          }`}>
+                            {calls.toLocaleString()} OHCA
+                          </span>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42]">
-                        <div className="min-w-0">
-                          <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Incumbent Monitor</span>
-                          <span className={`font-medium truncate block ${isOldFleet ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-[#14283F] dark:text-slate-200'}`}>
-                            {agency.installedFleet.defibBrand} ({agency.installedFleet.defibAgeYears}y)
-                          </span>
+                      {heatmapMetricMode === 'apparatus_density' ? (
+                        <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42]">
+                          <div className="min-w-0">
+                            <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Apparatus Breakdown</span>
+                            <span className="font-medium text-[#14283F] dark:text-slate-200 truncate block">
+                              {agency.apparatusFleet?.alsAmbulances || agency.totalAmbulances || 0} ALS · {agency.apparatusFleet?.fireEngines || agency.totalFireEngines || 0} Eng · {agency.stationsCount || 1} Stn
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Installed Defibs</span>
+                            <span className={`font-medium truncate block ${isOldFleet ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-[#14283F] dark:text-slate-200'}`}>
+                              {agency.installedFleet.defibBrand} ({agency.installedFleet.defibAgeYears}y)
+                            </span>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Utstein Survival</span>
-                          <span className="font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
-                            {agency.utsteinSurvivalRate || 10.8}% <span className="text-[11px] text-[#53657B] dark:text-slate-400 font-normal">(-{(29.7 - (agency.utsteinSurvivalRate || 10.8)).toFixed(1)}% gap)</span>
-                          </span>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-[#DFE6EF] dark:border-[#1E2D42]">
+                          <div className="min-w-0">
+                            <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Incumbent Monitor</span>
+                            <span className={`font-medium truncate block ${isOldFleet ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-[#14283F] dark:text-slate-200'}`}>
+                              {agency.installedFleet.defibBrand} ({agency.installedFleet.defibAgeYears}y)
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[#53657B] dark:text-slate-400 block font-normal text-[11px]">Utstein Survival</span>
+                            <span className="font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
+                              {agency.utsteinSurvivalRate || 10.8}% <span className="text-[11px] text-[#53657B] dark:text-slate-400 font-normal">(-{(29.7 - (agency.utsteinSurvivalRate || 10.8)).toFixed(1)}% gap)</span>
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-xs font-medium text-[#285EE8] flex items-center gap-1 truncate">
@@ -3663,16 +4124,28 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 })}
               </div>
 
-              {/* NEMSIS Clinical Opportunity Callout */}
-              <div className="p-3.5 bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-xl text-xs space-y-1.5">
-                <div className="font-semibold text-rose-900 dark:text-rose-300 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                  <span>Clinical Value Driver: Utstein Deficit Conversion</span>
+              {/* Clinical or Fleet Value Driver Callout */}
+              {heatmapMetricMode === 'apparatus_density' ? (
+                <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl text-xs space-y-1.5">
+                  <div className="font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Fleet Modernization Opportunity: Apparatus Standardization</span>
+                  </div>
+                  <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed">
+                    High apparatus density accounts with mixed fleets and aging monitor/defibrillator hardware (&ge;7 yrs) represent prime conversion targets for standardized <strong>ZOLL X Series Advanced</strong> and Road-Ready vehicle mounts.
+                  </p>
                 </div>
-                <p className="text-xs text-rose-900/80 dark:text-rose-300/80 leading-relaxed">
-                  High-volume departments lose survival points during long manual transport. Presenting the <strong>AutoPulse Mechanical CPR System</strong> alongside <strong>X Series Advanced Real CPR Help</strong> demonstrates measurable ROSC improvement for the EMS Medical Director.
-                </p>
-              </div>
+              ) : (
+                <div className="p-3.5 bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 rounded-xl text-xs space-y-1.5">
+                  <div className="font-semibold text-rose-900 dark:text-rose-300 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                    <span>Clinical Value Driver: Utstein Deficit Conversion</span>
+                  </div>
+                  <p className="text-xs text-rose-900/80 dark:text-rose-300/80 leading-relaxed">
+                    High-volume departments lose survival points during long manual transport. Presenting the <strong>AutoPulse Mechanical CPR System</strong> alongside <strong>X Series Advanced Real CPR Help</strong> demonstrates measurable ROSC improvement for the EMS Medical Director.
+                  </p>
+                </div>
+              )}
             </div>
           ) : sidebarTab === 'acuity_distribution' ? (
             /* Territory Acuity & Volume Distribution Chart */
@@ -3988,21 +4461,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 <select
                   value={selectedState}
                   onChange={(e) => {
-                    const st = e.target.value;
-                    setSelectedState(st);
-                    setSelectedCounty('all');
-                    setSelectedCity('all');
-                    if (onSelectState) onSelectState(st);
-                    if (st !== 'all' && US_STATES_SVG_PATHS[st]) {
-                      setZoomLevel(1.5);
-                      setPanOffset({
-                        x: (mapWidth / 2 - US_STATES_SVG_PATHS[st].labelX) * 0.7,
-                        y: (mapHeight / 2 - US_STATES_SVG_PATHS[st].labelY) * 0.7
-                      });
-                    } else {
-                      setZoomLevel(1);
-                      setPanOffset({ x: 0, y: 0 });
-                    }
+                    handleSelectState(e.target.value);
                   }}
                   className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
                 >
@@ -4013,6 +4472,34 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Theater Heatmap Mode Toggle */}
+              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setHeatmapMetricMode('acuity')}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-all ${
+                    heatmapMetricMode === 'acuity'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <HeartPulse className="w-3.5 h-3.5" />
+                  <span>Resuscitation Acuity</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeatmapMetricMode('apparatus_density')}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold cursor-pointer transition-all ${
+                    heatmapMetricMode === 'apparatus_density'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>Fleet Density</span>
+                </button>
               </div>
             </div>
 
@@ -4223,20 +4710,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                           onMouseLeave={() => setHoveredStateCode(null)}
                           onClick={() => {
                             const next = selectedState === sc ? 'all' : sc;
-                            setSelectedState(next);
-                            setSelectedCounty('all');
-                            setSelectedCity('all');
-                            if (onSelectState) onSelectState(next);
-                            if (next !== 'all' && boundary) {
-                              setZoomLevel(1.5);
-                              setPanOffset({
-                                x: (mapWidth / 2 - boundary.labelX) * 0.7,
-                                y: (mapHeight / 2 - boundary.labelY) * 0.7
-                              });
-                            } else {
-                              setZoomLevel(1);
-                              setPanOffset({ x: 0, y: 0 });
-                            }
+                            handleSelectState(next);
                           }}
                           className="cursor-pointer transition-colors duration-150"
                         >

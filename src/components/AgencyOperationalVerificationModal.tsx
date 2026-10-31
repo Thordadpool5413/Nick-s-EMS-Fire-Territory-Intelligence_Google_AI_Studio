@@ -155,7 +155,9 @@ export const AgencyOperationalVerificationModal: React.FC<AgencyOperationalVerif
   const [isOperationalDataVerified, setIsOperationalDataVerified] = useState(true);
 
   // Validate NPI check digit
-  const npiCheck = npiNumber ? validateNpiCheckDigit(npiNumber) : { isValid: false, reason: 'No NPI entered' };
+  const npiCheck = npiNumber
+    ? validateNpiCheckDigit(npiNumber)
+    : { isValid: false, npi: '', error: 'No NPI entered', reasons: ['No NPI entered'] };
 
   // Live NPPES API Query
   const handleQueryLiveNppes = async () => {
@@ -521,7 +523,7 @@ export const AgencyOperationalVerificationModal: React.FC<AgencyOperationalVerif
                     Federal 10-Digit CMS NPI #
                     {npiNumber && (
                       <span className={`ml-2 font-mono text-[11px] ${npiCheck.isValid ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        ({npiCheck.isValid ? 'Luhn Verified ✓' : npiCheck.reason})
+                        ({npiCheck.isValid ? 'Luhn Verified ✓' : (npiCheck.error || npiCheck.reasons?.[0] || 'Invalid NPI Checksum')})
                       </span>
                     )}
                   </label>

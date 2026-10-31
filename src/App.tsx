@@ -35,6 +35,7 @@ import { PredictiveWeightsModal } from './components/PredictiveWeightsModal';
 import { PublicHealthcareExplorer } from './components/PublicHealthcareExplorer';
 import { AfgGrantsTracker } from './components/AfgGrantsTracker';
 import { FieldModeView } from './components/FieldModeView';
+import { GpsProximityRadar } from './components/GpsProximityRadar';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { QuickVisitModal } from './components/QuickVisitModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -57,6 +58,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { GoogleMapsTerritoryExplorer } from './components/GoogleMapsTerritoryExplorer';
 import { DataHealthDashboard } from './components/DataHealthDashboard';
 import { MobileProviderSelectorDrawer } from './components/MobileProviderSelectorDrawer';
+import { offlineStorageService } from './services/offlineStorageService';
 import { useFirestoreAgencies } from './hooks/useFirestoreAgencies';
 import { CheckCircle2, AlertCircle, Globe, ListOrdered, Scale, Car, X, Siren, Flame, LayoutDashboard, Sliders, ShieldCheck } from 'lucide-react';
 
@@ -361,13 +363,14 @@ export default function App() {
 
     if (!isOnline) {
       const targetAgency = agencies.find(a => a.id === agencyId);
+      offlineStorageService.queueOfflineNote(agencyId, targetAgency?.name || 'Unknown Agency', newNote);
       const outboxItem = createOutboxItem(agencyId, targetAgency?.name || 'Unknown Agency', 'ADD_FIELD_NOTE', newNote);
       setOutbox(prev => {
         const next = [outboxItem, ...prev];
         saveOutbox(next);
         return next;
       });
-      showToast(`Offline: Field log entry saved locally. Will sync when online.`, 'warn');
+      showToast(`Offline Mode: Observation saved locally. Will sync when cell connection restores.`, 'warn');
     }
   }, [addFieldNoteInCloud, selectedAgency, activeAccount, previewAgency, isOnline, agencies, showToast]);
 
@@ -397,7 +400,7 @@ export default function App() {
       setOutbox([]);
       saveOutbox([]);
       setIsSyncing(false);
-      showToast('All pending offline transactions synchronized with central CRM database.', 'success');
+      showToast('All pending offline transactions synchronized with central agency database.', 'success');
     }, 1000);
   }, [isOnline, showToast]);
 
@@ -416,6 +419,13 @@ export default function App() {
   const dayRouteCount = agencies.filter(a => a.inDayRoute).length;
   const bookmarkedCount = agencies.filter(a => a.isBookmarked).length;
   const currentActive = activeAccount || selectedAgency;
+
+  // Progressive Field Caching: Cache active agency locally for rural dead-zone access
+  useEffect(() => {
+    if (currentActive) {
+      offlineStorageService.cacheAgencyForOffline(currentActive);
+    }
+  }, [currentActive]);
 
   const handleGoHome = useCallback(() => {
     setSelectedAgency(null);
@@ -585,7 +595,7 @@ export default function App() {
           </nav>
         )}
 
-        {!currentActive && ['field', 'tm_dashboard'].includes(activeTab) && (
+        {!currentActive && ['field', 'radar', 'tm_dashboard'].includes(activeTab) && (
           <nav
             aria-label="My Work Workspace Navigation"
             className="bg-white dark:bg-[#111C2D] border border-[#DFE6EF] dark:border-[#1E2D42] rounded-xl p-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shadow-2xs"
@@ -593,6 +603,7 @@ export default function App() {
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
               {[
                 { id: 'field', label: `Routes, Saved Accounts & Field Notes (${dayRouteCount} in route · ${bookmarkedCount} saved)` },
+                { id: 'radar', label: 'GPS Proximity Radar (Agencies Near Me)' },
                 { id: 'tm_dashboard', label: 'Mobile Field Command Cockpit' }
               ].map((item) => (
                 <button
@@ -609,13 +620,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={() => setIsQuickVisitOpen(true)}
-              className="whitespace-nowrap shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#285EE8] text-white hover:bg-[#194BC8] transition-colors cursor-pointer"
-            >
-              + Log Station Visit
-            </button>
           </nav>
         )}
 
@@ -693,7 +697,7 @@ export default function App() {
                 className="inline-flex items-center gap-2 text-[#14283F] dark:text-slate-200 hover:text-[#285EE8] dark:hover:text-blue-400 font-medium transition-colors cursor-pointer"
               >
                 <span className="w-5 h-5 rounded-full bg-[#EEF3FE] dark:bg-blue-950/60 text-[#285EE8] dark:text-blue-400 font-semibold text-xs tabular-nums flex items-center justify-center shrink-0">3</span>
-                <span>Generate Co-Op Quote or Log Visit</span>
+                <span>Generate Co-Op Memo & Notes</span>
               </button>
             </div>
 
@@ -1135,6 +1139,23 @@ export default function App() {
           </div>
         )}
 
+        {/* GPS Proximity Radar (Agencies Near Me) (My Work Workspace) */}
+        {activeTab === 'radar' && (
+          <div className="workspace-view-container min-w-0 w-full">
+            <GpsProximityRadar
+              agencies={agencies}
+              onSelectAgency={(a) => {
+                setSelectedAgency(a);
+                setActiveAccount(a);
+              }}
+              onToggleRoute={handleToggleRoute}
+              onAddFieldNote={handleAddFieldNote}
+              globalState={globalState}
+              globalCounty={globalCounty}
+            />
+          </div>
+        )}
+
         {/* 3D Apparatus & Cardiac Monitor Studio (Advanced Workspace) */}
         {activeTab === '3d_studio' && (
           <div className="workspace-view-container min-w-0 w-full">
@@ -1214,6 +1235,7 @@ export default function App() {
       {currentActive && (
         <FocusedProviderProfile
           agency={currentActive}
+          allAgencies={agencies}
           onBack={() => {
             setSelectedAgency(null);
             setActiveAccount(null);

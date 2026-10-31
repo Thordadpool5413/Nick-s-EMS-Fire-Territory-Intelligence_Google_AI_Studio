@@ -1,149 +1,98 @@
-# Comprehensive Data Integrity & Continuous Accuracy Architecture
-## Nick's EMS & Fire Territory Intelligence
+# Visual Enhancement & Readability Plan: Provider Cards, Quick Preview & Full Dossier
 
-Establish an enterprise-grade, four-pillar verification architecture that guarantees the continuous factual accuracy, mathematical correctness, and clear provenance of all data, calculations, and operational intelligence across the platform.
-
----
-
-## User Review & Critical Decisions
-
-> [!IMPORTANT]
-> The following core architectural decisions were confirmed based on your responses:
-
-- **Validation Level Confirmed**: Multi-layered validation pipeline combining format/algorithm gates, live federal registry corroboration (CMS NPPES v2.1 and OpenFEMA), 5-tier operating relationship classification, and resilient non-destructive offline fallbacks.
-- **Data Presentation Confirmed**: Explicit field-level badging distinguishing `Verified Official Record`, `Geographic Benchmark`, `Model / Estimate`, and `Unverified Candidate`, paired with direct clickable public citations (NPPES view, OpenFEMA dataset, CMS PUF).
-- **Monitoring Architecture Confirmed**: Dedicated real-time Data Integrity Monitor & Audit Console (`DataHealthDashboard`) embedded directly in the platform navigation for live status tracking, anomaly detection, and one-click read-only audits.
-- **Production Data Invariant**: Zero automated or destructive mutations against the production Firestore database (`ai-studio-nicksemsfireterr-26354b36-e812-4fee-8cf9-2df9f9c26acf`). All audit scripts and integrity inspections operate strictly in-memory and read-only.
+Based on your design preferences and operational requirements, this plan details the complete visual and architectural overhaul of the EMS/Fire Provider cards, Quick Preview drawer, and Full Provider Dossier. The goal is to make all critical operational data immediately scannable, trustworthy, and actionable for decision-makers.
 
 ---
 
-## 1. Overview & Core Concept
+## 1. Key User Preferences & Design Architecture
 
-### What It Does
-Ensures that no fact, metric, or entity identity can appear in the application without verifiable proof and strict mathematical validation:
-1. **Mathematical Invariant Gates**: Enforces the official CMS 80840-prefixed Luhn check digit algorithm on all 10-digit NPIs and validates FIPS/FDID geographic hierarchies before any query or persistence.
-2. **Live Federal Grounding**: Queries official federal APIs (CMS NPPES v2.1, OpenFEMA, and USFA) in real time, evaluating organizational taxonomy (`341600000X`), Type 2 Organization vs Type 1 Individual classification, and municipal operating relationships.
-3. **Field-Level Decoupling**: Eliminates false "halo verification"—an agency's verified NPI only substantiates legal identity and practice address; equipment inventories, maintenance contracts, and clinical metrics remain explicitly labeled as estimates until independently corroborated.
-4. **Real-Time Data Health Console**: Provides an interactive command center to inspect data purity %, review check digit validation status, and triage mismatched entities.
+1. **Full Dossier Layout**:
+   - **Tabbed Structure with Executive Summary Cards**: Replace long scrolling with 5 scannable tabs:
+     - **Tab 1: Executive Summary** (High-level readiness scorecard, key vital stats, one-tap actions, data trust banner).
+     - **Tab 2: Command & Leadership** (Chief, Medical Director, Captains, verified NPI credentials, one-tap phone/email).
+     - **Tab 3: Operational Fleet & Defibrillators** (Station-by-station vehicle silhouettes, active biomedical defibrillator fleet, maintenance contracts).
+     - **Tab 4: Clinical Logistics & Cath Labs** (Receiving hospitals, 24/7 STEMI cath labs, trauma levels, transport times).
+     - **Tab 5: Financials, Billing & Contracts** (CMS claims, Medicare denials, procurement RFP dates, vendor suppliers).
 
-### Target Audience & Persona
-- **Nick (Territory Manager / Clinical Specialist)**: Relies on high-stakes capital equipment and software intelligence; needs total confidence that account contacts, NPIs, and clinical benchmarks are factually accurate.
-- **Sales Leadership & Enterprise Stakeholders**: Requires institutional auditability and transparent data lineage to substantiate ROI projections and proposal metrics.
+2. **Top Information Hierarchy (Cards & Quick Previews)**:
+   - **Header**: Agency Name, Type, Station HQ City/State, PulseIQ Score, and prominent **Data Trust Chip** (*Verified Ground Truth* vs. *CMS NPPES* vs. *Epidemiological Model*).
+   - **One-Tap Quick Action Bar**: Call HQ (`tel:`), Google Maps Directions, and Email Command (`mailto:`).
+   - **Priority 1 — Leadership Directory**: Medical Director, Fire Chief/EMS Director with credentials and direct contact actions.
+   - **Priority 2 — Operational Fleet & Defibs**: Frontline vehicle count with silhouettes (🚑 ALS Ambulance, 🚒 Engine, 🪜 Ladder, 🛟 Rescue) and Defibrillator hardware badges (Stryker LIFEPAK 15, ZOLL X Series, Physio-Control, Tempus Pro).
+   - **Priority 3 — Clinical Resuscitation & Cath Labs**: OHCA volume, Utstein survival benchmarks, and closest receiving STEMI Cath Lab facilities with bypass status.
 
----
-
-## 2. User Experience & Visual Design
-
-### Key User Flows
-
-1. **Viewing an Account with Provenance Transparency**:
-   - The user opens an agency card in Account 360 or County Directory.
-   - Identity metrics (Legal Entity, NPI, Practice Address) show a crisp verified indicator with a direct link: `"CMS NPPES v2.1 (Certified 2024-01-05)"`.
-   - Fleet metrics (Defibrillator Brand, Age, Service Contract) show `"Model / Estimate"` with an info drawer detailing the calculation formula.
-   - Missing county Medicare data displays `"Not available"` alongside an isolated `"State Benchmark (Geographic Reference)"` badge.
-
-2. **Inspecting Platform Data Health via the Audit Console**:
-   - The user navigates to the **Data Health & Integrity** console from the primary sidebar or top navigation.
-   - The top hero displays three core health meters:
-     - **Data Purity**: Calculated from verified check digits and zero mock/synthetic entities.
-     - **Federal Registry Grounding**: Count and percentage of agencies corroborated via live NPPES API.
-     - **Cloud Persistence Coverage**: Firestore synchronized accounts vs baseline prospects.
-   - The user reviews the **NPI Integrity Audit Table**, filtering by status (`Valid Matched`, `Valid Mismatched`, `Invalid Check Digit`).
-   - Clicking `"Run Deep Read-Only Audit"` re-verifies all active records in memory without altering production data.
-
-3. **Resolving a Flagged Mismatch**:
-   - When an NPI belongs to an individual clinician (e.g. Dr. Maureen Connolly `1982736450` for Chicago Fire), the console displays an amber warning badge: `Mismatched Entity (Type 1 Individual)`.
-   - The user can view the official NPPES record, review the conflict, and link the authentic organizational NPI (`1376554592` City of Chicago).
-
-### Visual Identity & Theme
-- **Color Palette & Discipline**:
-  - Dominant Neutral Field: Crisp light canvas (`#F8FAFC`) / Deep slate dark mode (`#0B132B`).
-  - Structural Borders: Hairline 1px dividers (`#E2E8F0` / `#1E293B`).
-  - Status Accents (strictly semantic):
-    - Emerald (`#16A34A`): Verified Federal Record (NPPES / OpenFEMA).
-    - Amber (`#D97706`): Actuarial Model / Estimate or Mismatched Review Required.
-    - Crimson (`#DC2626`): Check Digit / Format Failure.
-    - Slate/Neutral (`#64748B`): Geographic Benchmark / Unassessed.
-- **Typography & Tabular Numerals**:
-  - Display & Headings: `Plus Jakarta Sans` / `Outfit` font family.
-  - Body & Metadata: `Plus Jakarta Sans` / `DM Sans`.
-  - Numbers & Identifiers: Strictly `font-mono tabular-nums` (`Instrument Sans` / `JetBrains Mono`) for perfect vertical alignment in tables and cards.
-  - Zero-Pill Discipline: Unboxed text with typographic separators (`·`, `/`) instead of chunky pill containers.
+3. **Visual Enhancements & Anti-Fatigue Design**:
+   - **Data Trust & Verification Chips**:
+     - 🟢 **Verified Ground Truth** (Emerald badge: Direct municipal CAD/FD records).
+     - 🔵 **CMS NPPES Registry** (Sky badge: Federal registry verified).
+     - 🟠 **Modeled Benchmark** (Amber/Slate badge: CDC/NERA epidemiological model).
+   - **Visual Hardware & Fleet Badges**: High-contrast icon silhouettes for vehicle types and distinct stylized hardware badges for defibrillators with battery/service indicators.
+   - **One-Tap Action Buttons**: Accessible directly from cards and previews without having to drill down.
 
 ---
 
-## 3. Key Product Decisions & Trade-Offs
+## 2. Proposed Changes by Component
 
-### Decision 1: Multi-Layered Validation vs. Live-Only Gate
-- **Chosen Approach**: Three-tier validation pipeline: (1) Local Format & Checksum Gate $\rightarrow$ (2) Live Federal API Query $\rightarrow$ (3) Operating Relationship Classifier with Non-Destructive Offline Cache.
-- **Why**: Pure live-only queries fail when CMS NPPES has upstream maintenance or network timeouts. The multi-layered pipeline validates format instantly, queries live records when online, and gracefully preserves user data under `SOURCE_UNAVAILABLE` without wiping notes or bookmarks.
-- **Alternatives Considered**: Dropping unverified records entirely (rejected: would eliminate 3,000+ prospective sales accounts).
+### A. Quick Preview Drawer (`src/components/AgencyQuickPreviewDrawer.tsx`)
+- **Header & Trust Banner**:
+  - Add prominent data trust verification chip with provenance source indicator.
+  - Insert sticky one-tap Action Bar: `[📞 Call HQ]`, `[📍 Directions]`, `[✉️ Email Chief]`, `[📄 Full Dossier]`.
+- **Restructured Card Hierarchy**:
+  - **Section 1: Command Leadership**: Grid cards for Medical Director and Fire/EMS Chief with one-tap contact buttons.
+  - **Section 2: Frontline Fleet & Defibrillator Hardware**:
+    - Apparatus breakdown with visual icons (Ambulance, Engine, Ladder, Rescue).
+    - Defibrillator fleet breakdown with visual brand pills (ZOLL X Series, Stryker LIFEPAK 15) and replacement status.
+  - **Section 3: Clinical Logistics & Receiving Cath Labs**:
+    - Cardiac arrest metrics (OHCA volume, survival rates).
+    - Dedicated STEMI Cath Lab cards highlighting 24/7 capabilities, trauma level, and transport distance.
+  - **Section 4: CAD & ePCR Technology**:
+    - System tags (ImageTrend, ESO, CAD vendor) with CAD-to-ePCR integration health badge.
 
-### Decision 2: Field-Level Provenance Decoupling
-- **Chosen Approach**: Decouple identity verification from operational metrics. An agency's NPI confirmation validates only the 3 identity fields; equipment and clinical fields remain labeled as estimates.
-- **Why**: Completely solves the "91% verification problem" where confirming an NPI falsely marked fleet ages and vendor contracts as verified.
-- **Alternatives Considered**: Binary verified/unverified agency flag (rejected: misleading to users).
+### B. Full Provider Dossier (`src/components/FocusedProviderProfile.tsx`)
+- **Sticky Dossier Header**:
+  - Agency identity, PulseIQ badge, Data Trust verification badge, and quick action toolbar.
+- **Tabbed Navigation Bar**:
+  - `Executive Summary` | `Leadership & Command` | `Fleet & Defibrillators` | `Clinical & Cath Labs` | `Contracts & Financials`
+- **Tab Content**:
+  - **Tab 1: Executive Summary**:
+    - Scannable 4-card KPI summary: Fleet Readiness, Cardiac Care Score, Data Trust Level, Annual Volume.
+    - Quick summary of upcoming contract renewals and chief contacts.
+  - **Tab 2: Command & Leadership**:
+    - Full verified personnel directory, Medical Director board certifications, active state medical licenses, direct phone and email.
+  - **Tab 3: Operational Fleet & Defibrillators**:
+    - Apparatus fleet table with vehicle age, station assignment, and frontline/reserve status.
+    - Biomedical defibrillator inventory with model names, service contracts, and vendor suppliers.
+  - **Tab 4: Clinical Logistics & Cath Labs**:
+    - Receiving hospital breakdown, STEMI cath lab activation protocols, travel times, and emergency department diversion history.
+  - **Tab 5: Contracts, CMS Denials & Financials**:
+    - Medicare claims volume, denial rate benchmark, upcoming CAD/ePCR renewal dates, and procurement contacts.
 
-### Decision 3: Non-Destructive In-Memory Audit vs. Background Auto-Purge
-- **Chosen Approach**: In-memory inspection and audit reporting. Deletion of production Firestore records is strictly blocked unless explicitly authorized via administrative confirmation.
-- **Why**: Protects production database `ai-studio-nicksemsfireterr-26354b36-e812-4fee-8cf9-2df9f9c26acf` from accidental data loss during automated test runs or audit passes.
+### C. Provider Cards (`src/components/PredictiveLeadQueue.tsx` & `src/components/HomeHubView.tsx`)
+- Add **Data Trust Chip** on each card header.
+- Add apparatus silhouette counters (e.g., `🚑 12 ALS` `🚒 8 Engines`) and defib hardware pill (e.g., `⚡ ZOLL X Series`).
+- Add mini one-tap action buttons: Call (`tel:`), Navigate (`maps`), and Quick Preview Drawer button.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+## 3. Implementation Steps
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                     USER INTERACTION & VIEWPORT LAYOUT                     │
-│  ┌───────────────────────┐  ┌────────────────────┐  ┌──────────────────┐  │
-│  │ County Directory & GIS│  │ Account 360 Dossier│  │ Data Health Hub  │  │
-│  └───────────┬───────────┘  └─────────┬──────────┘  └────────┬─────────┘  │
-└──────────────┼────────────────────────┼──────────────────────┼────────────┘
-               │                        │                      │
-               ▼                        ▼                      ▼
-┌───────────────────────────────────────────────────────────────────────────┐
-│                       PROVENANCE & VALIDATION LAYER                       │
-│                                                                           │
-│  1. Checksum & Format Gate (dataSanitizationService)                      │
-│     • CMS Luhn-80840: '80840' + 10-digit NPI, pos from right mod-10      │
-│     • FIPS Code & State Postal Validation                                 │
-│                                                                           │
-│  2. Live Federal Registry Integration (/api/npi/verify, server.ts)        │
-│     • CMS NPPES Registry API v2.1 (Type 2 Org vs Type 1 Indiv)            │
-│     • OpenFEMA API (AFG / SAFER Grant Awards)                             │
-│                                                                           │
-│  3. 5-Tier Operating Relationship Classifier                              │
-│     • REGISTRY_ENTITY_CONFIRMED       • RELATIONSHIP_UNRESOLVED           │
-│     • OPERATING_RELATIONSHIP_CONFIRMED • UNRELATED_ENTITY (Blocked)       │
-│     • POSSIBLE_RELATED_ENTITY (Parent Municipality)                       │
-│                                                                           │
-│  4. Field-Level Lineage Audit (dataLineageManifest.ts)                    │
-│     • Decouples Identity vs Equipment vs Clinical Metrics                 │
-│     • Assigns Verified vs Benchmark vs Model provenance tiers             │
-└─────────────────────────────────────┬─────────────────────────────────────┘
-                                      │
-               ┌──────────────────────┴──────────────────────┐
-               ▼                                             ▼
-┌──────────────────────────────┐              ┌──────────────────────────────┐
-│  PERSISTENCE & STATE STORE   │              │   AUTOMATED REGRESSION CI    │
-│  • Google Cloud Firestore    │              │   • tests/dataIntegrity.test │
-│    ai-studio-nicksemsfire... │              │   • 69+ Automated Tests      │
-│  • Zero Destructive Purges   │              │   • Test Vectors Validation  │
-│  • Offline syncStore Cache   │              │   • Pre-commit Build Linter  │
-└──────────────────────────────┘              └──────────────────────────────┘
-```
+1. **Step 1: Update Visual Badges & Trust Components**:
+   - Create reusable trust chip and hardware silhouette helper components in `AgencyQuickPreviewDrawer` and `FocusedProviderProfile`.
+2. **Step 2: Overhaul `AgencyQuickPreviewDrawer.tsx`**:
+   - Reorganize sections strictly into Leadership -> Fleet & Defibs -> Clinical & Cath Labs.
+   - Add one-tap action bar and interactive phone/email/maps links.
+3. **Step 3: Refactor `FocusedProviderProfile.tsx` into Tabbed Layout**:
+   - Implement tab state management (`activeTab: 'summary' | 'leadership' | 'fleet' | 'clinical' | 'contracts'`).
+   - Create scannable executive summary cards for the default tab.
+   - Move detailed deep-dive data into their dedicated tabs.
+4. **Step 4: Update Provider Cards in Lists & Queues**:
+   - Enhance card footers with apparatus silhouettes, defib tags, and quick call/map buttons.
+5. **Step 5: Verification & Quality Assurance**:
+   - Run `compile_applet` to confirm clean TypeScript build.
+   - Run test suite `tests/dataIntegrity.test.ts` to ensure 100% data integrity tests pass.
+   - Verify UI responsiveness across desktop, tablet, and mobile viewport sizes.
 
-### Component & Handler Mapping
-1. **`src/services/dataSanitizationService.ts`**:
-   - `validateNpiCheckDigit`: Official 80840-prefixed Luhn algorithm.
-   - `computeCmsNpiCheckDigit`: Check digit generation for 9-digit base NPIs.
-   - `sanitizeAgency` / `sanitizeAgenciesList`: Strips mock records and enforces provenance tiers.
-2. **`src/services/npiVerificationService.ts`**:
-   - `queryOfficialNppesByNpi`: Real-time HTTP client with 5s timeout and abort controller.
-   - `evaluateOperatingRelationship`: Enforces state isolation and flags Type 1 individual clinicians.
-3. **`src/data/dataLineageManifest.ts`**:
-   - `auditAgencyDataLineage`: Generates field-by-field audit report with honest completeness percentage.
-4. **`src/components/DataHealthDashboard.tsx`**:
-   - Real-time audit dashboard with inspectable audit table and manual review triage queue.
-5. **`tests/dataIntegrity.test.ts`**:
-   - 69 deterministic automated tests verifying all mathematical formulas, endpoint integrations, test vectors, and production safety invariants.
+---
+
+## 4. User Approval
+Please review this implementation plan and click **Proceed** to authorize the implementation.

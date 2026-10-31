@@ -663,7 +663,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                 }}
                 className="h-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:border-[#1E3A8A]"
               >
-                <option value="all">All Sales Stages</option>
+                <option value="all">All Engagement Statuses</option>
                 {stages.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -821,6 +821,25 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                             {isFire ? <Flame className="w-3 h-3" /> : <Siren className="w-3 h-3" />}
                             <span>{isFire ? 'Fire Department' : 'EMS Provider'}</span>
                           </span>
+
+                          {/* Data Trust Chip */}
+                          {agency.isOperationalDataVerified || (agency.isVerifiedRecord && agency.verificationSource?.includes('Ground Truth')) ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                              <span>Verified Ground Truth</span>
+                            </span>
+                          ) : agency.isVerifiedRecord || agency.npiNumber ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                              <ShieldCheck className="w-3 h-3 text-sky-600" />
+                              <span>CMS NPPES</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              <Activity className="w-3 h-3 text-slate-400" />
+                              <span>Modeled</span>
+                            </span>
+                          )}
+
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                           <span>FDID <span className="font-mono text-[11px]">{agency.fdid || '04102'}</span></span>
                           {agency.npiNumber && (
@@ -849,6 +868,35 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                           <span>{agency.county} County</span>
                           <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
                           <span>ZIP {agency.zipCode}</span>
+                        </div>
+
+                        {/* Apparatus Silhouettes & Defib Hardware Badges */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1.5 text-xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-[#1E3A8A] dark:text-blue-300 font-medium text-[11px] border border-blue-200/60 dark:border-blue-900/60" title={`${agency.totalAmbulances} Frontline ALS Ambulances`}>
+                            <span>🚑</span>
+                            <span className="font-semibold tabular-nums">{agency.totalAmbulances}</span>
+                            <span className="text-slate-500">Amb</span>
+                          </span>
+
+                          {agency.totalFireEngines > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-medium text-[11px] border border-amber-200/60 dark:border-amber-900/60" title={`${agency.totalFireEngines} Frontline Fire Suppression Engines`}>
+                              <span>🚒</span>
+                              <span className="font-semibold tabular-nums">{agency.totalFireEngines}</span>
+                              <span className="text-slate-500">Eng</span>
+                            </span>
+                          )}
+
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px] border border-slate-200/60 dark:border-slate-700" title={`${agency.stationsCount} Active Fire/EMS Stations`}>
+                            <span>🏢</span>
+                            <span className="font-semibold tabular-nums">{agency.stationsCount}</span>
+                            <span className="text-slate-500">Stn</span>
+                          </span>
+
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-[11px] font-semibold" title={`Installed Defibrillators: ${agency.installedFleet.defibUnitsCount} ${agency.installedFleet.defibBrand}`}>
+                            <span className="text-amber-500">⚡</span>
+                            <span>{agency.installedFleet.defibBrand.split(' ')[0]} {agency.installedFleet.defibBrand.split(' ')[1] || 'Defib'}</span>
+                            <span className="text-slate-400 font-normal">({agency.installedFleet.defibUnitsCount}u · {agency.installedFleet.defibAgeYears}y)</span>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1026,6 +1074,26 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
 
                   {/* Action Group */}
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-end">
+                    <a
+                      href={`tel:${(agency.headquartersPhone || agency.keyContacts?.[0]?.phone || '8005550199').replace(/[^0-9+]/g, '')}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8 w-8 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-colors inline-flex items-center justify-center cursor-pointer shrink-0"
+                      title="Call Agency Headquarters"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    </a>
+
+                    <a
+                      href={agency.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${agency.name}, ${agency.address}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8 w-8 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-[#1E3A8A] dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors inline-flex items-center justify-center cursor-pointer shrink-0"
+                      title="Navigate in Google Maps"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                    </a>
+
                     <button
                       type="button"
                       onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
@@ -1238,7 +1306,7 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                   >
                     CapEx value {sortBy === 'value' ? '↓' : ''}
                   </th>
-                  <th className="py-2.5 px-3 hidden md:table-cell">Pipeline stage</th>
+                  <th className="py-2.5 px-3 hidden md:table-cell">Agency notes</th>
                   <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -1378,15 +1446,17 @@ export const PredictiveLeadQueue: React.FC<PredictiveLeadQueueProps> = ({
                         </div>
                       </td>
 
-                      {/* Stage Dropdown */}
+                      {/* Agency Notes Pill */}
                       <td className="py-2.5 px-3 hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          value={agency.zollOpportunity.salesStage}
-                          onChange={(e) => onUpdateStage(agency.id, e.target.value as LeadStage)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] font-medium cursor-pointer"
+                        <button
+                          type="button"
+                          onClick={() => (onPreviewAgency ? onPreviewAgency(agency) : onSelectAgency(agency))}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-100 hover:bg-blue-50 dark:bg-slate-800 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-200 hover:text-[#1E3A8A] dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                          title="View and add notes for this agency"
                         >
-                          {stages.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                          <FileText className="w-3 h-3 text-[#1E3A8A] dark:text-blue-400" />
+                          <span>{agency.fieldNotes?.length > 0 ? `${agency.fieldNotes.length} notes` : '+ Note'}</span>
+                        </button>
                       </td>
 
                       {/* Row Actions */}

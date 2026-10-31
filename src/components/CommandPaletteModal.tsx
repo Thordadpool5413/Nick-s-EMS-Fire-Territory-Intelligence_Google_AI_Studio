@@ -18,7 +18,8 @@ import {
   Cloud,
   Layers,
   Globe,
-  BarChart3
+  BarChart3,
+  Compass
 } from 'lucide-react';
 import { Agency } from '../types';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -87,9 +88,10 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
   const quickNavTabs = [
     { id: 'home', title: '1. Territory & Home Explorer (50 States & Live Maps)', subtitle: 'Browse all 50 states, 3,144 counties, or switch to live Google Maps', icon: Globe },
-    { id: 'queue', title: '2. Priority Accounts Queue (Ranked Opportunities)', subtitle: 'Ranked EMS & Fire replacement targets by PulseIQ™ score and pipeline stage', icon: Layers },
+    { id: 'queue', title: '2. Priority Accounts Queue (Ranked Opportunities)', subtitle: 'Ranked EMS & Fire replacement targets by PulseIQ™ operational score and agency notes', icon: Layers },
     { id: 'knowledge', title: '3. ROI, Grants & TCO Hub (Calculator, AFG & Recalls)', subtitle: '5-year TCO calculator, OpenFEMA AFG awards, FDA recalls & Sourcewell contracts', icon: FileText },
     { id: 'field', title: '4. Field & 3D Demo Ops (Driving Routes & 3D Fleet)', subtitle: 'Multi-stop station itineraries, offline field notes & 3D apparatus staging', icon: MapPin },
+    { id: 'radar', title: 'GPS Proximity Radar (Agencies Near Me)', subtitle: 'Locate highest-priority departments within 15–25 miles of current GPS coordinates', icon: Compass },
     { id: 'google_maps', title: 'Google Maps Live Territory Explorer', subtitle: 'Satellite, terrain & street views with station pins', icon: MapPin },
     { id: 'pulseiq', title: 'PulseIQ™ Analytics & Regional Benchmarks', subtitle: 'Compare opportunity scores across regions and counties', icon: BarChart3 },
     { id: 'data_health', title: 'Data Health & Cloud Sync Verification', subtitle: 'Real-time Firestore sync status & federal registry lineage', icon: Cloud }

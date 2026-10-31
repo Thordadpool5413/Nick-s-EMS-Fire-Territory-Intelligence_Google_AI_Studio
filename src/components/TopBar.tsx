@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Agency, UserRole } from '../types';
 import { MobileQuickProviderBar } from './MobileQuickProviderBar';
+import { OfflineSyncStatusBadge } from './OfflineSyncStatusBadge';
 
 interface TopBarProps {
   activeTab: string;
@@ -48,7 +49,7 @@ interface TopBarProps {
   openNotifications: () => void;
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
-  openQuickVisitModal: () => void;
+  openQuickVisitModal?: () => void;
   openCommandPalette?: () => void;
   openDataLineageModal?: () => void;
   openChatbot?: () => void;
@@ -135,7 +136,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const isAccountsActive = activeTab === 'queue' || Boolean(activeAccountName);
   const isOpportunitiesActive = ['contracts', 'grants', 'pulseiq'].includes(activeTab) && !activeAccountName;
   const isTerritoryActive = ['states_directory', 'geo', 'google_maps', 'map', 'gis'].includes(activeTab) && !activeAccountName;
-  const isMyWorkActive = ['field', 'tm_dashboard'].includes(activeTab) && !activeAccountName;
+  const isMyWorkActive = ['field', 'radar', 'tm_dashboard'].includes(activeTab) && !activeAccountName;
 
   const advancedTools = [
     { id: 'knowledge', label: 'Clinical & TCO Hub', icon: Scale },
@@ -159,6 +160,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     if (activeTab === 'google_maps') return 'Territory · Google Maps Live';
     if (activeTab === 'map' || activeTab === 'gis') return 'Territory · GIS Fleet Heatmap';
     if (activeTab === 'field') return 'My Work · Field Route & Activity';
+    if (activeTab === 'radar') return 'My Work · GPS Proximity Radar';
     if (activeTab === 'tm_dashboard') return 'My Work · Mobile Command';
     const foundAdv = advancedTools.find(t => t.id === activeTab);
     if (foundAdv) return `Advanced Intelligence · ${foundAdv.label}`;
@@ -445,7 +447,8 @@ export const TopBar: React.FC<TopBarProps> = ({
                 {isMyWorkExpanded && (
                   <div className="pl-7 pr-1 py-1 space-y-0.5 border-l border-[#172D49] ml-4 mt-0.5">
                     {[
-                      { id: 'field', label: 'Routes, Visits & Notes' },
+                      { id: 'field', label: 'Routes & Agency Notes' },
+                      { id: 'radar', label: 'GPS Proximity Radar' },
                       { id: 'tm_dashboard', label: 'Field Mobile Cockpit' }
                     ].map((sub) => (
                       <button
@@ -639,18 +642,15 @@ export const TopBar: React.FC<TopBarProps> = ({
               </button>
             )}
 
-            {/* Pending Offline Sync Button (Only when pending items exist) */}
-            {pendingSyncCount > 0 && (
-              <button
-                type="button"
-                onClick={triggerManualSync}
-                disabled={!isOnline || isSyncing}
-                className="h-9 px-2.5 rounded-lg text-xs tabular-nums font-medium bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{pendingSyncCount} pending</span>
-              </button>
-            )}
+            {/* Rural Dead-Zone Offline Status & Queue Badge */}
+            <OfflineSyncStatusBadge
+              onSyncPendingNotes={async () => {
+                if (triggerManualSync) {
+                  await triggerManualSync();
+                }
+              }}
+              isSyncingRemote={isSyncing}
+            />
 
             {/* Territory Strategy & RFP Desk Trigger */}
             {openChatbot && (
@@ -664,17 +664,6 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <span className="hidden sm:inline">Strategy AI</span>
               </button>
             )}
-
-            {/* Primary Action: Log Field Visit */}
-            <button
-              type="button"
-              onClick={openQuickVisitModal}
-              className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-[#285EE8] hover:bg-[#194BC8] text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-              title="Log a station visit or field note"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Log Visit</span>
-            </button>
 
             {/* Notifications Drawer Trigger */}
             <button

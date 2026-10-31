@@ -56,7 +56,7 @@ export interface FieldNote {
   id: string;
   date: string;
   repName: string;
-  meetingType: 'On-Site Station Visit' | 'Virtual Demo' | 'Phone Call' | 'RFP Review' | 'Ride-Along';
+  meetingType: string;
   notes: string;
   nextAction: string;
   dueDate: string;
@@ -263,7 +263,7 @@ export interface Agency {
     fiscalYearEndMonth: string; // e.g. "September", "December", "June"
   };
 
-  // ZOLL Predictive Analytics & CRM Intelligence
+  // Territory Provider Intelligence & Scoring
   zollOpportunity: {
     pulseIqScore: number; // 0 to 100
     priorityTier: PriorityTier;

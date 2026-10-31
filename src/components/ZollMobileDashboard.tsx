@@ -319,7 +319,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
               {territoryStats.total}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400 block font-normal mt-0.5">
-              100% verified CRM
+              100% verified ground truth
             </span>
           </div>
 
@@ -969,7 +969,7 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                             ? 'bg-[#111827] dark:bg-blue-600 text-white border-[#111827] dark:border-blue-600'
                             : 'bg-white dark:bg-slate-800 text-[#111827] dark:text-slate-200 border-[#E5E4DF] dark:border-slate-700 hover:bg-[#F8F7F4] dark:hover:bg-slate-700'
                         }`}
-                        title="Log an on-site visit or meeting note in seconds"
+                        title="Add an agency note or observation"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Quick Note</span>
@@ -1003,10 +1003,10 @@ export const ZollMobileDashboard: React.FC<ZollMobileDashboardProps> = ({
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-bold text-[#111827] dark:text-slate-200 flex items-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400" />
-                              Log Rapid Field Visit Note ({agency.name})
+                              Add Agency Note ({agency.name})
                             </span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              Auto-syncs to central CRM
+                              Auto-syncs to central records
                             </span>
                           </div>
 

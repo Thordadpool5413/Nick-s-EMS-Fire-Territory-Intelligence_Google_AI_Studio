@@ -31,7 +31,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isAccounts = activeTab === 'queue';
   const isOpportunities = ['contracts', 'grants', 'pulseiq', 'knowledge', 'claims'].includes(activeTab);
   const isTerritory = ['states_directory', 'geo', 'gis', 'map', 'google_maps'].includes(activeTab);
-  const isMyWork = ['field', 'tm_dashboard', '3d_studio'].includes(activeTab);
+  const isMyWork = ['field', 'radar', 'tm_dashboard', '3d_studio'].includes(activeTab);
 
   return (
     <nav

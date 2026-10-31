@@ -54,6 +54,7 @@ import { DealStoryBriefingView } from './DealStoryBriefingView';
 import { CompetitiveBattlecardView } from './CompetitiveBattlecardView';
 import { PulseIqScoreExplainerHub } from './PulseIqScoreExplainerHub';
 import { CountyMcrDrilldownModal } from './CountyMcrDrilldownModal';
+import { DataDrivenStateMap } from './DataDrivenStateMap';
 
 interface NationalGeographicExplorerProps {
   agencies: Agency[];
@@ -907,304 +908,29 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
       )}
 
       {/* =====================================================================
-          LEVEL 1: CLEAN TERRITORY SELECTOR & INTERACTIVE U.S. MAP (NO 50-STATE CARD WALL)
+          LEVEL 1: DATA-DRIVEN STATE LAYER & JURISDICTION SELECTOR
          ===================================================================== */}
       {activeFocusLevel === 'states' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start w-full min-w-0">
-          
-          {/* Left 7/8 Cols: Interactive U.S. Territory Map */}
-          <div className="lg:col-span-7 xl:col-span-8 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-1 gap-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3.5 border-b border-slate-200 dark:border-slate-800">
-              <div className="min-w-0">
-                <h1 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <Compass className="w-5 h-5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
-                  <span>Interactive U.S. Territory Map</span>
-                </h1>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                  Click any State boundary on the map or use the selector on the right to inspect counties and verified EMS &amp; Fire providers.
-                </p>
-              </div>
+        <div className="space-y-5 w-full min-w-0">
+          {/* Data-Driven State Layer with dynamic metrics, distinct hatching, halo selection, adaptive labels & mobile layout */}
+          <DataDrivenStateMap
+            selectedStateCode={selectedStateCode}
+            onSelectState={(code) => {
+              handleSelectState(code);
+            }}
+            onInspectCounties={(code) => {
+              handleSelectState(code);
+              setMiddleTab('counties');
+            }}
+            regionFilter={regionFilter}
+            onRegionFilterChange={(reg) => setRegionFilter(reg)}
+          />
 
-              {/* Region Filter Segmented Control (Zero horizontal scrollbar, all 5 regions always visible) */}
-              <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
-                {(['All', 'Northeast', 'Midwest', 'South', 'West'] as const).map(reg => (
-                  <button
-                    key={reg}
-                    type="button"
-                    onClick={() => setRegionFilter(reg)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                      regionFilter === reg
-                        ? 'bg-[#0F172A] dark:bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {reg}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Interactive SVG U.S. State Boundary Choropleth Map Canvas */}
-            <div className="relative bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-3">
-              <svg
-                viewBox="0 0 920 500"
-                className="w-full h-[380px] sm:h-[440px] select-none"
-                role="img"
-                aria-label="Interactive United States Territory Boundary Map"
-              >
-                <defs>
-                  <pattern id="us-map-grid" width="46" height="46" patternUnits="userSpaceOnUse">
-                    <path d="M 46 0 L 0 0 0 46" fill="none" stroke="rgba(148, 163, 184, 0.16)" strokeWidth="1" />
-                  </pattern>
-                </defs>
-                <rect width="920" height="500" fill="url(#us-map-grid)" />
-
-                {/* Alaska & Hawaii Cartographic Inset Frames */}
-                <g>
-                  <rect x="14" y="356" width="174" height="134" rx="10" fill="#FFFFFF" fillOpacity="0.9" stroke="#CBD5E1" strokeWidth="1.25" strokeDasharray="4 4" />
-                  <text x="24" y="373" fill="#475569" fontSize="10" fontWeight="800" fontFamily="monospace">ALASKA (AK)</text>
-
-                  <rect x="196" y="396" width="124" height="94" rx="10" fill="#FFFFFF" fillOpacity="0.9" stroke="#CBD5E1" strokeWidth="1.25" strokeDasharray="4 4" />
-                  <text x="206" y="413" fill="#475569" fontSize="10" fontWeight="800" fontFamily="monospace">HAWAII (HI)</text>
-                </g>
-
-                {/* Layer 1: Authoritative U.S. State Boundary Polygons */}
-                <g>
-                  {Object.values(ALL_50_STATES_SUMMARIES).map((st) => {
-                    const boundary = US_STATES_SVG_PATHS[st.code];
-                    if (!boundary || !boundary.d) return null;
-
-                    const isInRegion = regionFilter === 'All' || st.region === regionFilter;
-                    const isHovered = hoveredMapStateCode === st.code;
-                    const isHighDenial = st.avgMedicareDenialRate >= 19.5;
-                    const countyCount = territoryEngine.getCountiesForState(st.code).length;
-
-                    const fillColor = isHovered
-                      ? '#1E3A8A'
-                      : !isInRegion
-                        ? '#F1F5F9'
-                        : isHighDenial
-                          ? '#DBEAFE'
-                          : '#E2E8F0';
-
-                    const strokeColor = isHovered
-                      ? '#0F172A'
-                      : !isInRegion
-                        ? '#CBD5E1'
-                        : '#64748B';
-
-                    return (
-                      <path
-                        key={`poly-${st.code}`}
-                        d={boundary.d}
-                        fill={fillColor}
-                        stroke={strokeColor}
-                        strokeWidth={isHovered ? 2 : 1}
-                        opacity={isInRegion ? 1 : 0.45}
-                        onClick={() => {
-                          handleSelectState(st.code);
-                          setMiddleTab('counties');
-                        }}
-                        onMouseEnter={() => setHoveredMapStateCode(st.code)}
-                        onMouseLeave={() => setHoveredMapStateCode(null)}
-                        className="cursor-pointer transition-colors duration-150"
-                      >
-                        <title>{`${st.state} (${st.code}) — Click to inspect ${countyCount} Counties`}</title>
-                      </path>
-                    );
-                  })}
-                </g>
-
-                {/* Layer 2: Interior State Labels (42 States + AK + HI, Zero Overlap) */}
-                <g>
-                  {Object.values(ALL_50_STATES_SUMMARIES).map((st) => {
-                    const isCalloutState = EAST_COAST_CALLOUT_STATES.some((c) => c.code === st.code);
-                    if (isCalloutState) return null;
-
-                    const boundary = US_STATES_SVG_PATHS[st.code];
-                    if (!boundary) return null;
-
-                    const isInRegion = regionFilter === 'All' || st.region === regionFilter;
-                    const isHovered = hoveredMapStateCode === st.code;
-
-                    return (
-                      <g
-                        key={`lbl-${st.code}`}
-                        transform={`translate(${boundary.labelX}, ${boundary.labelY})`}
-                        onClick={() => {
-                          handleSelectState(st.code);
-                          setMiddleTab('counties');
-                        }}
-                        onMouseEnter={() => setHoveredMapStateCode(st.code)}
-                        onMouseLeave={() => setHoveredMapStateCode(null)}
-                        className="cursor-pointer"
-                        opacity={isInRegion ? 1 : 0.4}
-                      >
-                        <rect
-                          x="-13"
-                          y="-9"
-                          width="26"
-                          height="18"
-                          rx="5"
-                          fill={isHovered ? '#111827' : '#FFFFFF'}
-                          fillOpacity={isHovered ? 1 : 0.92}
-                          stroke={isHovered ? '#FFFFFF' : '#94A3B8'}
-                          strokeWidth={isHovered ? 1.5 : 1}
-                        />
-                        <text
-                          textAnchor="middle"
-                          dy="3.5"
-                          fill={isHovered ? '#FFFFFF' : '#0F172A'}
-                          fontSize="9.5"
-                          fontWeight="800"
-                          fontFamily="monospace"
-                        >
-                          {st.code}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </g>
-
-                {/* Layer 3: Compact East Coast State Callout Column (VT, NH, MA, RI, CT, NJ, DE, MD, DC) */}
-                <g>
-                  {EAST_COAST_CALLOUT_STATES.map((item) => {
-                    const st = ALL_50_STATES_SUMMARIES[item.code];
-                    const boundary = US_STATES_SVG_PATHS[item.code];
-                    if (!st || !boundary) return null;
-
-                    const isInRegion = regionFilter === 'All' || st.region === regionFilter;
-                    const isHovered = hoveredMapStateCode === st.code;
-                    const countyCount = territoryEngine.getCountiesForState(st.code).length;
-
-                    return (
-                      <g
-                        key={`callout-${st.code}`}
-                        onClick={() => {
-                          handleSelectState(st.code);
-                          setMiddleTab('counties');
-                        }}
-                        onMouseEnter={() => setHoveredMapStateCode(st.code)}
-                        onMouseLeave={() => setHoveredMapStateCode(null)}
-                        className="cursor-pointer"
-                        opacity={isInRegion ? 1 : 0.4}
-                      >
-                        <line
-                          x1={boundary.labelX}
-                          y1={boundary.labelY}
-                          x2={item.calloutX}
-                          y2={item.calloutY}
-                          stroke={isHovered ? '#1E3A8A' : '#94A3B8'}
-                          strokeWidth={isHovered ? 1.75 : 1}
-                          strokeDasharray={isHovered ? undefined : '2 2'}
-                        />
-                        <circle
-                          cx={boundary.labelX}
-                          cy={boundary.labelY}
-                          r={isHovered ? 4 : 2.5}
-                          fill={isHovered ? '#1E3A8A' : '#475569'}
-                        />
-                        <rect
-                          x={item.calloutX}
-                          y={item.calloutY - 10}
-                          width="64"
-                          height="20"
-                          rx="5"
-                          fill={isHovered ? '#1E3A8A' : '#FFFFFF'}
-                          stroke={isHovered ? '#0F172A' : '#CBD5E1'}
-                          strokeWidth={isHovered ? 1.5 : 1}
-                        />
-                        <text
-                          x={item.calloutX + 32}
-                          y={item.calloutY + 3.5}
-                          textAnchor="middle"
-                          fill={isHovered ? '#FFFFFF' : '#0F172A'}
-                          fontSize="9.5"
-                          fontWeight="800"
-                          fontFamily="monospace"
-                        >
-                          {st.code} · {countyCount}c
-                        </text>
-                        <title>{`${st.state} (${st.code}) — Click to inspect ${countyCount} Counties`}</title>
-                      </g>
-                    );
-                  })}
-                </g>
-              </svg>
-
-              {/* Map Legend & Hovered State Live Callout Strip */}
-              <div className="mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-900 dark:text-slate-100 tabular-nums">
-                {hoveredMapStateCode && ALL_50_STATES_SUMMARIES[hoveredMapStateCode] ? (
-                  (() => {
-                    const hSt = ALL_50_STATES_SUMMARIES[hoveredMapStateCode];
-                    const cCount = territoryEngine.getCountiesForState(hSt.code).length;
-                    const stAgg = aggregateProviderMedicareDenialRates(agencies, hSt.code);
-                    return (
-                      <div className="flex flex-wrap items-center gap-2.5 tabular-nums">
-                        <span className="px-2 py-0.5 rounded bg-[#1E3A8A] text-white font-semibold">
-                          {hSt.code}
-                        </span>
-                        <strong className="text-slate-900 dark:text-white text-sm font-semibold tracking-[-0.01em]">{hSt.state}</strong>
-                        <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="font-semibold text-[#1E3A8A] dark:text-blue-400 tabular-nums">{cCount} Counties</span>
-                        <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="text-slate-700 dark:text-slate-300">
-                          Medicare Denials:{' '}
-                          <strong className="text-rose-700 dark:text-rose-400 font-semibold tabular-nums">
-                            {stAgg.hasMeasuredData ? `${stAgg.ratePct}%` : `${hSt.avgMedicareDenialRate}%`}
-                          </strong>{' '}
-                          <span className="text-[10px] text-slate-400">
-                            {stAgg.hasMeasuredData
-                              ? `(${stAgg.supplierCount} CMS ${stAgg.supplierCount === 1 ? 'supplier' : 'suppliers'})`
-                              : '(State Model)'}
-                          </span>
-                        </span>
-                        <span className="text-slate-300 dark:text-slate-700">·</span>
-                        <span className="text-slate-700 dark:text-slate-300">FEMA Grants: <strong className="text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">${(hSt.totalAfgAwardsYtd / 1000000).toFixed(1)}M</strong></span>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed tabular-nums">
-                    <span className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-white">
-                      <MapPin className="w-3.5 h-3.5 text-[#1E3A8A] dark:text-blue-400 shrink-0" />
-                      <span>Click any State boundary or East Coast callout badge to inspect its Counties</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 tabular-nums">
-                      <span className="w-3 h-3 rounded-xs bg-[#DBEAFE] border border-[#60A5FA] inline-block" />
-                      <span>Elevated Claim Denial (&ge;19.5% · CMS PUF)</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-xs bg-[#E2E8F0] border border-[#64748B] inline-block" />
-                      <span>Standard Territory</span>
-                    </span>
-                  </div>
-                )}
-                <span className="tabular-nums text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                  50 States &amp; DC · 3,144 Counties
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right 5/4 Cols: Clean Territory & Jurisdiction Picker */}
-          <div className="lg:col-span-5 xl:col-span-4 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-1 gap-4">
-            <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-[#1E3A8A] dark:text-blue-400">
-                Step 1 · Select Territory Scope
-              </div>
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
-                Quick State, County &amp; ZIP Selector
-              </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                Choose a State or search by County, City, or 5-digit ZIP code to view EMS &amp; Fire providers.
-              </p>
-            </div>
-
-            {/* Direct State Dropdown Selector */}
-            <div className="space-y-1.5">
+          {/* Quick Territory Scope, Cascading Jump & Priority Queue Toolbar */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 sm:p-5 shadow-xs grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+            <div className="md:col-span-4 space-y-1.5">
               <label htmlFor="home-state-picker" className="block text-xs font-bold text-slate-900 dark:text-white">
-                1. Choose a State or Jurisdiction
+                1. State or Jurisdiction Scope
               </label>
               <select
                 id="home-state-picker"
@@ -1224,43 +950,41 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                     </option>
                   ))}
               </select>
+
+              {selectedStateCode !== 'all' && availableCounties.length > 0 && (
+                <div className="pt-1.5 animate-fadeIn">
+                  <label htmlFor="home-county-picker" className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    County in {activeStateSummary?.state || selectedStateCode}
+                  </label>
+                  <select
+                    id="home-county-picker"
+                    value={selectedCountyName}
+                    onChange={(e) => {
+                      const c = e.target.value;
+                      if (c === 'all') {
+                        setSelectedCountyName('all');
+                        setSelectedCityName('all');
+                        setMiddleTab('counties');
+                      } else {
+                        handleSelectCounty(c, selectedStateCode);
+                      }
+                    }}
+                    className="w-full h-9 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
+                  >
+                    <option value="all">All {availableCounties.length} Counties</option>
+                    {availableCounties.map((c) => (
+                      <option key={c.countyFips || c.countyName} value={c.countyName}>
+                        {c.countyName} (Seat: {c.countySeat})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            {/* Direct Cascading County Dropdown Selector */}
-            {selectedStateCode !== 'all' && availableCounties.length > 0 && (
-              <div className="space-y-1.5 animate-fadeIn">
-                <label htmlFor="home-county-picker" className="block text-xs font-bold text-slate-900 dark:text-white">
-                  Choose County in {activeStateSummary?.state || selectedStateCode}
-                </label>
-                <select
-                  id="home-county-picker"
-                  value={selectedCountyName}
-                  onChange={(e) => {
-                    const c = e.target.value;
-                    if (c === 'all') {
-                      setSelectedCountyName('all');
-                      setSelectedCityName('all');
-                      setMiddleTab('counties');
-                    } else {
-                      handleSelectCounty(c, selectedStateCode);
-                    }
-                  }}
-                  className="w-full h-10 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-lg px-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1E3A8A] cursor-pointer"
-                >
-                  <option value="all">All {availableCounties.length} Counties</option>
-                  {availableCounties.map((c) => (
-                    <option key={c.countyFips || c.countyName} value={c.countyName}>
-                      {c.countyName} (Seat: {c.countySeat})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Direct City / County / ZIP Instant Jump */}
-            <div className="space-y-1.5">
+            <div className="md:col-span-5 space-y-1.5">
               <label htmlFor="home-zip-county-search" className="block text-xs font-bold text-slate-900 dark:text-white">
-                2. Or Jump Directly by County, City, or ZIP Code
+                2. Instant Jump by County, City, or ZIP
               </label>
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1270,7 +994,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                   value={zipSearchQuery}
                   onChange={(e) => setZipSearchQuery(e.target.value)}
                   placeholder="Enter County, City, or 5-digit ZIP (e.g., 78701, Cuyahoga)..."
-                  className="w-full h-10 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-7 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
+                  className="w-full h-10 bg-slate-50 dark:bg-slate-800 hover:bg-white dark:focus:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-7 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-[#1E3A8A]"
                 />
                 {zipSearchQuery && (
                   <button
@@ -1283,9 +1007,8 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                 )}
               </div>
 
-              {/* Matching Location Instant Results */}
               {zipSearchQuery.trim() && (
-                <div className="mt-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700 max-h-52 overflow-y-auto">
+                <div className="mt-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700 max-h-48 overflow-y-auto">
                   {matchingLocations.length > 0 ? (
                     matchingLocations.map((loc) => (
                       <button
@@ -1295,7 +1018,7 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           handleSelectCity(loc.city, loc.county, loc.stateCode);
                           setZipSearchQuery('');
                         }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-white dark:hover:bg-slate-700 transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
+                        className="w-full text-left px-3 py-2 hover:bg-white dark:hover:bg-slate-700 transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
                       >
                         <div>
                           <div className="font-bold text-slate-900 dark:text-white">
@@ -1304,26 +1027,6 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
                           <div className="text-[11px] text-slate-500 dark:text-slate-400">{loc.county}</div>
                         </div>
                         <span className="text-xs font-bold text-[#1E3A8A] dark:text-blue-400 shrink-0">Open &rarr;</span>
-                      </button>
-                    ))
-                  ) : availableCounties.length > 0 ? (
-                    availableCounties.slice(0, 6).map((c) => (
-                      <button
-                        key={`${c.stateCode}-${c.countyFips}`}
-                        type="button"
-                        onClick={() => {
-                          handleSelectCounty(c.countyName, c.stateCode);
-                          setZipSearchQuery('');
-                        }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-white dark:hover:bg-slate-700 transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer"
-                      >
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-white">
-                            {c.countyName}, {c.stateCode}
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">County Seat: {c.countySeat}</div>
-                        </div>
-                        <span className="text-xs font-bold text-[#1E3A8A] dark:text-blue-400 shrink-0">Inspect &rarr;</span>
                       </button>
                     ))
                   ) : (
@@ -1335,69 +1038,35 @@ export const NationalGeographicExplorer: React.FC<NationalGeographicExplorerProp
               )}
             </div>
 
-            {/* 3. Quick Region State Pills (Filtered by active Region tab) */}
-            <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-900 dark:text-white">
-                  3. Quick Jump ({regionFilter === 'All' ? 'All Regions' : `${regionFilter} Region`})
-                </span>
-                <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                  {statesList.length} Jurisdictions
-                </span>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                {statesList.map((st) => (
+            <div className="md:col-span-3 space-y-2">
+              <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                3. Lead Priority Queue
+              </label>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <span className="block text-slate-400 text-[10px] uppercase">Jurisdictions</span>
+                    <span className="font-bold font-mono text-slate-900 dark:text-white">3,144 Counties</span>
+                  </div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <span className="block text-slate-400 text-[10px] uppercase">Provenance</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">FDID &amp; NPI</span>
+                  </div>
+                </div>
+
+                {onNavigateToQueueWithFilter && (
                   <button
-                    key={`quick-${st.code}`}
                     type="button"
-                    onClick={() => {
-                      handleSelectState(st.code);
-                      setMiddleTab('counties');
-                    }}
-                    onMouseEnter={() => setHoveredMapStateCode(st.code)}
-                    onMouseLeave={() => setHoveredMapStateCode(null)}
-                    className={`px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
-                      hoveredMapStateCode === st.code
-                        ? 'bg-[#1E3A8A] text-white border-[#1E3A8A]'
-                        : 'bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700'
-                    }`}
-                    title={`${st.state} (${st.code})`}
+                    onClick={() => onNavigateToQueueWithFilter()}
+                    className="w-full h-9 px-3 rounded-lg font-bold text-xs bg-[#1E3A8A] text-white hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                   >
-                    <span className="font-mono font-bold text-xs">{st.code}</span>
-                    <span className={`text-[10px] font-mono ${hoveredMapStateCode === st.code ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>
-                      {territoryEngine.getCountiesForState(st.code).length}c
-                    </span>
+                    <ListOrdered className="w-3.5 h-3.5 text-white" />
+                    <span>Priority Leads Queue &rarr;</span>
                   </button>
-                ))}
+                )}
               </div>
-            </div>
-
-            {/* Quick Priority Accounts & Regional Summary */}
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
-              <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden text-xs">
-                <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mapped Jurisdictions</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 block tabular-nums">3,144 Counties</span>
-                </div>
-                <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Data Provenance</span>
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 block">FDID · NPI · FIPS Verified</span>
-                </div>
-              </div>
-
-              {onNavigateToQueueWithFilter && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToQueueWithFilter()}
-                  className="w-full h-10 px-4 rounded-lg font-bold text-xs bg-[#1E3A8A] text-white hover:bg-[#172554] dark:bg-blue-600 dark:hover:bg-blue-500 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                >
-                  <ListOrdered className="w-4 h-4 text-white" />
-                  <span>Browse Priority Lead Accounts Queue &rarr;</span>
-                </button>
-              )}
             </div>
           </div>
-
         </div>
       )}
 
