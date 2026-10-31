@@ -141,6 +141,10 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
   const [showIsoContours, setShowIsoContours] = useState<boolean>(true);
   const [showGraticule, setShowGraticule] = useState<boolean>(true);
   const [showStationOverlay, setShowStationOverlay] = useState<boolean>(true);
+  const [showThermalSurface, setShowThermalSurface] = useState<boolean>(true);
+  const [showStateBoundaries, setShowStateBoundaries] = useState<boolean>(true);
+  const [heatmapMetricMode, setHeatmapMetricMode] = useState<'acuity' | 'apparatus_density'>('acuity');
+  const [isLegendExpanded, setIsLegendExpanded] = useState<boolean>(true);
   const [cursorGeoCoords, setCursorGeoCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [isDraggingMap, setIsDraggingMap] = useState<boolean>(false);
   const [dragStartPt, setDragStartPt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -773,7 +777,14 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     if (!ctx) return '';
 
     const densityField = new Float32Array(gridW * gridH);
-    const metrics = mapRenderedAgencies.map(a => getLayerMetric(a, selectedLayer));
+    const metrics = mapRenderedAgencies.map(a => {
+      if (heatmapMetricMode === 'apparatus_density') {
+        const fleet = a.apparatusFleet?.totalActiveUnits;
+        if (typeof fleet === 'number' && fleet > 0) return fleet;
+        return (a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.totalFireStations || 1) * 2;
+      }
+      return getLayerMetric(a, selectedLayer);
+    });
     let minM = Infinity;
     let maxM = -Infinity;
     for (let i = 0; i < metrics.length; i++) {
@@ -858,7 +869,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
     ctx.putImageData(imgData, 0, 0);
     return canvas.toDataURL('image/png');
-  }, [mapRenderedAgencies, selectedLayer, kdeBandwidth, colorSpectrum, showIsoContours]);
+  }, [mapRenderedAgencies, selectedLayer, kdeBandwidth, colorSpectrum, showIsoContours, heatmapMetricMode]);
 
   // H3 Spatial Hexagonal Tessellation & Aggregation Engine
   const hexBinCells = useMemo<HexBinCell[]>(() => {
@@ -884,7 +895,10 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
       }
       const cell = bins.get(key)!;
       cell.agencies.push(a);
-      cell.metricSum += getLayerMetric(a, selectedLayer);
+      const m = heatmapMetricMode === 'apparatus_density'
+        ? (a.apparatusFleet?.totalActiveUnits || ((a.totalAmbulances || 0) + (a.totalFireEngines || 0) + (a.totalFireStations || 1) * 2))
+        : getLayerMetric(a, selectedLayer);
+      cell.metricSum += m;
     }
 
     let maxCellScore = 0;
@@ -920,7 +934,9 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
         const calls = ag.annualCardiacArrestCalls || Math.round((ag.annual911Transports || 3000) * 0.12);
         totalCalls += calls;
         sumSurv += (ag.utsteinSurvivalRate || 10.8);
-        const m = getLayerMetric(ag, selectedLayer);
+        const m = heatmapMetricMode === 'apparatus_density'
+          ? (ag.apparatusFleet?.totalActiveUnits || ((ag.totalAmbulances || 0) + (ag.totalFireEngines || 0) + (ag.totalFireStations || 1) * 2))
+          : getLayerMetric(ag, selectedLayer);
         if (m > topMetric) {
           topMetric = m;
           topAgency = ag;
@@ -929,11 +945,13 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
 
       const avgSurvival = +(sumSurv / cell.agencies.length).toFixed(1);
       const metricSummary =
-        selectedLayer === 'nemsis_cardiac' ? `${totalCalls.toLocaleString()} OHCA calls` :
-        selectedLayer === 'cardiac' ? `${avgSurvival}% avg Utstein survival` :
-        selectedLayer === 'aed' ? `${Math.round(topAgency.gisData?.publicAccessAedDeficitPct || 45)}% peak AED deficit` :
-        selectedLayer === 'transport' ? `${topAgency.gisData?.avgTransportTimeMinutes || 22} min peak transit` :
-        `${topAgency.cmsData?.claimDenialRate || 19}% peak CMS denial`;
+        heatmapMetricMode === 'apparatus_density'
+          ? `${Math.round(cell.metricSum)} active apparatus & stations`
+          : selectedLayer === 'nemsis_cardiac' ? `${totalCalls.toLocaleString()} OHCA calls` :
+          selectedLayer === 'cardiac' ? `${avgSurvival}% avg Utstein survival` :
+          selectedLayer === 'aed' ? `${Math.round(topAgency.gisData?.publicAccessAedDeficitPct || 45)}% peak AED deficit` :
+          selectedLayer === 'transport' ? `${topAgency.gisData?.avgTransportTimeMinutes || 22} min peak transit` :
+          `${topAgency.cmsData?.claimDenialRate || 19}% peak CMS denial`;
 
       cells.push({
         id: `hex-${key}`,
@@ -953,7 +971,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
     });
 
     return cells;
-  }, [mapRenderedAgencies, selectedLayer, selectedState, colorSpectrum]);
+  }, [mapRenderedAgencies, selectedLayer, selectedState, colorSpectrum, heatmapMetricMode]);
 
   // Active Route Corridors for agencies selected for Field Route
   const activeRouteCorridorPoints = useMemo(() => {
@@ -2443,91 +2461,93 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 </g>
 
                 {/* Authoritative U.S. Census 50-State + DC Boundary Polygons */}
-                <g>
-                  {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
-                    const isActiveState = selectedState === 'all' || selectedState === sc;
-                    const isHovered = hoveredStateCode === sc;
-                    const acuity = stateAcuityMap[sc];
+                {showStateBoundaries && (
+                  <g>
+                    {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                      const isActiveState = selectedState === 'all' || selectedState === sc;
+                      const isHovered = hoveredStateCode === sc;
+                      const acuity = stateAcuityMap[sc];
 
-                    let fill = basemapTheme === 'dark' ? '#0C1629' : '#E2E8F0';
-                    let stroke = basemapTheme === 'dark' ? '#1E293B' : '#94A3B8';
-                    let strokeWidth = 0.85;
-                    let opacity = isActiveState ? 0.96 : 0.32;
+                      let fill = basemapTheme === 'dark' ? '#0C1629' : '#E2E8F0';
+                      let stroke = basemapTheme === 'dark' ? '#1E293B' : '#94A3B8';
+                      let strokeWidth = 0.85;
+                      let opacity = isActiveState ? 0.96 : 0.32;
 
-                    if (mapDisplayMode === 'choropleth') {
-                      if (selectedState === sc) {
-                        fill = basemapTheme === 'dark' ? '#1D4ED8' : '#3B82F6';
-                        stroke = '#38BDF8';
-                        strokeWidth = 2.2;
-                        opacity = 1;
-                      } else if (isHovered) {
-                        fill = acuity?.fillColor || '#1E3A8A';
-                        stroke = basemapTheme === 'dark' ? '#F8FAFC' : '#0F172A';
-                        strokeWidth = 1.8;
-                        opacity = 1;
+                      if (mapDisplayMode === 'choropleth') {
+                        if (selectedState === sc) {
+                          fill = basemapTheme === 'dark' ? '#1D4ED8' : '#3B82F6';
+                          stroke = '#38BDF8';
+                          strokeWidth = 2.2;
+                          opacity = 1;
+                        } else if (isHovered) {
+                          fill = acuity?.fillColor || '#1E3A8A';
+                          stroke = basemapTheme === 'dark' ? '#F8FAFC' : '#0F172A';
+                          strokeWidth = 1.8;
+                          opacity = 1;
+                        } else {
+                          fill = acuity?.fillColor || (basemapTheme === 'dark' ? '#0F172A' : '#E2E8F0');
+                          stroke = acuity?.borderColor || (basemapTheme === 'dark' ? '#334155' : '#94A3B8');
+                          strokeWidth = selectedState === 'all' ? 1.05 : 0.75;
+                          opacity = selectedState === 'all' ? 0.92 : 0.28;
+                        }
                       } else {
-                        fill = acuity?.fillColor || (basemapTheme === 'dark' ? '#0F172A' : '#E2E8F0');
-                        stroke = acuity?.borderColor || (basemapTheme === 'dark' ? '#334155' : '#94A3B8');
-                        strokeWidth = selectedState === 'all' ? 1.05 : 0.75;
-                        opacity = selectedState === 'all' ? 0.92 : 0.28;
+                        if (selectedState === sc) {
+                          fill = basemapTheme === 'dark' ? '#112240' : '#DBEAFE';
+                          stroke = '#38BDF8';
+                          strokeWidth = 1.8;
+                          opacity = 1;
+                        } else if (isHovered) {
+                          fill = basemapTheme === 'dark' ? '#16243D' : '#E2E8F0';
+                          stroke = basemapTheme === 'dark' ? '#64748B' : '#475569';
+                          strokeWidth = 1.3;
+                        } else {
+                          fill = basemapTheme === 'dark' ? '#0B1426' : '#F8FAFC';
+                          stroke = basemapTheme === 'dark' ? '#1E293B' : '#CBD5E1';
+                          strokeWidth = 0.85;
+                        }
                       }
-                    } else {
-                      if (selectedState === sc) {
-                        fill = basemapTheme === 'dark' ? '#112240' : '#DBEAFE';
-                        stroke = '#38BDF8';
-                        strokeWidth = 1.8;
-                        opacity = 1;
-                      } else if (isHovered) {
-                        fill = basemapTheme === 'dark' ? '#16243D' : '#E2E8F0';
-                        stroke = basemapTheme === 'dark' ? '#64748B' : '#475569';
-                        strokeWidth = 1.3;
-                      } else {
-                        fill = basemapTheme === 'dark' ? '#0B1426' : '#F8FAFC';
-                        stroke = basemapTheme === 'dark' ? '#1E293B' : '#CBD5E1';
-                        strokeWidth = 0.85;
-                      }
-                    }
 
-                    return (
-                      <path
-                        key={`gis-poly-${sc}`}
-                        d={boundary.d}
-                        fill={fill}
-                        stroke={stroke}
-                        strokeWidth={strokeWidth}
-                        opacity={opacity}
-                        onMouseEnter={() => setHoveredStateCode(sc)}
-                        onMouseLeave={() => setHoveredStateCode(null)}
-                        onClick={() => {
-                          const next = selectedState === sc ? 'all' : sc;
-                          setSelectedState(next);
-                          setSelectedCounty('all');
-                          setSelectedCity('all');
-                          if (onSelectState) onSelectState(next);
-                          if (onSelectCounty) onSelectCounty('all');
-                          if (onSelectCity) onSelectCity('all');
+                      return (
+                        <path
+                          key={`gis-poly-${sc}`}
+                          d={boundary.d}
+                          fill={fill}
+                          stroke={stroke}
+                          strokeWidth={strokeWidth}
+                          opacity={opacity}
+                          onMouseEnter={() => setHoveredStateCode(sc)}
+                          onMouseLeave={() => setHoveredStateCode(null)}
+                          onClick={() => {
+                            const next = selectedState === sc ? 'all' : sc;
+                            setSelectedState(next);
+                            setSelectedCounty('all');
+                            setSelectedCity('all');
+                            if (onSelectState) onSelectState(next);
+                            if (onSelectCounty) onSelectCounty('all');
+                            if (onSelectCity) onSelectCity('all');
 
-                          if (next !== 'all' && boundary) {
-                            setZoomLevel(1.55);
-                            setPanOffset({
-                              x: (mapWidth / 2 - boundary.labelX) * 0.7,
-                              y: (mapHeight / 2 - boundary.labelY) * 0.7
-                            });
-                          } else {
-                            setZoomLevel(1);
-                            setPanOffset({ x: 0, y: 0 });
-                          }
-                        }}
-                        className="cursor-pointer transition-colors duration-150"
-                      >
-                        <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc}) — ${acuity?.metricLabel || ''}: ${acuity?.metricValue || ''}`}</title>
-                      </path>
-                    );
-                  })}
-                </g>
+                            if (next !== 'all' && boundary) {
+                              setZoomLevel(1.55);
+                              setPanOffset({
+                                x: (mapWidth / 2 - boundary.labelX) * 0.7,
+                                y: (mapHeight / 2 - boundary.labelY) * 0.7
+                              });
+                            } else {
+                              setZoomLevel(1);
+                              setPanOffset({ x: 0, y: 0 });
+                            }
+                          }}
+                          className="cursor-pointer transition-colors duration-150"
+                        >
+                          <title>{`${ALL_50_STATES_SUMMARIES[sc]?.state || sc} (${sc}) — ${acuity?.metricLabel || ''}: ${acuity?.metricValue || ''}`}</title>
+                        </path>
+                      );
+                    })}
+                  </g>
+                )}
 
                 {/* LAYER MODE 1: Continuous 2D Gaussian Kernel Density Estimation (KDE) Surface */}
-                {(mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && kdeThermalDataUrl && (
+                {(mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && showThermalSurface && kdeThermalDataUrl && (
                   <image
                     href={kdeThermalDataUrl}
                     x={0}
@@ -2542,7 +2562,7 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 )}
 
                 {/* Crisp State Borders Overlay Above Thermal KDE so state boundaries stay razor-sharp */}
-                {(mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && (
+                {showStateBoundaries && (mapDisplayMode === 'kde' || mapDisplayMode === 'hotspots') && (
                   <g className="pointer-events-none">
                     {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => (
                       <path
@@ -2625,124 +2645,128 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                 )}
 
                 {/* State Abbreviation Typography Labels for Interior States */}
-                <g className="pointer-events-none select-none">
-                  {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
-                    const isCallout = EAST_COAST_CALLOUT_STATES.some(c => c.code === sc);
-                    if (isCallout) return null;
-                    const isSelected = selectedState === sc;
-                    const isHovered = hoveredStateCode === sc;
-                    const isActive = selectedState === 'all' || isSelected;
+                {showStateBoundaries && (
+                  <g className="pointer-events-none select-none">
+                    {Object.entries(US_STATES_SVG_PATHS).map(([sc, boundary]) => {
+                      const isCallout = EAST_COAST_CALLOUT_STATES.some(c => c.code === sc);
+                      if (isCallout) return null;
+                      const isSelected = selectedState === sc;
+                      const isHovered = hoveredStateCode === sc;
+                      const isActive = selectedState === 'all' || isSelected;
 
-                    return (
-                      <text
-                        key={`lbl-${sc}`}
-                        x={boundary.labelX}
-                        y={boundary.labelY}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fontSize={sc === 'CA' || sc === 'TX' || sc === 'MT' || sc === 'AK' ? '10.5' : '9'}
-                        fontWeight="800"
-                        fill={
-                          basemapTheme === 'dark'
-                            ? isSelected
-                              ? '#38BDF8'
-                              : isHovered
-                              ? '#FFFFFF'
-                              : 'rgba(226, 232, 240, 0.78)'
-                            : isSelected
-                            ? '#1E3A8A'
-                            : '#0F172A'
-                        }
-                        opacity={isActive ? 1 : 0.35}
-                        className="font-mono tracking-tight"
-                        style={{
-                          textShadow:
-                            basemapTheme === 'dark'
-                              ? '0 1px 3px rgba(0,0,0,0.95)'
-                              : '0 1px 2px rgba(255,255,255,0.9)'
-                        }}
-                      >
-                        {sc}
-                      </text>
-                    );
-                  })}
-                </g>
-
-                {/* East Coast Callout Badges with Clean Leader Lines */}
-                <g className="select-none">
-                  {EAST_COAST_CALLOUT_STATES.map((callout) => {
-                    const boundary = US_STATES_SVG_PATHS[callout.code];
-                    if (!boundary) return null;
-                    const isSelected = selectedState === callout.code;
-                    const isHovered = hoveredStateCode === callout.code;
-                    const acuity = stateAcuityMap[callout.code];
-
-                    return (
-                      <g
-                        key={`callout-${callout.code}`}
-                        className="cursor-pointer pointer-events-auto"
-                        onMouseEnter={() => setHoveredStateCode(callout.code)}
-                        onMouseLeave={() => setHoveredStateCode(null)}
-                        onClick={() => {
-                          const next = selectedState === callout.code ? 'all' : callout.code;
-                          setSelectedState(next);
-                          setSelectedCounty('all');
-                          setSelectedCity('all');
-                          if (onSelectState) onSelectState(next);
-                          if (onSelectCounty) onSelectCounty('all');
-                          if (onSelectCity) onSelectCity('all');
-                        }}
-                      >
-                        <line
-                          x1={boundary.labelX}
-                          y1={boundary.labelY}
-                          x2={callout.calloutX - 16}
-                          y2={callout.calloutY}
-                          stroke={isSelected ? '#38BDF8' : basemapTheme === 'dark' ? '#475569' : '#94A3B8'}
-                          strokeWidth={isSelected || isHovered ? 1.5 : 0.9}
-                          strokeDasharray="2 2"
-                        />
-                        <rect
-                          x={callout.calloutX - 16}
-                          y={callout.calloutY - 8}
-                          width="32"
-                          height="16"
-                          rx="4"
-                          fill={
-                            isSelected
-                              ? '#2563EB'
-                              : mapDisplayMode === 'choropleth'
-                              ? (acuity?.fillColor || (basemapTheme === 'dark' ? '#0F172A' : '#FFFFFF'))
-                              : basemapTheme === 'dark'
-                              ? '#0F172A'
-                              : '#FFFFFF'
-                          }
-                          stroke={
-                            isSelected
-                              ? '#38BDF8'
-                              : (acuity?.borderColor || (basemapTheme === 'dark' ? '#334155' : '#CBD5E1'))
-                          }
-                          strokeWidth={isSelected || isHovered ? 1.5 : 1}
-                        />
+                      return (
                         <text
-                          x={callout.calloutX}
-                          y={callout.calloutY}
+                          key={`lbl-${sc}`}
+                          x={boundary.labelX}
+                          y={boundary.labelY}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          fontSize="8.5"
+                          fontSize={sc === 'CA' || sc === 'TX' || sc === 'MT' || sc === 'AK' ? '10.5' : '9'}
                           fontWeight="800"
-                          fill={isSelected || basemapTheme === 'dark' ? '#FFFFFF' : '#0F172A'}
-                          className="font-mono pointer-events-none"
+                          fill={
+                            basemapTheme === 'dark'
+                              ? isSelected
+                                ? '#38BDF8'
+                                : isHovered
+                                ? '#FFFFFF'
+                                : 'rgba(226, 232, 240, 0.78)'
+                              : isSelected
+                              ? '#1E3A8A'
+                              : '#0F172A'
+                          }
+                          opacity={isActive ? 1 : 0.35}
+                          className="font-mono tracking-tight"
+                          style={{
+                            textShadow:
+                              basemapTheme === 'dark'
+                                ? '0 1px 3px rgba(0,0,0,0.95)'
+                                : '0 1px 2px rgba(255,255,255,0.9)'
+                          }}
                         >
-                          {callout.code}
+                          {sc}
                         </text>
-                      </g>
-                    );
-                  })}
-                </g>
+                      );
+                    })}
+                  </g>
+                )}
+
+                {/* East Coast Callout Badges with Clean Leader Lines */}
+                {showStateBoundaries && (
+                  <g className="select-none">
+                    {EAST_COAST_CALLOUT_STATES.map((callout) => {
+                      const boundary = US_STATES_SVG_PATHS[callout.code];
+                      if (!boundary) return null;
+                      const isSelected = selectedState === callout.code;
+                      const isHovered = hoveredStateCode === callout.code;
+                      const acuity = stateAcuityMap[callout.code];
+
+                      return (
+                        <g
+                          key={`callout-${callout.code}`}
+                          className="cursor-pointer pointer-events-auto"
+                          onMouseEnter={() => setHoveredStateCode(callout.code)}
+                          onMouseLeave={() => setHoveredStateCode(null)}
+                          onClick={() => {
+                            const next = selectedState === callout.code ? 'all' : callout.code;
+                            setSelectedState(next);
+                            setSelectedCounty('all');
+                            setSelectedCity('all');
+                            if (onSelectState) onSelectState(next);
+                            if (onSelectCounty) onSelectCounty('all');
+                            if (onSelectCity) onSelectCity('all');
+                          }}
+                        >
+                          <line
+                            x1={boundary.labelX}
+                            y1={boundary.labelY}
+                            x2={callout.calloutX - 16}
+                            y2={callout.calloutY}
+                            stroke={isSelected ? '#38BDF8' : basemapTheme === 'dark' ? '#475569' : '#94A3B8'}
+                            strokeWidth={isSelected || isHovered ? 1.5 : 0.9}
+                            strokeDasharray="2 2"
+                          />
+                          <rect
+                            x={callout.calloutX - 16}
+                            y={callout.calloutY - 8}
+                            width="32"
+                            height="16"
+                            rx="4"
+                            fill={
+                              isSelected
+                                ? '#2563EB'
+                                : mapDisplayMode === 'choropleth'
+                                ? (acuity?.fillColor || (basemapTheme === 'dark' ? '#0F172A' : '#FFFFFF'))
+                                : basemapTheme === 'dark'
+                                ? '#0F172A'
+                                : '#FFFFFF'
+                            }
+                            stroke={
+                              isSelected
+                                ? '#38BDF8'
+                                : (acuity?.borderColor || (basemapTheme === 'dark' ? '#334155' : '#CBD5E1'))
+                            }
+                            strokeWidth={isSelected || isHovered ? 1.5 : 1}
+                          />
+                          <text
+                            x={callout.calloutX}
+                            y={callout.calloutY}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize="8.5"
+                            fontWeight="800"
+                            fill={isSelected || basemapTheme === 'dark' ? '#FFFFFF' : '#0F172A'}
+                            className="font-mono pointer-events-none"
+                          >
+                            {callout.code}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
 
                 {/* Tactical Agency Station Vector Markers */}
-                {mapDisplayMode !== 'hexbin' && (mapDisplayMode !== 'kde' || showStationOverlay) && mapRenderedAgencies.map((agency) => {
+                {showStationOverlay && mapDisplayMode !== 'hexbin' && mapRenderedAgencies.map((agency) => {
                   const { x, y } = projectCoord(agency.latitude, agency.longitude);
                   const visual = getAgencyLayerVisual(agency, selectedLayer);
                   const isHovered = hoveredAgency?.id === agency.id;
@@ -2758,6 +2782,26 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                       onMouseEnter={() => setHoveredAgency(agency)}
                       onMouseLeave={() => setHoveredAgency(null)}
                     >
+                      {/* Density Halo Glow */}
+                      {showDensityHalos && (
+                        <circle
+                          r={baseR * 2.8}
+                          fill={visual.markerFill}
+                          opacity={isHovered ? 0.35 : 0.14}
+                          className="pointer-events-none transition-opacity duration-150"
+                        />
+                      )}
+                      {/* Pulse Animation Ring for Critical Agencies */}
+                      {showPulseAnimations && visual.isCritical && (
+                        <circle
+                          r={baseR + 4.5}
+                          fill="none"
+                          stroke={visual.ringColor}
+                          strokeWidth={1.2}
+                          className="animate-ping opacity-75 origin-center"
+                          style={{ transformOrigin: '0px 0px' }}
+                        />
+                      )}
                       {(visual.isCritical || isRouteStop) && (
                         <circle
                           r={baseR + 3.2}
@@ -2786,42 +2830,112 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
               </g>
             </svg>
 
-            {/* Scientific Spectrum & Layer Telemetry Legend Overlay */}
+            {/* Toggleable Legend Launcher Button when closed */}
+            {!showLegend && (
+              <button
+                type="button"
+                onClick={() => setShowLegend(true)}
+                className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950/95 hover:bg-slate-900 text-slate-200 hover:text-white border border-slate-700/80 shadow-2xl backdrop-blur-md text-xs font-semibold transition-all cursor-pointer group"
+                title="Open Map Legend & Layer Controls"
+              >
+                <Layers className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
+                <span>Legend & Layers</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              </button>
+            )}
+
+            {/* Scientific Spectrum, Acuity vs. Apparatus Density, & Layer Telemetry Legend Overlay */}
             {showLegend && (
-              <div className="absolute top-4 right-4 z-10 backdrop-blur-md bg-slate-950/90 border border-white/15 text-white rounded-xl p-3 shadow-2xl text-xs pointer-events-auto max-w-[260px] sm:min-w-[230px]">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-2 pb-1.5 border-b border-white/10 font-medium">
-                  <span className="font-semibold text-slate-200">Layer details</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowLegend(false)}
-                    className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
-                    title="Close legend"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+              <div className="absolute top-4 right-4 z-10 backdrop-blur-md bg-slate-950/95 border border-white/15 text-white rounded-xl p-3.5 shadow-2xl text-xs pointer-events-auto w-[295px] max-h-[85vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-white/10">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-100 text-xs">
+                    <Layers className="w-4 h-4 text-sky-400" />
+                    <span>Map Legend & Layers</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsLegendExpanded(!isLegendExpanded)}
+                      className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                      title={isLegendExpanded ? "Collapse layer controls" : "Expand layer controls"}
+                    >
+                      {isLegendExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowLegend(false)}
+                      className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                      title="Close legend panel"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 mb-2">
+                {/* Heatmap Metric Mode Selector (Acuity vs Apparatus Density) */}
+                <div className="mb-2.5">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Heatmap Metric Mode
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setHeatmapMetricMode('acuity')}
+                      className={`flex items-center justify-center gap-1.5 py-1 px-1.5 rounded-md font-semibold text-[11px] transition-all cursor-pointer ${
+                        heatmapMetricMode === 'acuity'
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <HeartPulse className="w-3 h-3 text-rose-400" />
+                      <span>Resuscitation Acuity</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHeatmapMetricMode('apparatus_density')}
+                      className={`flex items-center justify-center gap-1.5 py-1 px-1.5 rounded-md font-semibold text-[11px] transition-all cursor-pointer ${
+                        heatmapMetricMode === 'apparatus_density'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                      }`}
+                    >
+                      <Flame className="w-3 h-3 text-amber-400" />
+                      <span>Apparatus Density</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Metric Badge & Display Mode Indicator */}
+                <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
                   <span className="font-semibold text-xs flex items-center gap-1.5 text-white">
-                    {selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3.5 h-3.5 text-rose-500" /> :
-                     selectedLayer === 'cardiac' ? <Activity className="w-3.5 h-3.5 text-red-500" /> :
-                     selectedLayer === 'aed' ? <Zap className="w-3.5 h-3.5 text-fuchsia-400" /> :
-                     selectedLayer === 'transport' ? <Clock className="w-3.5 h-3.5 text-amber-400" /> :
-                     <DollarSign className="w-3.5 h-3.5 text-emerald-400" />}
-                    {selectedLayer === 'nemsis_cardiac' ? 'NEMSIS OHCA Density' :
-                     selectedLayer === 'cardiac' ? 'Utstein Deficit Surface' :
-                     selectedLayer === 'aed' ? 'Public AED Deficit' :
-                     selectedLayer === 'transport' ? 'Transit Isochrones' :
-                     'CMS Claim Denials'}
+                    {heatmapMetricMode === 'acuity' ? (
+                      selectedLayer === 'nemsis_cardiac' ? <HeartPulse className="w-3.5 h-3.5 text-rose-500" /> :
+                      selectedLayer === 'cardiac' ? <Activity className="w-3.5 h-3.5 text-red-500" /> :
+                      selectedLayer === 'aed' ? <Zap className="w-3.5 h-3.5 text-fuchsia-400" /> :
+                      selectedLayer === 'transport' ? <Clock className="w-3.5 h-3.5 text-amber-400" /> :
+                      <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    {heatmapMetricMode === 'acuity' ? (
+                      selectedLayer === 'nemsis_cardiac' ? 'NEMSIS OHCA Density' :
+                      selectedLayer === 'cardiac' ? 'Utstein Deficit Surface' :
+                      selectedLayer === 'aed' ? 'Public AED Deficit' :
+                      selectedLayer === 'transport' ? 'Transit Isochrones' :
+                      'CMS Claim Denials'
+                    ) : (
+                      'Fleet Apparatus & Stations'
+                    )}
                   </span>
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/40 font-semibold">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/40 font-mono font-semibold">
                     {mapDisplayMode === 'kde' ? 'KDE' : mapDisplayMode === 'hexbin' ? 'H3' : mapDisplayMode === 'choropleth' ? 'State' : 'Pins'}
                   </span>
                 </div>
 
-                {/* Continuous Scientific Color Ramp Bar for KDE & Hexbin Modes */}
+                {/* Continuous Scientific Color Ramp Bar */}
                 {(mapDisplayMode === 'kde' || mapDisplayMode === 'hexbin') && (
-                  <div className="mb-2.5 pb-2 border-b border-slate-700/50">
+                  <div className="mb-2.5 pb-2 border-b border-slate-800">
                     <div
                       className="h-2 w-full rounded-full border border-white/15"
                       style={{
@@ -2833,115 +2947,368 @@ export const GisTerritoryHeatmap: React.FC<GisTerritoryHeatmapProps> = ({
                             : 'linear-gradient(90deg, #440154 0%, #3b528b 25%, #21918c 50%, #5ec962 75%, #fde725 100%)'
                       }}
                     />
-                    <div className="flex justify-between text-xs text-slate-400 mt-1 font-medium">
-                      <span>Baseline</span>
+                    <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
+                      <span>Baseline ({heatmapMetricMode === 'acuity' ? 'Low Need' : 'Dispersed'})</span>
                       <span>Median</span>
-                      <span className="text-amber-300 font-semibold">Peak</span>
+                      <span className="text-amber-300 font-semibold">Peak ({heatmapMetricMode === 'acuity' ? 'Critical' : 'Metro Core'})</span>
                     </div>
                   </div>
                 )}
 
-                {selectedLayer === 'nemsis_cardiac' && (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
-                      <span className="font-semibold text-slate-100">≥800 Calls (Critical)</span>
+                {/* Explanatory Breakdown: Resuscitation Acuity vs Apparatus Density */}
+                {heatmapMetricMode === 'acuity' ? (
+                  <div className="mb-3">
+                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Acuity Color-Coding Scale
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
-                      <span className="text-slate-300">400–799 Calls (High)</span>
+                    {selectedLayer === 'nemsis_cardiac' && (
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
+                            <span className="font-semibold text-slate-100">≥800 Cardiac Calls</span>
+                          </div>
+                          <span className="text-[10px] text-rose-300 font-medium">Critical Epicenter</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
+                            <span className="text-slate-300">400–799 Calls</span>
+                          </div>
+                          <span className="text-[10px] text-orange-300">High Volume</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                            <span className="text-slate-400">200–399 Calls</span>
+                          </div>
+                          <span className="text-[10px] text-amber-300">Moderate</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0"></span>
+                            <span className="text-slate-400">&lt;200 Calls</span>
+                          </div>
+                          <span className="text-[10px] text-sky-300">Baseline</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedLayer === 'cardiac' && (
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/40 shrink-0"></span>
+                            <span className="font-semibold text-slate-100">&lt;22% Survival</span>
+                          </div>
+                          <span className="text-[10px] text-red-300 font-medium">Severe Deficit</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
+                            <span className="text-slate-300">22–26% Survival</span>
+                          </div>
+                          <span className="text-[10px] text-orange-300">Elevated Gap</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+                            <span className="text-slate-400">26–30% Survival</span>
+                          </div>
+                          <span className="text-[10px] text-amber-300">Moderate Gap</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span className="text-slate-400">&gt;30% Survival</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-300">Benchmark</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedLayer === 'aed' && (
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
+                            <span className="font-semibold text-slate-100">≥55% Gap</span>
+                          </div>
+                          <span className="text-[10px] text-rose-300 font-medium">Severe Deficit</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                            <span className="text-slate-300">45–54% Gap</span>
+                          </div>
+                          <span className="text-[10px] text-amber-300">High Deficit</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shrink-0"></span>
+                            <span className="text-slate-400">35–44% Gap</span>
+                          </div>
+                          <span className="text-[10px] text-teal-300">Moderate</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+                            <span className="text-slate-400">&lt;35% Gap</span>
+                          </div>
+                          <span className="text-[10px] text-slate-300">Adequate</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedLayer === 'transport' && (
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/40 shrink-0"></span>
+                            <span className="font-semibold text-slate-100">≥28 min Transit</span>
+                          </div>
+                          <span className="text-[10px] text-amber-300 font-medium">Severe Delay</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0"></span>
+                            <span className="text-slate-300">20–27 min Transit</span>
+                          </div>
+                          <span className="text-[10px] text-yellow-300">Long Delay</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                            <span className="text-slate-400">14–19 min Transit</span>
+                          </div>
+                          <span className="text-[10px] text-sky-300">Standard</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span className="text-slate-400">&lt;14 min Transit</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-300">Rapid Response</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedLayer === 'cms' && (
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
+                            <span className="font-semibold text-slate-100">≥21% Denial Rate</span>
+                          </div>
+                          <span className="text-[10px] text-rose-300 font-medium">Severe Revenue Gap</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
+                            <span className="text-slate-300">18–20.9% Denials</span>
+                          </div>
+                          <span className="text-[10px] text-purple-300">High Denial</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                            <span className="text-slate-400">14–17.9% Denials</span>
+                          </div>
+                          <span className="text-[10px] text-sky-300">Moderate</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span className="text-slate-400">&lt;14% Denials</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-300">Compliant</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mb-3">
+                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Apparatus & Fleet Concentration
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
-                      <span className="text-slate-400">200–399 Calls (Moderate)</span>
+                    <div className="space-y-1.5 text-[11px]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-300 ring-2 ring-amber-200/50 shrink-0"></span>
+                          <span className="font-semibold text-slate-100">&gt;120 Active Apparatus</span>
+                        </div>
+                        <span className="text-[10px] text-amber-200 font-medium">Tier 1 Metro Core</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                          <span className="text-slate-300">60–120 Apparatus</span>
+                        </div>
+                        <span className="text-[10px] text-rose-300">Tier 2 Dense Urban</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
+                          <span className="text-slate-400">25–59 Apparatus</span>
+                        </div>
+                        <span className="text-[10px] text-purple-300">Tier 3 Suburban</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
+                          <span className="text-slate-400">&lt;25 Apparatus</span>
+                        </div>
+                        <span className="text-[10px] text-indigo-300">Tier 4 Rural Hub</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0"></span>
-                      <span className="text-slate-400">&lt;200 Calls (Baseline)</span>
-                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 bg-slate-900/80 p-2 rounded border border-slate-800 leading-relaxed">
+                      Measures concentration of ALS ambulances, fire engines, ladders, rescues, and active fire/EMS stations.
+                    </p>
                   </div>
                 )}
 
-                {selectedLayer === 'cardiac' && (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/40 shrink-0"></span>
-                      <span className="font-semibold text-slate-100">&lt;22% Survival (Critical)</span>
+                {/* Layer Toggles Section (Toggleable & Interactive) */}
+                {isLegendExpanded && (
+                  <div className="pt-2.5 border-t border-white/10 space-y-1.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Active Map Layers
+                      </span>
+                      <span className="text-[10px] text-sky-400 font-mono">
+                        {[showThermalSurface, showStationOverlay, showIsoContours, showDensityHalos, showPulseAnimations, showStateBoundaries, showCorridors].filter(Boolean).length}/7 on
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
-                      <span className="text-slate-300">22–26% Survival (High)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
-                      <span className="text-slate-400">26–30% Survival (Moderate)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                      <span className="text-slate-400">&gt;30% Survival (Benchmark)</span>
-                    </div>
-                  </div>
-                )}
 
-                {selectedLayer === 'aed' && (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
-                      <span className="font-semibold text-slate-100">≥55% Deficit (Severe)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                      <span className="text-slate-300">45–54% Deficit (High)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shrink-0"></span>
-                      <span className="text-slate-400">35–44% Deficit (Moderate)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
-                      <span className="text-slate-400">&lt;35% Deficit (Adequate)</span>
-                    </div>
-                  </div>
-                )}
+                    {/* Toggle: Thematic Heatmap Surface */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <Flame className={`w-3.5 h-3.5 ${showThermalSurface ? 'text-amber-400' : 'text-slate-500'}`} />
+                        <span>Thematic Heatmap Surface</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showThermalSurface}
+                        onChange={(e) => setShowThermalSurface(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
 
-                {selectedLayer === 'transport' && (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/40 shrink-0"></span>
-                      <span className="font-semibold text-slate-100">≥28 min (Severe Delay)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0"></span>
-                      <span className="text-slate-300">20–27 min (Long Transit)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
-                      <span className="text-slate-400">14–19 min (Standard)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                      <span className="text-slate-400">&lt;14 min (Metro Rapid)</span>
-                    </div>
-                  </div>
-                )}
+                    {/* Toggle: Apparatus & Stations Pins */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <MapPin className={`w-3.5 h-3.5 ${showStationOverlay ? 'text-rose-400' : 'text-slate-500'}`} />
+                        <span>Apparatus & Stations (Pins)</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showStationOverlay}
+                        onChange={(e) => setShowStationOverlay(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
 
-                {selectedLayer === 'cms' && (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-rose-400/40 shrink-0"></span>
-                      <span className="font-semibold text-slate-100">≥21% Denials (Severe)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
-                      <span className="text-slate-300">18–20.9% Denials (High)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
-                      <span className="text-slate-400">14–17.9% Denials (Moderate)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                      <span className="text-slate-400">&lt;14% Denials (Compliant)</span>
+                    {/* Toggle: Topographic Iso-Contours */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <Activity className={`w-3.5 h-3.5 ${showIsoContours ? 'text-teal-400' : 'text-slate-500'}`} />
+                        <span>Iso-Density Contour Lines</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showIsoContours}
+                        onChange={(e) => setShowIsoContours(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
+
+                    {/* Toggle: Station Density Halos */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <Radio className={`w-3.5 h-3.5 ${showDensityHalos ? 'text-cyan-400' : 'text-slate-500'}`} />
+                        <span>Resuscitation Density Halos</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showDensityHalos}
+                        onChange={(e) => setShowDensityHalos(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
+
+                    {/* Toggle: Critical Pulse Animations */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <Zap className={`w-3.5 h-3.5 ${showPulseAnimations ? 'text-yellow-400' : 'text-slate-500'}`} />
+                        <span>Critical Acuity Pulse Beacon</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showPulseAnimations}
+                        onChange={(e) => setShowPulseAnimations(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
+
+                    {/* Toggle: State Boundaries & Choropleth */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <Compass className={`w-3.5 h-3.5 ${showStateBoundaries ? 'text-indigo-400' : 'text-slate-500'}`} />
+                        <span>State Boundaries & Choropleth</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showStateBoundaries}
+                        onChange={(e) => setShowStateBoundaries(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
+
+                    {/* Toggle: Route Corridors */}
+                    <label className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-900/80 transition-colors cursor-pointer group">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-200 group-hover:text-white">
+                        <Navigation className={`w-3.5 h-3.5 ${showCorridors ? 'text-emerald-400' : 'text-slate-500'}`} />
+                        <span>Route Transit Corridors</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={showCorridors}
+                        onChange={(e) => setShowCorridors(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0 cursor-pointer h-3.5 w-3.5"
+                      />
+                    </label>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex gap-1.5 pt-2 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowThermalSurface(true);
+                          setShowStationOverlay(true);
+                          setShowIsoContours(true);
+                          setShowDensityHalos(true);
+                          setShowPulseAnimations(true);
+                          setShowStateBoundaries(true);
+                          setShowCorridors(true);
+                        }}
+                        className="flex-1 py-1 px-2 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-[10px] font-semibold border border-slate-800 text-center transition-colors cursor-pointer"
+                      >
+                        Enable All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowThermalSurface(true);
+                          setShowStationOverlay(false);
+                          setShowIsoContours(false);
+                          setShowDensityHalos(false);
+                          setShowPulseAnimations(false);
+                          setShowStateBoundaries(true);
+                          setShowCorridors(false);
+                        }}
+                        className="flex-1 py-1 px-2 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-[10px] font-semibold border border-slate-800 text-center transition-colors cursor-pointer"
+                      >
+                        Clean Surface
+                      </button>
                     </div>
                   </div>
                 )}
